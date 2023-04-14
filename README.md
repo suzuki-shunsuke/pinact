@@ -38,6 +38,49 @@ index 84bd67a..5d92e44 100644
      permissions:
 ```
 
+## Motivation
+
+It is a good manner to pin GitHub Actions versions by commit hash.
+GitHub tags are mutable so they have a substantial security and reliability risk.
+
+:thumbsup:
+
+```yaml
+uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+```
+
+:thumbsdown:
+
+```yaml
+uses: actions/cache@v3
+```
+
+```yaml
+uses: actions/cache@v3.3.1
+```
+
+[Renovate's helpers:pinGitHubActionDigests](https://docs.renovatebot.com/presets-helpers/#helperspingithubactiondigests) pins GitHub Actions versions by commit hash, but this doesn't change the short format tag such as `v2` to the long format tag such as `v2.0.0`.
+
+```yaml
+uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3
+```
+
+Even if the tag is short Renovate will update the commit hash, but you can't understand what is changed from the Renovate's pull request.
+
+e.g. https://github.com/suzuki-shunsuke/test-github-action/pull/141
+
+<img width="937" alt="image" src="https://user-images.githubusercontent.com/13323303/231947080-75930df5-a471-4b1a-a5ab-de5a270d7738.png">
+
+pinact converts short tags to long tags, so you can understand what is changed from the Renovate's pull request.
+
+```yaml
+uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.5.1
+```
+
+e.g. https://github.com/suzuki-shunsuke/test-github-action/pull/143
+
+<img width="947" alt="image" src="https://user-images.githubusercontent.com/13323303/231948517-01fcbf19-9f6d-467a-9bb5-7cba097f2233.png">
+
 ## Install
 
 pinact is written in Go. So you only have to install a binary in your `PATH`.
@@ -105,6 +148,7 @@ OPTIONS:
 
 ## See also
 
+- [Renovate github-actions Manager - Additional Information](https://docs.renovatebot.com/modules/manager/github-actions/#additional-information)
 - [Renovate - helpers:pinGitHubActionDigests](https://docs.renovatebot.com/presets-helpers/#helperspingithubactiondigests): This is useful, but this doesn't change the short format tag such as `v2` to the long format tag such as `v2.0.0`
 - [sethvargo/ratchet](https://github.com/sethvargo/ratchet): This is a great tool, but there are [known issues](https://github.com/sethvargo/ratchet#known-issues)
 
