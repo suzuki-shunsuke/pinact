@@ -68,7 +68,6 @@ jobs:
       - update-aqua-checksums
       - ghalint
       - test
-      - integration-test
       - go-mod-tidy
 
   renovate-config-validator:
@@ -108,7 +107,3 @@ jobs:
       gh_app_private_key: ${{secrets.APP_PRIVATE_KEY}}
     permissions:
       contents: read
-
-  integration-test:
-    uses: ./.github/workflows/wc-integration-test.yaml
-    permissions: {}

@@ -22,3 +22,7 @@ jobs:
         env:
           AQUA_GITHUB_TOKEN: ${{github.token}}
       - run: go test -v ./... -race -covermode=atomic
+      - run: go install ./cmd/pinact
+      - run: pinact -v
+      - run: pinact run testdata/foo.yaml
+      - run: git diff
