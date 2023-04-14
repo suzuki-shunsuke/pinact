@@ -81,7 +81,8 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 		// > The :ref in the URL must be formatted as heads/<branch name> for branches and tags/<tag name> for tags. If the :ref doesn't match an existing ref, a 404 is returned.
 		ref, _, err := ctrl.GitService.GetRef(ctx, action.RepoOwner, action.RepoName, fmt.Sprintf("tags/%s", action.Version))
 		if err != nil {
-			return "", fmt.Errorf("get a reference: %w", err)
+			logerr.WithError(logE, err).Warn("get a reference")
+			return "", nil
 		}
 		longVersion := action.Version
 		if shortTagPattern.MatchString(action.Version) {
