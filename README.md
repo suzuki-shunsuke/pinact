@@ -51,7 +51,7 @@ There are some ways to install pinact.
 
 ## GitHub Access token
 
-pinact calls GitHub REST API to get reference and tags.
+pinact calls GitHub REST API to get commit hashes and tags.
 You can pass GitHub Access token via environment variable `GITHUB_TOKEN`.
 If no GitHub Access token is passed, pinact calls GitHub REST API without access token.
 
