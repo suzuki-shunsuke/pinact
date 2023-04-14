@@ -107,25 +107,3 @@ jobs:
       gh_app_private_key: ${{secrets.APP_PRIVATE_KEY}}
     permissions:
       contents: read
-
-  build:
-    uses: ./.github/workflows/wc-test.yaml
-    needs: path-filter
-    permissions: {}
-    steps:
-      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247 # v3
-      - uses: actions/setup-go@v4
-      - name: Cache Primes
-        id: cache-primes
-        uses: actions/cache@v3.3.1
-        with:
-          path: prime-numbers
-          key: ${{ runner.os }}-primes
-
-  actionlint:
-    uses: suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml@v0.5.0
-    with:
-      aqua_version: v2.3.4
-    permissions:
-      pull-requests: write
-      contents: read
