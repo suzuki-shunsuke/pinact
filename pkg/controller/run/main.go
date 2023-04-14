@@ -77,7 +77,9 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 	if action.Tag == "" { //nolint:nestif
 		// @xxx
 		// Get commit hash from tag
-		ref, _, err := ctrl.GitService.GetRef(ctx, action.RepoOwner, action.RepoName, action.Version)
+		// https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#get-a-reference
+		// > The :ref in the URL must be formatted as heads/<branch name> for branches and tags/<tag name> for tags. If the :ref doesn't match an existing ref, a 404 is returned.
+		ref, _, err := ctrl.GitService.GetRef(ctx, action.RepoOwner, action.RepoName, fmt.Sprintf("tags/%s", action.Version))
 		if err != nil {
 			return "", fmt.Errorf("get a reference: %w", err)
 		}
