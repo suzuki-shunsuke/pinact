@@ -8,3 +8,10 @@ jobs:
     steps:
       - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247 # v3
       - uses: actions/checkout@v2
+  actionlint:
+    uses: suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml@v0.5.0
+    with:
+      aqua_version: v2.3.4
+    permissions:
+      pull-requests: write
+      contents: read
