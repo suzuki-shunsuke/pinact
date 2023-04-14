@@ -2,6 +2,8 @@
 
 Pin GitHub Actions versions
 
+pinact edits GitHub Workflow files and pins versions of Actions and Reusable Workflows.
+
 ```console
 $ pinact run
 ```
@@ -36,8 +38,6 @@ index 84bd67a..5d92e44 100644
      permissions:
 ```
 
-pinact edits GitHub Workflow files and pins versions of Actions and Reusable Workflows.
-
 ## Install
 
 pinact is written in Go. So you only have to install a binary in your `PATH`.
@@ -45,9 +45,9 @@ pinact is written in Go. So you only have to install a binary in your `PATH`.
 There are some ways to install pinact.
 
 1. Homebrew: `brew install suzuki-shunsuke/pinact/pinact`
-1. [aqua](https://aquaproj.github.io/): `aqua g -i suzuki-shunsuke/pinact`
+1. [aqua](https://aquaproj.github.io/): `aqua g -i suzuki-shunsuke/pinact` (`aqua-registry >= v3.154.0`)
 1. Download a pre built binary from GitHub Releases
-1. Build yourself with Go: `go install github.com/suzuki-shunsuke/pinact/cmd/pinact`
+1. Build yourself with Go: `go install github.com/suzuki-shunsuke/pinact/cmd/pinact@latest`
 
 ## GitHub Access token
 
@@ -66,7 +66,7 @@ USAGE:
    pinact [global options] command [command options] [arguments...]
 
 VERSION:
-    ()
+   0.1.0 (8ccd55944c83ff1f4d738343c28d4a6109246d06)
 
 COMMANDS:
    version  Show version
