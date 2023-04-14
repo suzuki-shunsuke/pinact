@@ -103,6 +103,11 @@ OPTIONS:
    --help, -h  show help
 ```
 
+## See also
+
+- [Renovate - helpers:pinGitHubActionDigests](https://docs.renovatebot.com/presets-helpers/#helperspingithubactiondigests): This is useful, but this doesn't change the short format tag such as `v2` to the long format tag such as `v2.0.0`
+- [sethvargo/ratchet](https://github.com/sethvargo/ratchet): This is a great tool, but there are [known issues](https://github.com/sethvargo/ratchet#known-issues)
+
 ## LICENSE
 
 [MIT](LICENSE)
