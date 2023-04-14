@@ -1,0 +1,11 @@
+---
+# aqua - Declarative CLI Version Manager
+# https://aquaproj.github.io/
+checksum:
+  enabled: true
+  require_checksum: true
+registries:
+  - type: standard
+    ref: v3.153.0 # renovate: depName=suzuki-shunsuke/pinact-registry
+packages:
+  - import: imports/*.yaml
