@@ -26,7 +26,8 @@ func New(ctx context.Context) *Controller {
 			GitService: gh.Git,
 		},
 		RepositoriesService: &RepositoriesServiceImpl{
-			m:                   map[string]*ListTagsResult{},
+			tags:                map[string]*ListTagsResult{},
+			commits:             map[string]*GetCommitSHA1Result{},
 			RepositoriesService: gh.Repositories,
 		},
 	}
@@ -79,14 +80,14 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 		// Get commit hash from tag
 		// https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#get-a-reference
 		// > The :ref in the URL must be formatted as heads/<branch name> for branches and tags/<tag name> for tags. If the :ref doesn't match an existing ref, a 404 is returned.
-		ref, _, err := ctrl.GitService.GetRef(ctx, action.RepoOwner, action.RepoName, fmt.Sprintf("tags/%s", action.Version))
+		sha, _, err := ctrl.RepositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Version, "")
 		if err != nil {
 			logerr.WithError(logE, err).Warn("get a reference")
 			return "", nil
 		}
 		longVersion := action.Version
 		if shortTagPattern.MatchString(action.Version) {
-			v, err := ctrl.getLongVersionFromSHA(ctx, action, ref.GetObject().GetSHA())
+			v, err := ctrl.getLongVersionFromSHA(ctx, action, sha)
 			if err != nil {
 				return "", err
 			}
@@ -95,7 +96,7 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 			}
 		}
 		// @yyy # longVersion
-		return ctrl.patchLine(line, action, ref.GetObject().GetSHA(), longVersion), nil
+		return ctrl.patchLine(line, action, sha, longVersion), nil
 	}
 	// @xxx # v3
 	// list releases
@@ -182,7 +183,7 @@ func (ctrl *Controller) getLongVersionFromSHA(ctx context.Context, action *Actio
 	return "", nil
 }
 
-var shortTagPattern = regexp.MustCompile(`v\d+`)
+var shortTagPattern = regexp.MustCompile(`^v\d+$`)
 
 func (ctrl *Controller) parseAction(action *Action) bool {
 	a := strings.Split(action.Name, "/")

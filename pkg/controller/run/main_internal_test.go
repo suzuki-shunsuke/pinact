@@ -59,7 +59,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 					},
 				},
 				RepositoriesService: &RepositoriesServiceImpl{
-					m: map[string]*ListTagsResult{
+					tags: map[string]*ListTagsResult{
 						"actions/checkout/0": {
 							Tags: []*github.RepositoryTag{
 								{
@@ -87,6 +87,14 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 									},
 								},
 							},
+						},
+					},
+					commits: map[string]*GetCommitSHA1Result{
+						"actions/checkout/v3": {
+							SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+						},
+						"actions/checkout/v2": {
+							SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
 						},
 					},
 				},
