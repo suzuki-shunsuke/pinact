@@ -7,36 +7,6 @@ import (
 	"github.com/suzuki-shunsuke/pinact/pkg/github"
 )
 
-type GitService interface {
-	GetRef(ctx context.Context, owner string, repo string, ref string) (*github.Reference, *github.Response, error)
-}
-
-type GetRefResponse struct {
-	Reference *github.Reference
-	Response  *github.Response
-	err       error
-}
-
-type GitServiceImpl struct {
-	GitService GitService
-	m          map[string]*GetRefResponse
-}
-
-func (gitService *GitServiceImpl) GetRef(ctx context.Context, owner string, repo string, ref string) (*github.Reference, *github.Response, error) {
-	key := fmt.Sprintf("%s/%s/%s", owner, repo, ref)
-	a, ok := gitService.m[key]
-	if ok {
-		return a.Reference, a.Response, a.err
-	}
-	r, resp, err := gitService.GitService.GetRef(ctx, owner, repo, ref)
-	gitService.m[key] = &GetRefResponse{
-		Reference: r,
-		Response:  resp,
-		err:       err,
-	}
-	return r, resp, err //nolint:wrapcheck
-}
-
 type RepositoriesService interface {
 	ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error)
 	GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error)

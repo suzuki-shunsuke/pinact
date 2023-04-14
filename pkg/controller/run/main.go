@@ -14,17 +14,12 @@ import (
 )
 
 type Controller struct {
-	GitService          GitService
 	RepositoriesService RepositoriesService
 }
 
 func New(ctx context.Context) *Controller {
 	gh := github.New(ctx)
 	return &Controller{
-		GitService: &GitServiceImpl{
-			m:          map[string]*GetRefResponse{},
-			GitService: gh.Git,
-		},
 		RepositoriesService: &RepositoriesServiceImpl{
 			tags:                map[string]*ListTagsResult{},
 			commits:             map[string]*GetCommitSHA1Result{},

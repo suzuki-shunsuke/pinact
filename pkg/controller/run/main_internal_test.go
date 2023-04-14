@@ -40,24 +40,6 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			ctrl := &Controller{
-				GitService: &GitServiceImpl{
-					m: map[string]*GetRefResponse{
-						"actions/checkout/tags/v3": {
-							Reference: &github.Reference{
-								Object: &github.GitObject{
-									SHA: util.StrP("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
-								},
-							},
-						},
-						"actions/checkout/tags/v2": {
-							Reference: &github.Reference{
-								Object: &github.GitObject{
-									SHA: util.StrP("ee0669bd1cc54295c223e0bb666b733df41de1c5"),
-								},
-							},
-						},
-					},
-				},
 				RepositoriesService: &RepositoriesServiceImpl{
 					tags: map[string]*ListTagsResult{
 						"actions/checkout/0": {
