@@ -29,6 +29,8 @@ index 8161b12..08a9355 100644
 +      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247 # v3.5.1
 ```
 
+pinact edits GitHub Workflow files and pins versions of Actions and Reusable Workflows.
+
 ## Install
 
 pinact is written in Go. So you only have to install a binary in your `PATH`.
@@ -39,6 +41,12 @@ There are some ways to install pinact.
 1. [aqua](https://aquaproj.github.io/): `aqua g -i suzuki-shunsuke/pinact`
 1. Download a pre built binary from GitHub Releases
 1. Build yourself with Go: `go install github.com/suzuki-shunsuke/pinact/cmd/pinact`
+
+## GitHub Access token
+
+pinact calls GitHub REST API to get reference and tags.
+You can pass GitHub Access token via environment variable `GITHUB_TOKEN`.
+If no GitHub Access token is passed, pinact calls GitHub REST API without access token.
 
 ## Usage
 
