@@ -1,0 +1,20 @@
+---
+name: Release
+on:
+  push:
+    tags: [v*]
+permissions: {}
+jobs:
+  release:
+    uses: suzuki-shunsuke/go-release-workflow/.github/workflows/release.yaml@ef07d40bab10fb5d48a6b239378d74cfdbb891a0 # v0.4.1
+    with:
+      homebrew: true
+      go-version: 1.20.3
+      aqua_version: v2.3.4
+    secrets:
+      gh_app_id: ${{secrets.APP_ID}}
+      gh_app_private_key: ${{secrets.APP_PRIVATE_KEY}}
+    permissions:
+      contents: write
+      id-token: write
+      actions: read

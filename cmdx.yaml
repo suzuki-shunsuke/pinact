@@ -1,0 +1,49 @@
+---
+# the configuration file of cmdx - task runner
+# https://github.com/suzuki-shunsuke/cmdx
+tasks:
+- name: test
+  short: t
+  description: test
+  usage: test
+  script: go test ./... -race -covermode=atomic
+- name: vet
+  short: v
+  description: go vet
+  usage: go vet
+  script: go vet ./...
+- name: lint
+  short: l
+  description: lint the go code
+  usage: lint the go code
+  script: golangci-lint run
+- name: release
+  short: r
+  description: release the new version
+  usage: release the new version
+  script: |
+    set -eux
+    git tag -m "chore: release {{.version}}" "{{.version}}"
+    git push origin "{{.version}}"
+  args:
+  - name: version
+    required: true
+    validate:
+    - regexp: "^v\\d+\\.\\d+.\\d+(-.+)?$"
+- name: coverage
+  short: c
+  description: coverage test
+  usage: coverage test
+  script: "bash scripts/coverage.sh {{.target}}"
+  args:
+  - name: target
+- name: install
+  short: i
+  description: Build and install pinact
+  usage: Build and install pinact by "go install" command
+  script: go install ./cmd/pinact
+- name: run
+  description: Run pinact via go run
+  usage: Run pinact via go run
+  script: |
+    go run ./cmd/pinact {{._builtin.args_string}}

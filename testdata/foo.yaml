@@ -1,0 +1,10 @@
+---
+name: foo
+on: workflow_call
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247 # v3
+      - uses: actions/checkout@v2
