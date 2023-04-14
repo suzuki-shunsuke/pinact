@@ -9,24 +9,31 @@ $ pinact run
 ```diff
 $ git diff
 diff --git a/.github/workflows/test.yaml b/.github/workflows/test.yaml
-index 8161b12..08a9355 100644
+index 84bd67a..5d92e44 100644
 --- a/.github/workflows/test.yaml
 +++ b/.github/workflows/test.yaml
-@@ -13,6 +13,7 @@ jobs:
-     runs-on: ubuntu-latest
+@@ -113,17 +113,17 @@ jobs:
+     needs: path-filter
      permissions: {}
-     steps:
--      - uses: actions/checkout@v2
-+      - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-       - uses: dorny/paths-filter@4512585405083f25c027a35db413c2b3b9006d50 # v2.11.1
-         id: changes
-         with:
-@@ -62,6 +63,7 @@ jobs:
-     permissions: {}
-     if: failure()
      steps:
 -      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247 # v3
+-      - uses: actions/setup-go@v4
 +      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247 # v3.5.1
++      - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
+       - name: Cache Primes
+         id: cache-primes
+-        uses: actions/cache@v3.3.1
++        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+         with:
+           path: prime-numbers
+           key: ${{ runner.os }}-primes
+ 
+   actionlint:
+-    uses: suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml@v0.5.0
++    uses: suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml@b6a5f966d4504893b2aeb60cf2b0de8946e48504 # v0.5.0
+     with:
+       aqua_version: v2.3.4
+     permissions:
 ```
 
 pinact edits GitHub Workflow files and pins versions of Actions and Reusable Workflows.
