@@ -42,14 +42,14 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			ctrl := &Controller{
 				GitService: &GitServiceImpl{
 					m: map[string]*GetRefResponse{
-						"actions/checkout/v3": {
+						"actions/checkout/tags/v3": {
 							Reference: &github.Reference{
 								Object: &github.GitObject{
 									SHA: util.StrP("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
 								},
 							},
 						},
-						"actions/checkout/v2": {
+						"actions/checkout/tags/v2": {
 							Reference: &github.Reference{
 								Object: &github.GitObject{
 									SHA: util.StrP("ee0669bd1cc54295c223e0bb666b733df41de1c5"),
