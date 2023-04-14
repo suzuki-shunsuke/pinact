@@ -62,7 +62,7 @@ type Action struct {
 func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string) (string, error) { //nolint:cyclop
 	matches := usesPattern.FindStringSubmatch(line)
 	if matches == nil {
-		logE.WithField("line", line).Info("unmatch")
+		logE.WithField("line", line).Debug("unmatch")
 		return line, nil
 	}
 	action := &Action{
@@ -71,7 +71,7 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 		Tag:     matches[3],
 	}
 	if f := ctrl.parseAction(action); !f {
-		logE.WithField("line", line).Info("ignore line")
+		logE.WithField("line", line).Debug("ignore line")
 		return line, nil
 	}
 	if action.Tag == "" { //nolint:nestif
@@ -98,7 +98,7 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 	// list releases
 	// extract releases by commit hash
 	if !shortTagPattern.MatchString(action.Tag) {
-		logE.WithField("action_version", action.Version).Info("ignore the line because the tag is not short")
+		logE.WithField("action_version", action.Version).Debug("ignore the line because the tag is not short")
 		return line, nil
 	}
 	longVersion, err := ctrl.getLongVersionFromSHA(ctx, action, action.Version)
@@ -106,7 +106,7 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 		return "", err
 	}
 	if longVersion == "" {
-		logE.Info("failed to get a long tag")
+		logE.Debug("failed to get a long tag")
 		return line, nil
 	}
 	return ctrl.patchLine(line, action, action.Version, longVersion), nil
