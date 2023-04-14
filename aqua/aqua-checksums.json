@@ -216,7 +216,7 @@
       "algorithm": "sha256"
     },
     {
-      "id": "registries/github_content/github.com/suzuki-shunsuke/pinact-registry/v3.153.0/registry.yaml",
+      "id": "registries/github_content/github.com/aquaproj/aqua-registry/v3.153.0/registry.yaml",
       "checksum": "0CBBE394EE063F9ACEDBCD489CDBEB69FAD2E59C05158F60400E739125437DBF90D497FAF85ACF2F93CF805924AD71A99AE6056E953D7500DDFDB7B86FE3CFB6",
       "algorithm": "sha512"
     }
