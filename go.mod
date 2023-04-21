@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/google/go-github/v51 v51.0.0
+	github.com/google/go-github/v52 v52.0.0
 	github.com/mattn/go-colorable v0.1.13
 	github.com/sirupsen/logrus v1.9.0
 	github.com/suzuki-shunsuke/logrus-error v0.1.4
