@@ -78,7 +78,7 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 		sha, _, err := ctrl.RepositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Version, "")
 		if err != nil {
 			logerr.WithError(logE, err).Warn("get a reference")
-			return "", nil
+			return line, nil
 		}
 		longVersion := action.Version
 		if shortTagPattern.MatchString(action.Version) {
@@ -113,6 +113,9 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 
 func (ctrl *Controller) patchLine(line string, action *Action, version, tag string) string {
 	if action.Tag == "" {
+		if version == tag {
+			return line
+		}
 		return strings.Replace(line, fmt.Sprintf("@%s", action.Version), fmt.Sprintf("@%s # %s", version, tag), 1)
 	}
 	return strings.Replace(line, fmt.Sprintf("@%s # %s", action.Version, action.Tag), fmt.Sprintf("@%s # %s", action.Version, tag), 1)
@@ -123,13 +126,21 @@ func (ctrl *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, wor
 	if err != nil {
 		return err
 	}
+	changed := false
 	for i, line := range lines {
+		line := line
 		l, err := ctrl.parseLine(ctx, logE, line)
 		if err != nil {
 			logerr.WithError(logE, err).Error("parse a line")
 			continue
 		}
+		if line != l {
+			changed = true
+		}
 		lines[i] = l
+	}
+	if !changed {
+		return nil
 	}
 	f, err := os.Create(workflowFilePath)
 	if err != nil {
