@@ -8,6 +8,8 @@ jobs:
     steps:
       - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247 # v3
       - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247 # tag=v3
+      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247
+      - uses: suzuki-shunsuke/repo-404@83b7061638ee4956cf7545a6f7efe594e5ad0247
       - uses: actions/checkout@v2
       - uses: actions/cache@v3.3.1
   actionlint:
