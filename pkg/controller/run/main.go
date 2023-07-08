@@ -4,43 +4,141 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/logrus-error/logerr"
 	"github.com/suzuki-shunsuke/pinact/pkg/github"
+	"gopkg.in/yaml.v3"
 )
 
 type Controller struct {
-	RepositoriesService RepositoriesService
+	repositoriesService RepositoriesService
+	fs                  afero.Fs
 }
 
 func New(ctx context.Context) *Controller {
 	gh := github.New(ctx)
 	return &Controller{
-		RepositoriesService: &RepositoriesServiceImpl{
+		repositoriesService: &RepositoriesServiceImpl{
 			tags:                map[string]*ListTagsResult{},
 			commits:             map[string]*GetCommitSHA1Result{},
 			RepositoriesService: gh.Repositories,
 		},
+		fs: afero.NewOsFs(),
 	}
 }
 
-func (ctrl *Controller) Run(ctx context.Context, logE *logrus.Entry, workflowFilePaths []string) error {
-	if len(workflowFilePaths) == 0 {
-		paths, err := listWorkflows()
-		if err != nil {
-			return err
-		}
-		workflowFilePaths = paths
+func NewController(repoService RepositoriesService, fs afero.Fs) *Controller {
+	return &Controller{
+		repositoriesService: repoService,
+		fs:                  fs,
+	}
+}
+
+type ParamRun struct {
+	WorkflowFilePaths []string
+	ConfigFilePath    string
+	PWD               string
+}
+
+func (ctrl *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRun) error {
+	cfg := &Config{}
+	if err := ctrl.readConfig(param.ConfigFilePath, cfg); err != nil {
+		return err
+	}
+	workflowFilePaths, err := ctrl.searchFiles(logE, param.WorkflowFilePaths, cfg, param.PWD)
+	if err != nil {
+		return fmt.Errorf("search target files: %w", err)
 	}
 	for _, workflowFilePath := range workflowFilePaths {
 		logE := logE.WithField("workflow_file", workflowFilePath)
-		if err := ctrl.runWorkflow(ctx, logE, workflowFilePath); err != nil {
+		if err := ctrl.runWorkflow(ctx, logE, workflowFilePath, cfg); err != nil {
 			logerr.WithError(logE, err).Warn("update a workflow")
 		}
+	}
+	return nil
+}
+
+func (ctrl *Controller) searchFiles(logE *logrus.Entry, workflowFilePaths []string, cfg *Config, pwd string) ([]string, error) {
+	if len(workflowFilePaths) != 0 {
+		return workflowFilePaths, nil
+	}
+	if len(cfg.Files) > 0 {
+		return ctrl.searchFilesByConfig(logE, cfg, pwd)
+	}
+	return listWorkflows()
+}
+
+func (ctrl *Controller) searchFilesByConfig(logE *logrus.Entry, cfg *Config, pwd string) ([]string, error) {
+	patterns := make([]*regexp.Regexp, 0, len(cfg.Files))
+	for _, file := range cfg.Files {
+		file := file
+		if file.Pattern == "" {
+			// ignore
+			continue
+		}
+		p, err := regexp.Compile(file.Pattern)
+		if err != nil {
+			return nil, fmt.Errorf("parse files[].pattern as a regular expression: %w", err)
+		}
+		patterns = append(patterns, p)
+	}
+
+	files := []string{}
+	if err := fs.WalkDir(afero.NewIOFS(ctrl.fs), pwd, func(p string, dirEntry fs.DirEntry, e error) error {
+		if e != nil {
+			return nil //nolint:nilerr
+		}
+		if dirEntry.IsDir() {
+			// ignore directory
+			return nil
+		}
+		filePath, err := filepath.Rel(pwd, p)
+		if err != nil {
+			logE.WithFields(logrus.Fields{
+				"pwd":  pwd,
+				"path": p,
+			}).WithError(err).Debug("get a relative path")
+			return nil
+		}
+		for _, pattern := range patterns {
+			if pattern.MatchString(filePath) {
+				files = append(files, filePath)
+				break
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("search target files: %w", err)
+	}
+
+	return files, nil
+}
+
+func (ctrl *Controller) readConfig(configFilePath string, cfg *Config) error {
+	if configFilePath == "" {
+		f, err := afero.Exists(ctrl.fs, ".pinact.yaml")
+		if err != nil {
+			return fmt.Errorf("check if .pinact.yaml exists: %w", err)
+		}
+		if !f {
+			return nil
+		}
+		configFilePath = ".pinact.yaml"
+	}
+	f, err := ctrl.fs.Open(configFilePath)
+	if err != nil {
+		return fmt.Errorf("open a configuration file: %w", err)
+	}
+	defer f.Close()
+	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
+		return fmt.Errorf("decode a configuration file as YAML: %w", err)
 	}
 	return nil
 }
@@ -55,7 +153,7 @@ type Action struct {
 	RepoName  string
 }
 
-func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string) (string, error) { //nolint:cyclop
+func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config) (string, error) { //nolint:cyclop,funlen
 	matches := usesPattern.FindStringSubmatch(line)
 	if matches == nil {
 		logE.WithField("line", line).Debug("unmatch")
@@ -66,6 +164,15 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 		Version: matches[2],
 		Tag:     matches[3],
 	}
+	for _, ignoreAction := range cfg.IgnoreActions {
+		if action.Name == ignoreAction.Name {
+			logE.WithFields(logrus.Fields{
+				"line":   line,
+				"action": action.Name,
+			}).Debug("ignore the action")
+			return line, nil
+		}
+	}
 	if f := ctrl.parseAction(action); !f {
 		logE.WithField("line", line).Debug("ignore line")
 		return line, nil
@@ -75,7 +182,7 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 		// Get commit hash from tag
 		// https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#get-a-reference
 		// > The :ref in the URL must be formatted as heads/<branch name> for branches and tags/<tag name> for tags. If the :ref doesn't match an existing ref, a 404 is returned.
-		sha, _, err := ctrl.RepositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Version, "")
+		sha, _, err := ctrl.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Version, "")
 		if err != nil {
 			logerr.WithError(logE, err).Warn("get a reference")
 			return line, nil
@@ -121,7 +228,7 @@ func (ctrl *Controller) patchLine(line string, action *Action, version, tag stri
 	return strings.Replace(line, fmt.Sprintf("@%s # %s", action.Version, action.Tag), fmt.Sprintf("@%s # %s", action.Version, tag), 1)
 }
 
-func (ctrl *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string) error {
+func (ctrl *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string, cfg *Config) error {
 	lines, err := ctrl.readWorkflow(workflowFilePath)
 	if err != nil {
 		return err
@@ -129,7 +236,7 @@ func (ctrl *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, wor
 	changed := false
 	for i, line := range lines {
 		line := line
-		l, err := ctrl.parseLine(ctx, logE, line)
+		l, err := ctrl.parseLine(ctx, logE, line, cfg)
 		if err != nil {
 			logerr.WithError(logE, err).Error("parse a line")
 			continue
@@ -159,7 +266,7 @@ func (ctrl *Controller) getLongVersionFromSHA(ctx context.Context, action *Actio
 	}
 	// Get long tag from commit hash
 	for i := 0; i < 10; i++ {
-		tags, _, err := ctrl.RepositoriesService.ListTags(ctx, action.RepoOwner, action.RepoName, opts)
+		tags, _, err := ctrl.repositoriesService.ListTags(ctx, action.RepoOwner, action.RepoName, opts)
 		if err != nil {
 			return "", fmt.Errorf("list tags: %w", err)
 		}

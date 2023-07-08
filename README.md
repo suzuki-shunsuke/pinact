@@ -123,6 +123,11 @@ GLOBAL OPTIONS:
 ```
 
 ```console
+$ pinact help init
+
+```
+
+```console
 $ pinact help run
 NAME:
    pinact run - Pin GitHub Actions versions
@@ -145,6 +150,35 @@ DESCRIPTION:
 OPTIONS:
    --help, -h  show help
 ```
+
+## Configuration
+
+pinact supports a configuration file `.pinact.yaml`.
+You can also specify the configuration file path by the environment variable `PINACT_CONFIG` or command line option `-c`.
+
+.pinact.yaml
+
+e.g.
+
+```yaml
+files:
+  - pattern: "^\\.github/workflows/.*\\.ya?ml$"
+  - pattern: "^(.*/)?action\\.ya?ml$"
+
+ignore_actions:
+  # slsa-framework/slsa-github-generator doesn't support pinning version
+  # > Invalid ref: 68bad40844440577b33778c9f29077a3388838e9. Expected ref of the form refs/tags/vX.Y.Z
+  # https://github.com/slsa-framework/slsa-github-generator/issues/722
+  - name: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml
+```
+
+### `files[].pattern`
+
+The regular expression of target files. If files are passed via positional command line arguments, the configuration is ignored.
+
+### `ignore_actions[].name`
+
+Action and reusable workflow names that pinact ignores.
 
 ## See also
 

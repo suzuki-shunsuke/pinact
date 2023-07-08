@@ -39,11 +39,20 @@ func (runner *Runner) Run(ctx context.Context, args ...string) error {
 				Usage:   "log level",
 				EnvVars: []string{"PINACT_LOG_LEVEL"},
 			},
+			&cli.StringFlag{
+				Name: "config",
+				Aliases: []string{
+					"c",
+				},
+				Usage:   "configuration file path",
+				EnvVars: []string{"PINACT_CONFIG"},
+			},
 		},
 		EnableBashCompletion: true,
 		Commands: []*cli.Command{
 			runner.newVersionCommand(),
 			runner.newRunCommand(),
+			runner.newInitCommand(),
 		},
 	}
 
