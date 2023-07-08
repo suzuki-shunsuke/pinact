@@ -104,13 +104,13 @@ Please see [USAGE](USAGE.md).
 
 ## How to use
 
-Please run `pinact run` on a Git repository root directory, then files `\.github/workflows/.*\.ya?ml$` are fixed.
+Please run `pinact run` on a Git repository root directory, then target files are fixed.
 
 ```console
 $ pinact run
 ```
 
-You can also specify target files by command line arguments.
+Default target files are `\.github/workflows/.*\.ya?ml$`, but you can change target files by command line arguments or configuration files.
 
 e.g.
 
@@ -118,7 +118,7 @@ e.g.
 $ pinact run action.yaml
 ```
 
-A configuration file is optional, but pinact supports it.
+A configuration file is optional.
 You can create a configuration file by `pinact init`.
 
 ```console
