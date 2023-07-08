@@ -1,5 +1,7 @@
 # pinact
 
+[Motivation](#motivation) | [Install](#install) | [How to use](#how-to-use) | [GitHub Actions](https://github.com/suzuki-shunsuke/pinact-action) | [Configuration](#configuration) | [LICENSE](LICENSE)
+
 Pin GitHub Actions versions
 
 pinact edits GitHub Workflow files and pins versions of Actions and Reusable Workflows.
@@ -126,6 +128,12 @@ $ pinact init
 ```
 
 About the configuration, please see [Configuration](#Configuration).
+
+## GitHub Actions
+
+https://github.com/suzuki-shunsuke/pinact-action
+
+We develop GitHub Actions to pin GitHub Actions and reusable workflows by pinact.
 
 ## Configuration
 
