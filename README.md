@@ -102,6 +102,31 @@ If no GitHub Access token is passed, pinact calls GitHub REST API without access
 
 Please see [USAGE](USAGE.md).
 
+## How to use
+
+Please run `pinact run` on a Git repository root directory, then files `\.github/workflows/.*\.ya?ml$` are fixed.
+
+```console
+$ pinact run
+```
+
+You can also specify target files by command line arguments.
+
+e.g.
+
+```console
+$ pinact run action.yaml
+```
+
+A configuration file is optional, but pinact supports it.
+You can create a configuration file by `pinact init`.
+
+```console
+$ pinact init
+```
+
+About the configuration, please see [Configuration](#Configuration).
+
 ## Configuration
 
 pinact supports a configuration file `.pinact.yaml`.
