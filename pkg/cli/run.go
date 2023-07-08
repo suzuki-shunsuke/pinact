@@ -1,6 +1,9 @@
 package cli
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/suzuki-shunsuke/pinact/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/pkg/log"
 	"github.com/urfave/cli/v2"
@@ -27,5 +30,14 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 func (runner *Runner) runAction(c *cli.Context) error {
 	ctrl := run.New(c.Context)
 	log.SetLevel(c.String("log-level"), runner.LogE)
-	return ctrl.Run(c.Context, runner.LogE, c.Args().Slice()) //nolint:wrapcheck
+	pwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get the current directory: %w", err)
+	}
+	param := &run.ParamRun{
+		WorkflowFilePaths: c.Args().Slice(),
+		ConfigFilePath:    c.String("config"),
+		PWD:               pwd,
+	}
+	return ctrl.Run(c.Context, runner.LogE, param) //nolint:wrapcheck
 }

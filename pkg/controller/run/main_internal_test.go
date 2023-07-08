@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/pkg/github"
 	"github.com/suzuki-shunsuke/pinact/pkg/util"
 )
@@ -39,49 +40,47 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 		d := d
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			ctrl := &Controller{
-				RepositoriesService: &RepositoriesServiceImpl{
-					tags: map[string]*ListTagsResult{
-						"actions/checkout/0": {
-							Tags: []*github.RepositoryTag{
-								{
-									Name: util.StrP("v3"),
-									Commit: &github.Commit{
-										SHA: util.StrP("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
-									},
+			ctrl := NewController(&RepositoriesServiceImpl{
+				tags: map[string]*ListTagsResult{
+					"actions/checkout/0": {
+						Tags: []*github.RepositoryTag{
+							{
+								Name: util.StrP("v3"),
+								Commit: &github.Commit{
+									SHA: util.StrP("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
 								},
-								{
-									Name: util.StrP("v3.5.2"),
-									Commit: &github.Commit{
-										SHA: util.StrP("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
-									},
+							},
+							{
+								Name: util.StrP("v3.5.2"),
+								Commit: &github.Commit{
+									SHA: util.StrP("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
 								},
-								{
-									Name: util.StrP("v2"),
-									Commit: &github.Commit{
-										SHA: util.StrP("ee0669bd1cc54295c223e0bb666b733df41de1c5"),
-									},
+							},
+							{
+								Name: util.StrP("v2"),
+								Commit: &github.Commit{
+									SHA: util.StrP("ee0669bd1cc54295c223e0bb666b733df41de1c5"),
 								},
-								{
-									Name: util.StrP("v2.7.0"),
-									Commit: &github.Commit{
-										SHA: util.StrP("ee0669bd1cc54295c223e0bb666b733df41de1c5"),
-									},
+							},
+							{
+								Name: util.StrP("v2.7.0"),
+								Commit: &github.Commit{
+									SHA: util.StrP("ee0669bd1cc54295c223e0bb666b733df41de1c5"),
 								},
 							},
 						},
 					},
-					commits: map[string]*GetCommitSHA1Result{
-						"actions/checkout/v3": {
-							SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
-						},
-						"actions/checkout/v2": {
-							SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
-						},
+				},
+				commits: map[string]*GetCommitSHA1Result{
+					"actions/checkout/v3": {
+						SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+					},
+					"actions/checkout/v2": {
+						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
 					},
 				},
-			}
-			line, err := ctrl.parseLine(ctx, logE, d.line)
+			}, afero.NewMemMapFs())
+			line, err := ctrl.parseLine(ctx, logE, d.line, &Config{})
 			if err != nil {
 				if d.isErr {
 					return

@@ -100,51 +100,61 @@ If no GitHub Access token is passed, pinact calls GitHub REST API without access
 
 ## Usage
 
-```console
-$ pinact help
-NAME:
-   pinact - Pin GitHub Actions versions. https://github/com/suzuki-shunsuke/pinact
+Please see [USAGE](USAGE.md).
 
-USAGE:
-   pinact [global options] command [command options] [arguments...]
+## How to use
 
-VERSION:
-   0.1.0 (8ccd55944c83ff1f4d738343c28d4a6109246d06)
-
-COMMANDS:
-   version  Show version
-   run      Pin GitHub Actions versions
-   help, h  Shows a list of commands or help for one command
-
-GLOBAL OPTIONS:
-   --log-level value  log level [$PINACT_LOG_LEVEL]
-   --help, -h         show help
-   --version, -v      print the version
-```
+Please run `pinact run` on a Git repository root directory, then files `\.github/workflows/.*\.ya?ml$` are fixed.
 
 ```console
-$ pinact help run
-NAME:
-   pinact run - Pin GitHub Actions versions
-
-USAGE:
-   pinact run [command options] [arguments...]
-
-DESCRIPTION:
-   If no argument is passed, pinact searches GitHub Actions workflow files from .github/workflows.
-
-   $ pinact run
-
-   You can also pass workflow file paths as arguments.
-
-   e.g.
-
-   $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
-
-
-OPTIONS:
-   --help, -h  show help
+$ pinact run
 ```
+
+You can also specify target files by command line arguments.
+
+e.g.
+
+```console
+$ pinact run action.yaml
+```
+
+A configuration file is optional, but pinact supports it.
+You can create a configuration file by `pinact init`.
+
+```console
+$ pinact init
+```
+
+About the configuration, please see [Configuration](#Configuration).
+
+## Configuration
+
+pinact supports a configuration file `.pinact.yaml`.
+You can also specify the configuration file path by the environment variable `PINACT_CONFIG` or command line option `-c`.
+
+.pinact.yaml
+
+e.g.
+
+```yaml
+files:
+  - pattern: "^\\.github/workflows/.*\\.ya?ml$"
+  - pattern: "^(.*/)?action\\.ya?ml$"
+
+ignore_actions:
+  # slsa-framework/slsa-github-generator doesn't support pinning version
+  # > Invalid ref: 68bad40844440577b33778c9f29077a3388838e9. Expected ref of the form refs/tags/vX.Y.Z
+  # https://github.com/slsa-framework/slsa-github-generator/issues/722
+  - name: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml
+```
+
+### `files[].pattern`
+
+The regular expression of target files. If files are passed via positional command line arguments, the configuration is ignored.
+
+### `ignore_actions[].name`
+
+Action and reusable workflow names that pinact ignores.
 
 ## See also
 
