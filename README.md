@@ -100,56 +100,7 @@ If no GitHub Access token is passed, pinact calls GitHub REST API without access
 
 ## Usage
 
-```console
-$ pinact help
-NAME:
-   pinact - Pin GitHub Actions versions. https://github/com/suzuki-shunsuke/pinact
-
-USAGE:
-   pinact [global options] command [command options] [arguments...]
-
-VERSION:
-   0.1.0 (8ccd55944c83ff1f4d738343c28d4a6109246d06)
-
-COMMANDS:
-   version  Show version
-   run      Pin GitHub Actions versions
-   help, h  Shows a list of commands or help for one command
-
-GLOBAL OPTIONS:
-   --log-level value  log level [$PINACT_LOG_LEVEL]
-   --help, -h         show help
-   --version, -v      print the version
-```
-
-```console
-$ pinact help init
-
-```
-
-```console
-$ pinact help run
-NAME:
-   pinact run - Pin GitHub Actions versions
-
-USAGE:
-   pinact run [command options] [arguments...]
-
-DESCRIPTION:
-   If no argument is passed, pinact searches GitHub Actions workflow files from .github/workflows.
-
-   $ pinact run
-
-   You can also pass workflow file paths as arguments.
-
-   e.g.
-
-   $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
-
-
-OPTIONS:
-   --help, -h  show help
-```
+Please see [USAGE](USAGE.md).
 
 ## Configuration
 

@@ -47,3 +47,7 @@ tasks:
   usage: Run pinact via go run
   script: |
     go run ./cmd/pinact {{._builtin.args_string}}
+- name: usage
+  description: Generate USAGE.md
+  usage: Generate USAGE.md
+  script: bash scripts/generate-usage.sh

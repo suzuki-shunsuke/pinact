@@ -10,7 +10,7 @@ func (runner *Runner) newInitCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "init",
 		Usage: "Create .pinact.yaml if it doesn't exist",
-		Description: `
+		Description: `Create .pinact.yaml if it doesn't exist
 
 $ pinact init
 

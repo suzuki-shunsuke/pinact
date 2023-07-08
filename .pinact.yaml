@@ -1,0 +1,9 @@
+# pinact - https://github.com/suzuki-shunsuke/pinact
+files:
+  - pattern: "^\\.github/workflows/.*\\.ya?ml$"
+  - pattern: "^(.*/)?action\\.ya?ml$"
+  - pattern: "^testdata/.*\\.ya?ml$"
+
+ignore_actions:
+  - name: actions/setup-java
+  - name: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml
