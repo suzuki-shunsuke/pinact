@@ -15,7 +15,7 @@ jobs:
           cache: true
       - uses: aquaproj/aqua-installer@36dc5833b04eb63f06e3bb818aa6b7a6e6db99a9 # v2.1.2
         with:
-          aqua_version: v2.15.0
+          aqua_version: v2.15.1
         env:
           AQUA_GITHUB_TOKEN: ${{github.token}}
       - run: golangci-lint run --timeout 120s
