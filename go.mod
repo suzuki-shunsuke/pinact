@@ -6,7 +6,7 @@ require (
 	github.com/google/go-github/v56 v56.0.0
 	github.com/mattn/go-colorable v0.1.13
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/afero v1.10.0
+	github.com/spf13/afero v1.11.0
 	github.com/suzuki-shunsuke/logrus-error v0.1.4
 	github.com/urfave/cli/v2 v2.25.7
 	golang.org/x/oauth2 v0.15.0
