@@ -3,7 +3,7 @@ module github.com/suzuki-shunsuke/pinact
 go 1.20
 
 require (
-	github.com/google/go-github/v57 v57.0.0
+	github.com/google/go-github/v58 v58.0.0
 	github.com/mattn/go-colorable v0.1.13
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/afero v1.11.0
