@@ -6,11 +6,11 @@ on:
 permissions: {}
 jobs:
   release:
-    uses: suzuki-shunsuke/go-release-workflow/.github/workflows/release.yaml@dc7096a64b1f1f8426fe836000f291e8b37dae3a # v0.5.0
+    uses: suzuki-shunsuke/go-release-workflow/.github/workflows/release.yaml@df72518e53868ca4996ae8d026c952309bbee13c # v1.0.0
     with:
       homebrew: true
       go-version: 1.21.4
-      aqua_version: v2.22.0
+      aqua_version: v2.25.1
     secrets:
       gh_app_id: ${{secrets.APP_ID}}
       gh_app_private_key: ${{secrets.APP_PRIVATE_KEY}}

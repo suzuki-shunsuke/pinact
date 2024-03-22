@@ -10,11 +10,11 @@ on:
 jobs:
   update-aqua-checksums:
     # Update aqua-checksums.json and push a commit
-    uses: aquaproj/update-checksum-workflow/.github/workflows/update-checksum.yaml@3598c506108a2e0e9e31a0c6ef9c202c77049420 # v0.1.9
+    uses: aquaproj/update-checksum-workflow/.github/workflows/update-checksum.yaml@6b620c8ceb97e4ae8f256ea24056edc4d2524bd3 # v0.1.10
     permissions:
       contents: read
     with:
-      aqua_version: v2.22.0
+      aqua_version: v2.25.1
       prune: true
     secrets:
       gh_app_id: ${{secrets.gh_app_id}}

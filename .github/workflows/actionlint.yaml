@@ -9,9 +9,9 @@ on:
       - aqua/imports/reviewdog.yaml
 jobs:
   actionlint:
-    uses: suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml@b6a5f966d4504893b2aeb60cf2b0de8946e48504 # v0.5.0
+    uses: suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml@8d67cddd56ea4b045e858700595d49b2fe09de61 # v1.0.0
     with:
-      aqua_version: v2.22.0
+      aqua_version: v2.25.1
     permissions:
       pull-requests: write
       contents: read
