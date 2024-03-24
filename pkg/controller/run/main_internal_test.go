@@ -57,7 +57,6 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 	ctx := context.Background()
 	logE := logrus.NewEntry(logrus.New())
 	for _, d := range data {
-		d := d
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			ctrl := NewController(&RepositoriesServiceImpl{
@@ -147,7 +146,6 @@ func TestController_patchLine(t *testing.T) {
 		},
 	}
 	for _, d := range data {
-		d := d
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			ctrl := &Controller{}

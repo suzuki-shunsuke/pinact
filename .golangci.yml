@@ -25,3 +25,4 @@ linters:
     - exhaustruct
     - nonamedreturns
     - musttag
+    - depguard

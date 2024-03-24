@@ -78,7 +78,6 @@ func (ctrl *Controller) searchFiles(logE *logrus.Entry, workflowFilePaths []stri
 func (ctrl *Controller) searchFilesByConfig(logE *logrus.Entry, cfg *Config, pwd string) ([]string, error) {
 	patterns := make([]*regexp.Regexp, 0, len(cfg.Files))
 	for _, file := range cfg.Files {
-		file := file
 		if file.Pattern == "" {
 			// ignore
 			continue
@@ -227,7 +226,7 @@ func (ctrl *Controller) patchLine(line string, action *Action, version, tag stri
 		if version == tag {
 			return line
 		}
-		return strings.Replace(line, fmt.Sprintf("@%s", action.Version), fmt.Sprintf("@%s # %s", version, tag), 1)
+		return strings.Replace(line, "@"+action.Version, fmt.Sprintf("@%s # %s", version, tag), 1)
 	}
 	return strings.Replace(line, fmt.Sprintf("@%s # %s", action.Version, action.Tag), fmt.Sprintf("@%s # %s", action.Version, tag), 1)
 }
@@ -239,7 +238,6 @@ func (ctrl *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, wor
 	}
 	changed := false
 	for i, line := range lines {
-		line := line
 		l, err := ctrl.parseLine(ctx, logE, line, cfg)
 		if err != nil {
 			logerr.WithError(logE, err).Error("parse a line")
@@ -269,7 +267,7 @@ func (ctrl *Controller) getLongVersionFromSHA(ctx context.Context, action *Actio
 		PerPage: 100, //nolint:gomnd
 	}
 	// Get long tag from commit hash
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		tags, _, err := ctrl.repositoriesService.ListTags(ctx, action.RepoOwner, action.RepoName, opts)
 		if err != nil {
 			return "", fmt.Errorf("list tags: %w", err)
