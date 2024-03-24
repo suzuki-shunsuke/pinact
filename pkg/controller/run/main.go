@@ -154,6 +154,10 @@ type Action struct {
 }
 
 func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config) (string, error) { //nolint:cyclop,funlen
+	// Eliminate single/double quotes from the line
+	line = strings.ReplaceAll(line, "'", "")
+	line = strings.ReplaceAll(line, `"`, "")
+
 	matches := usesPattern.FindStringSubmatch(line)
 	if matches == nil {
 		logE.WithField("line", line).Debug("unmatch")
