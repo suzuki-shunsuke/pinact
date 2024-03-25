@@ -24,10 +24,9 @@ signs:
     signature: ${artifact}.sig
     certificate: ${artifact}.pem
     output: true
-    env:
-      - COSIGN_EXPERIMENTAL=1
     args:
       - sign-blob
+      - "-y"
       - --output-signature
       - ${signature}
       - --output-certificate
