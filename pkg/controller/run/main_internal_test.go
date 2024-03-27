@@ -33,6 +33,26 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			line: "  uses: actions/checkout@v2",
 			exp:  "  uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0",
 		},
+		{
+			name: "checkout v2 with single quote",
+			line: "  uses: 'actions/checkout@v2'",
+			exp:  "  uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0",
+		},
+		{
+			name: "checkout v2 with double quote",
+			line: "  uses: \"actions/checkout@v2\"",
+			exp:  "  uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0",
+		},
+		{
+			name: "checkout v2 with single quote",
+			line:  "  uses: 'actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5' # v2.7.0",
+			exp:  "  uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0",
+		},
+		{
+			name: "checkout v2 with double quote",
+			line:  "  uses: \"actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5\" # v2.7.0",
+			exp:  "  uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0",
+		},
 	}
 	ctx := context.Background()
 	logE := logrus.NewEntry(logrus.New())
