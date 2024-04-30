@@ -121,10 +121,16 @@ $ pinact run action.yaml
 ```
 
 A configuration file is optional.
-You can create a configuration file by `pinact init`.
+You can create a configuration file `.pinact.yaml` by `pinact init`.
 
 ```console
 $ pinact init
+```
+
+You can change the output path.
+
+```console
+$ pinact init '.github/pinact.yaml'
 ```
 
 About the configuration, please see [Configuration](#Configuration).
@@ -137,7 +143,7 @@ We develop GitHub Actions to pin GitHub Actions and reusable workflows by pinact
 
 ## Configuration
 
-pinact supports a configuration file `.pinact.yaml`.
+pinact supports a configuration file `.pinact.yaml` or `.github/pinact.yaml`.
 You can also specify the configuration file path by the environment variable `PINACT_CONFIG` or command line option `-c`.
 
 .pinact.yaml

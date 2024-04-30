@@ -120,16 +120,29 @@ func (ctrl *Controller) searchFilesByConfig(logE *logrus.Entry, cfg *Config, pwd
 	return files, nil
 }
 
-func (ctrl *Controller) readConfig(configFilePath string, cfg *Config) error {
-	if configFilePath == "" {
-		f, err := afero.Exists(ctrl.fs, ".pinact.yaml")
+func getConfigPath(fs afero.Fs) (string, error) {
+	for _, path := range []string{".pinact.yaml", ".github/pinact.yaml"} {
+		f, err := afero.Exists(fs, path)
 		if err != nil {
-			return fmt.Errorf("check if .pinact.yaml exists: %w", err)
+			return "", fmt.Errorf("check if %s exists: %w", path, err)
 		}
-		if !f {
+		if f {
+			return path, nil
+		}
+	}
+	return "", nil
+}
+
+func (ctrl *Controller) readConfig(configFilePath string, cfg *Config) error {
+	var err error
+	if configFilePath == "" {
+		configFilePath, err = getConfigPath(ctrl.fs)
+		if err != nil {
+			return err
+		}
+		if configFilePath == "" {
 			return nil
 		}
-		configFilePath = ".pinact.yaml"
 	}
 	f, err := ctrl.fs.Open(configFilePath)
 	if err != nil {
