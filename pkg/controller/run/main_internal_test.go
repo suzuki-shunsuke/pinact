@@ -170,7 +170,9 @@ func TestController_getConfigPath(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
 			for _, path := range d.paths {
-				afero.WriteFile(fs, path, []byte(""), 0644)
+				if err := afero.WriteFile(fs, path, []byte(""), 0o644); err != nil {
+					t.Fatal(err)
+				}
 			}
 			got, err := getConfigPath(fs)
 			if err != nil {
