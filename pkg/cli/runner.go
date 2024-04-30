@@ -30,7 +30,7 @@ func (runner *Runner) Run(ctx context.Context, args ...string) error {
 	}
 	app := cli.App{
 		Name:     "pinact",
-		Usage:    "Pin GitHub Actions versions. https://github/com/suzuki-shunsuke/pinact",
+		Usage:    "Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact",
 		Version:  runner.LDFlags.Version + " (" + runner.LDFlags.Commit + ")",
 		Compiled: compiledDate,
 		Flags: []cli.Flag{
