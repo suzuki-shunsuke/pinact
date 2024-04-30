@@ -5,7 +5,7 @@
 ```console
 $ pinact help
 NAME:
-   pinact - Pin GitHub Actions versions. https://github/com/suzuki-shunsuke/pinact
+   pinact - Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact
 
 USAGE:
    pinact [global options] command [command options] [arguments...]
