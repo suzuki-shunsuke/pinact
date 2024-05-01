@@ -25,4 +25,6 @@ jobs:
       - run: go install ./cmd/pinact
       - run: pinact -v
       - run: pinact run
+        env:
+          GITHUB_TOKEN: ${{github.token}}
       - run: diff testdata/foo.yaml testdata/foo.yaml.after
