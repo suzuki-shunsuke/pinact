@@ -20,15 +20,15 @@ ignore_actions:
 	filePermission os.FileMode = 0o644
 )
 
-func (ctrl *Controller) Init(configFilePath string) error {
-	f, err := afero.Exists(ctrl.fs, configFilePath)
+func (c *Controller) Init(configFilePath string) error {
+	f, err := afero.Exists(c.fs, configFilePath)
 	if err != nil {
 		return fmt.Errorf("check if a configuration file exists: %w", err)
 	}
 	if f {
 		return nil
 	}
-	if err := afero.WriteFile(ctrl.fs, configFilePath, []byte(templateConfig), filePermission); err != nil {
+	if err := afero.WriteFile(c.fs, configFilePath, []byte(templateConfig), filePermission); err != nil {
 		return fmt.Errorf("create a configuration file: %w", err)
 	}
 	return nil

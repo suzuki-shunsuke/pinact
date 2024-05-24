@@ -6,7 +6,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func (runner *Runner) newInitCommand() *cli.Command {
+func (r *Runner) newInitCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "init",
 		Usage: "Create .pinact.yaml if it doesn't exist",
@@ -20,13 +20,13 @@ e.g.
 
 $ pinact init .github/pinact.yaml
 `,
-		Action: runner.initAction,
+		Action: r.initAction,
 	}
 }
 
-func (runner *Runner) initAction(c *cli.Context) error {
+func (r *Runner) initAction(c *cli.Context) error {
 	ctrl := run.New(c.Context)
-	log.SetLevel(c.String("log-level"), runner.LogE)
+	log.SetLevel(c.String("log-level"), r.LogE)
 	configFilePath := c.Args().First()
 	if configFilePath == "" {
 		configFilePath = c.String("config")
