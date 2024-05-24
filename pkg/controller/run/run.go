@@ -23,35 +23,35 @@ type ParamRun struct {
 	PWD               string
 }
 
-func (ctrl *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRun) error {
+func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRun) error {
 	cfg := &Config{}
-	if err := ctrl.readConfig(param.ConfigFilePath, cfg); err != nil {
+	if err := c.readConfig(param.ConfigFilePath, cfg); err != nil {
 		return err
 	}
-	workflowFilePaths, err := ctrl.searchFiles(logE, param.WorkflowFilePaths, cfg, param.PWD)
+	workflowFilePaths, err := c.searchFiles(logE, param.WorkflowFilePaths, cfg, param.PWD)
 	if err != nil {
 		return fmt.Errorf("search target files: %w", err)
 	}
 	for _, workflowFilePath := range workflowFilePaths {
 		logE := logE.WithField("workflow_file", workflowFilePath)
-		if err := ctrl.runWorkflow(ctx, logE, workflowFilePath, cfg); err != nil {
+		if err := c.runWorkflow(ctx, logE, workflowFilePath, cfg); err != nil {
 			logerr.WithError(logE, err).Warn("update a workflow")
 		}
 	}
 	return nil
 }
 
-func (ctrl *Controller) searchFiles(logE *logrus.Entry, workflowFilePaths []string, cfg *Config, pwd string) ([]string, error) {
+func (c *Controller) searchFiles(logE *logrus.Entry, workflowFilePaths []string, cfg *Config, pwd string) ([]string, error) {
 	if len(workflowFilePaths) != 0 {
 		return workflowFilePaths, nil
 	}
 	if len(cfg.Files) > 0 {
-		return ctrl.searchFilesByConfig(logE, cfg, pwd)
+		return c.searchFilesByConfig(logE, cfg, pwd)
 	}
 	return listWorkflows()
 }
 
-func (ctrl *Controller) searchFilesByConfig(logE *logrus.Entry, cfg *Config, pwd string) ([]string, error) {
+func (c *Controller) searchFilesByConfig(logE *logrus.Entry, cfg *Config, pwd string) ([]string, error) {
 	patterns := make([]*regexp.Regexp, 0, len(cfg.Files))
 	for _, file := range cfg.Files {
 		if file.Pattern == "" {
@@ -66,7 +66,7 @@ func (ctrl *Controller) searchFilesByConfig(logE *logrus.Entry, cfg *Config, pwd
 	}
 
 	files := []string{}
-	if err := fs.WalkDir(afero.NewIOFS(ctrl.fs), pwd, func(p string, dirEntry fs.DirEntry, e error) error {
+	if err := fs.WalkDir(afero.NewIOFS(c.fs), pwd, func(p string, dirEntry fs.DirEntry, e error) error {
 		if e != nil {
 			return nil //nolint:nilerr
 		}
@@ -109,10 +109,10 @@ func getConfigPath(fs afero.Fs) (string, error) {
 	return "", nil
 }
 
-func (ctrl *Controller) readConfig(configFilePath string, cfg *Config) error {
+func (c *Controller) readConfig(configFilePath string, cfg *Config) error {
 	var err error
 	if configFilePath == "" {
-		configFilePath, err = getConfigPath(ctrl.fs)
+		configFilePath, err = getConfigPath(c.fs)
 		if err != nil {
 			return err
 		}
@@ -120,7 +120,7 @@ func (ctrl *Controller) readConfig(configFilePath string, cfg *Config) error {
 			return nil
 		}
 	}
-	f, err := ctrl.fs.Open(configFilePath)
+	f, err := c.fs.Open(configFilePath)
 	if err != nil {
 		return fmt.Errorf("open a configuration file: %w", err)
 	}
@@ -141,7 +141,7 @@ type Action struct {
 	RepoName  string
 }
 
-func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config) (string, error) { //nolint:cyclop,funlen
+func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config) (string, error) { //nolint:cyclop,funlen
 	matches := usesPattern.FindStringSubmatch(line)
 	if matches == nil {
 		logE.WithField("line", line).Debug("unmatch")
@@ -161,7 +161,7 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 			return line, nil
 		}
 	}
-	if f := ctrl.parseAction(action); !f {
+	if f := c.parseAction(action); !f {
 		logE.WithField("line", line).Debug("ignore line")
 		return line, nil
 	}
@@ -170,14 +170,14 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 		// Get commit hash from tag
 		// https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#get-a-reference
 		// > The :ref in the URL must be formatted as heads/<branch name> for branches and tags/<tag name> for tags. If the :ref doesn't match an existing ref, a 404 is returned.
-		sha, _, err := ctrl.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Version, "")
+		sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Version, "")
 		if err != nil {
 			logerr.WithError(logE, err).Warn("get a reference")
 			return line, nil
 		}
 		longVersion := action.Version
 		if shortTagPattern.MatchString(action.Version) {
-			v, err := ctrl.getLongVersionFromSHA(ctx, action, sha)
+			v, err := c.getLongVersionFromSHA(ctx, action, sha)
 			if err != nil {
 				return "", err
 			}
@@ -186,7 +186,7 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 			}
 		}
 		// @yyy # longVersion
-		return ctrl.patchLine(line, action, sha, longVersion), nil
+		return c.patchLine(line, action, sha, longVersion), nil
 	}
 	// @xxx # v3
 	// list releases
@@ -195,7 +195,7 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 		logE.WithField("action_version", action.Version).Debug("ignore the line because the tag is not short")
 		return line, nil
 	}
-	longVersion, err := ctrl.getLongVersionFromSHA(ctx, action, action.Version)
+	longVersion, err := c.getLongVersionFromSHA(ctx, action, action.Version)
 	if err != nil {
 		return "", err
 	}
@@ -203,10 +203,10 @@ func (ctrl *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line 
 		logE.Debug("failed to get a long tag")
 		return line, nil
 	}
-	return ctrl.patchLine(line, action, action.Version, longVersion), nil
+	return c.patchLine(line, action, action.Version, longVersion), nil
 }
 
-func (ctrl *Controller) patchLine(line string, action *Action, version, tag string) string {
+func (c *Controller) patchLine(line string, action *Action, version, tag string) string {
 	if action.Tag == "" {
 		if version == tag {
 			return line
@@ -216,14 +216,14 @@ func (ctrl *Controller) patchLine(line string, action *Action, version, tag stri
 	return strings.Replace(line, fmt.Sprintf("@%s # %s", action.Version, action.Tag), fmt.Sprintf("@%s # %s", action.Version, tag), 1)
 }
 
-func (ctrl *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string, cfg *Config) error {
-	lines, err := ctrl.readWorkflow(workflowFilePath)
+func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string, cfg *Config) error {
+	lines, err := c.readWorkflow(workflowFilePath)
 	if err != nil {
 		return err
 	}
 	changed := false
 	for i, line := range lines {
-		l, err := ctrl.parseLine(ctx, logE, line, cfg)
+		l, err := c.parseLine(ctx, logE, line, cfg)
 		if err != nil {
 			logerr.WithError(logE, err).Error("parse a line")
 			continue
@@ -247,13 +247,13 @@ func (ctrl *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, wor
 	return nil
 }
 
-func (ctrl *Controller) getLongVersionFromSHA(ctx context.Context, action *Action, sha string) (string, error) {
+func (c *Controller) getLongVersionFromSHA(ctx context.Context, action *Action, sha string) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 100, //nolint:gomnd
 	}
 	// Get long tag from commit hash
 	for range 10 {
-		tags, _, err := ctrl.repositoriesService.ListTags(ctx, action.RepoOwner, action.RepoName, opts)
+		tags, _, err := c.repositoriesService.ListTags(ctx, action.RepoOwner, action.RepoName, opts)
 		if err != nil {
 			return "", fmt.Errorf("list tags: %w", err)
 		}
@@ -285,7 +285,7 @@ func (ctrl *Controller) getLongVersionFromSHA(ctx context.Context, action *Actio
 
 var shortTagPattern = regexp.MustCompile(`^v\d+$`)
 
-func (ctrl *Controller) parseAction(action *Action) bool {
+func (c *Controller) parseAction(action *Action) bool {
 	a := strings.Split(action.Name, "/")
 	if len(a) == 1 {
 		return false
@@ -298,7 +298,7 @@ func (ctrl *Controller) parseAction(action *Action) bool {
 	return true
 }
 
-func (ctrl *Controller) readWorkflow(workflowFilePath string) ([]string, error) {
+func (c *Controller) readWorkflow(workflowFilePath string) ([]string, error) {
 	workflowReadFile, err := os.Open(workflowFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("open a workflow file: %w", err)
