@@ -17,30 +17,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type Controller struct {
-	repositoriesService RepositoriesService
-	fs                  afero.Fs
-}
-
-func New(ctx context.Context) *Controller {
-	gh := github.New(ctx)
-	return &Controller{
-		repositoriesService: &RepositoriesServiceImpl{
-			tags:                map[string]*ListTagsResult{},
-			commits:             map[string]*GetCommitSHA1Result{},
-			RepositoriesService: gh.Repositories,
-		},
-		fs: afero.NewOsFs(),
-	}
-}
-
-func NewController(repoService RepositoriesService, fs afero.Fs) *Controller {
-	return &Controller{
-		repositoriesService: repoService,
-		fs:                  fs,
-	}
-}
-
 type ParamRun struct {
 	WorkflowFilePaths []string
 	ConfigFilePath    string
