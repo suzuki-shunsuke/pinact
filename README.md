@@ -40,6 +40,8 @@ index 84bd67a..5d92e44 100644
      permissions:
 ```
 
+[pinact also supports verifying version annotations](docs/codes/001.md).
+
 ## Motivation
 
 It is a good manner to pin GitHub Actions versions by commit hash.
@@ -134,6 +136,10 @@ $ pinact init '.github/pinact.yaml'
 ```
 
 About the configuration, please see [Configuration](#Configuration).
+
+## Verify version annotations
+
+Please see [the document](docs/codes/001.md).
 
 ## GitHub Actions
 

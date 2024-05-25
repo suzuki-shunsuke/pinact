@@ -2,6 +2,7 @@ package run
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -11,7 +12,12 @@ import (
 	"github.com/suzuki-shunsuke/pinact/pkg/github"
 )
 
-var usesPattern = regexp.MustCompile(`^ +(?:- )?uses: +(.*)@([^ ]+)(?: +# +(?:tag=)?(v\d+[^ ]*))?`)
+var (
+	usesPattern          = regexp.MustCompile(`^ +(?:- )?uses: +(.*)@([^ ]+)(?: +# +(?:tag=)?(v?\d+[^ ]*))?`)
+	fullCommitSHAPattern = regexp.MustCompile(`\b[0-9a-f]{40}\b`)
+	semverPattern        = regexp.MustCompile(`^v?\d+\.\d+\.\d+[^ ]*$`)
+	shortTagPattern      = regexp.MustCompile(`^v\d+$`)
+)
 
 type Action struct {
 	Name      string
@@ -19,6 +25,32 @@ type Action struct {
 	Tag       string
 	RepoOwner string
 	RepoName  string
+}
+
+type VersionType int
+
+const (
+	Semver VersionType = iota
+	Shortsemver
+	FullCommitSHA
+	Empty
+	Other
+)
+
+func getVersionType(v string) VersionType {
+	if v == "" {
+		return Empty
+	}
+	if fullCommitSHAPattern.MatchString(v) {
+		return FullCommitSHA
+	}
+	if semverPattern.MatchString(v) {
+		return Semver
+	}
+	if shortTagPattern.MatchString(v) {
+		return Shortsemver
+	}
+	return Other
 }
 
 func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config) (string, error) { //nolint:cyclop,funlen
@@ -29,9 +61,9 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 		return line, nil
 	}
 	action := &Action{
-		Name:    matches[1],
+		Name:    matches[1], // local action is excluded by the regular expression because local action doesn't have version @
 		Version: matches[2], // full commit hash, main, v3, v3.0.0
-		Tag:     matches[3], // empty, v1, v3.0.0, hoge
+		Tag:     matches[3], // empty, v1, v3.0.0
 	}
 
 	for _, ignoreAction := range cfg.IgnoreActions {
@@ -44,11 +76,19 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 		}
 	}
 
-	if f := c.parseAction(action); !f {
+	if f := c.parseActionName(action); !f {
 		logE.WithField("line", line).Debug("ignore line")
 		return line, nil
 	}
-	if action.Tag == "" { //nolint:nestif
+
+	switch getVersionType(action.Tag) {
+	case Empty:
+		typ := getVersionType(action.Version)
+		switch typ {
+		case Shortsemver, Semver:
+		default:
+			return line, nil
+		}
 		// @xxx
 		// Get commit hash from tag
 		// https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#get-a-reference
@@ -59,7 +99,7 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 			return line, nil
 		}
 		longVersion := action.Version
-		if shortTagPattern.MatchString(action.Version) {
+		if typ == Shortsemver {
 			v, err := c.getLongVersionFromSHA(ctx, action, sha)
 			if err != nil {
 				return "", err
@@ -70,23 +110,39 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 		}
 		// @yyy # longVersion
 		return c.patchLine(line, action, sha, longVersion), nil
-	}
-	// @xxx # v3
-	// list releases
-	// extract releases by commit hash
-	if !shortTagPattern.MatchString(action.Tag) {
-		logE.WithField("action_version", action.Version).Debug("ignore the line because the tag is not short")
+	case Semver:
+		// verify commit hash
+		if !cfg.IsVerify {
+			return line, nil
+		}
+		// @xxx # v3.0.0
+		// @<full commit hash> # v3.0.0
+		if FullCommitSHA != getVersionType(action.Version) {
+			return line, nil
+		}
+		if err := c.verify(ctx, action); err != nil {
+			return "", fmt.Errorf("verify the version annotation: %w", err)
+		}
+		return line, nil
+	case Shortsemver:
+		// @xxx # v3
+		// @<full commit hash> # v3
+		if FullCommitSHA != getVersionType(action.Version) {
+			return line, nil
+		}
+		// replace Shortsemer to Semver
+		longVersion, err := c.getLongVersionFromSHA(ctx, action, action.Version)
+		if err != nil {
+			return "", err
+		}
+		if longVersion == "" {
+			logE.Debug("failed to get a long tag")
+			return line, nil
+		}
+		return c.patchLine(line, action, action.Version, longVersion), nil
+	default:
 		return line, nil
 	}
-	longVersion, err := c.getLongVersionFromSHA(ctx, action, action.Version)
-	if err != nil {
-		return "", err
-	}
-	if longVersion == "" {
-		logE.Debug("failed to get a long tag")
-		return line, nil
-	}
-	return c.patchLine(line, action, action.Version, longVersion), nil
 }
 
 func (c *Controller) patchLine(line string, action *Action, version, tag string) string {
@@ -105,7 +161,7 @@ func (c *Controller) getLongVersionFromSHA(ctx context.Context, action *Action, 
 	}
 	// Get long tag from commit hash
 	for range 10 {
-		tags, _, err := c.repositoriesService.ListTags(ctx, action.RepoOwner, action.RepoName, opts)
+		tags, resp, err := c.repositoriesService.ListTags(ctx, action.RepoOwner, action.RepoName, opts)
 		if err != nil {
 			return "", fmt.Errorf("list tags: %w", err)
 		}
@@ -127,19 +183,17 @@ func (c *Controller) getLongVersionFromSHA(ctx context.Context, action *Action, 
 				return tagName, nil
 			}
 		}
-		if len(tags) < opts.PerPage {
+		if resp.NextPage == 0 {
 			return "", nil
 		}
-		opts.Page++
+		opts.Page = resp.NextPage
 	}
 	return "", nil
 }
 
-var shortTagPattern = regexp.MustCompile(`^v\d+$`)
-
-// parseAction returns true if the action is a target.
+// parseActionName returns true if the action is a target.
 // Otherwise, it returns false.
-func (c *Controller) parseAction(action *Action) bool {
+func (c *Controller) parseActionName(action *Action) bool {
 	a := strings.Split(action.Name, "/")
 	if len(a) == 1 {
 		// If it fails to extract the repository owner and name, ignore the action.
@@ -147,10 +201,22 @@ func (c *Controller) parseAction(action *Action) bool {
 	}
 	action.RepoOwner = a[0]
 	action.RepoName = a[1]
-	if action.Tag != "" && !shortTagPattern.MatchString(action.Tag) {
-		// Ignore if the tag is not a short tag.
-		// e.g. uses: actions/checkout@xxx # v2.0.0
-		return false
-	}
 	return true
+}
+
+func (c *Controller) verify(ctx context.Context, action *Action) error {
+	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Tag, "")
+	if err != nil {
+		return fmt.Errorf("get a commit hash: %w", err)
+	}
+	if action.Version == sha {
+		return nil
+	}
+	return logerr.WithFields(errors.New("action_version must be equal to commit_hash_of_version_annotation"), logrus.Fields{ //nolint:wrapcheck
+		"action":                            action.Name,
+		"action_version":                    action.Version,
+		"version_annotation":                action.Tag,
+		"commit_hash_of_version_annotation": sha,
+		"help_docs":                         "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md",
+	})
 }
