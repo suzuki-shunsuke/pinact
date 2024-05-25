@@ -15,6 +15,7 @@ type ParamRun struct {
 	WorkflowFilePaths []string
 	ConfigFilePath    string
 	PWD               string
+	IsVerify          bool
 }
 
 func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRun) error {
@@ -22,10 +23,12 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 	if err := c.readConfig(param.ConfigFilePath, cfg); err != nil {
 		return err
 	}
+	cfg.IsVerify = param.IsVerify
 	workflowFilePaths, err := c.searchFiles(logE, param.WorkflowFilePaths, cfg, param.PWD)
 	if err != nil {
 		return fmt.Errorf("search target files: %w", err)
 	}
+
 	for _, workflowFilePath := range workflowFilePaths {
 		logE := logE.WithField("workflow_file", workflowFilePath)
 		if err := c.runWorkflow(ctx, logE, workflowFilePath, cfg); err != nil {

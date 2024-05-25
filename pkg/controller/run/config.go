@@ -10,6 +10,7 @@ import (
 type Config struct {
 	Files         []*File
 	IgnoreActions []*IgnoreAction `yaml:"ignore_actions"`
+	IsVerify      bool            `yaml:"-"`
 }
 
 type File struct {

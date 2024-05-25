@@ -24,6 +24,13 @@ e.g.
 $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 `,
 		Action: r.runAction,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "verify",
+				Aliases: []string{"v"},
+				Usage:   "verify if pairs of commit SHA and version are correct",
+			},
+		},
 	}
 }
 
@@ -38,6 +45,7 @@ func (r *Runner) runAction(c *cli.Context) error {
 		WorkflowFilePaths: c.Args().Slice(),
 		ConfigFilePath:    c.String("config"),
 		PWD:               pwd,
+		IsVerify:          c.Bool("verify"),
 	}
 	return ctrl.Run(c.Context, r.LogE, param) //nolint:wrapcheck
 }
