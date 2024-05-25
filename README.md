@@ -135,6 +135,10 @@ $ pinact init '.github/pinact.yaml'
 
 About the configuration, please see [Configuration](#Configuration).
 
+## Verify pairs of full commit SHAs and version annotations
+
+Please see [the document](docs/codes/001.md).
+
 ## GitHub Actions
 
 https://github.com/suzuki-shunsuke/pinact-action

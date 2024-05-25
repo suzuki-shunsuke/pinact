@@ -121,7 +121,7 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 			return line, nil
 		}
 		if err := c.verify(ctx, action); err != nil {
-			return "", fmt.Errorf("verify the commit hash: %w", err)
+			return "", fmt.Errorf("verify the version annotation: %w", err)
 		}
 		return line, nil
 	case Shortsemver:
@@ -212,10 +212,11 @@ func (c *Controller) verify(ctx context.Context, action *Action) error {
 	if action.Version == sha {
 		return nil
 	}
-	return logerr.WithFields(errors.New("the commit hash of action version is different from the comment"), logrus.Fields{ //nolint:wrapcheck
-		"action":                        action.Name,
-		"action_version":                action.Version,
-		"action_version_comment":        action.Tag,
-		"commit_hash_of_action_version": sha,
+	return logerr.WithFields(errors.New("action_version must be equal to commit_hash_of_version_annotation"), logrus.Fields{ //nolint:wrapcheck
+		"action":                            action.Name,
+		"action_version":                    action.Version,
+		"version_annotation":                action.Tag,
+		"commit_hash_of_version_annotation": sha,
+		"help_docs":                         "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md",
 	})
 }
