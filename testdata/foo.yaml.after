@@ -8,6 +8,8 @@ jobs:
     steps:
       - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247 # v3.5.1
       - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247 # tag=v3.5.1
+      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247  #  v3.5.1
+      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247  #  tag=v3.5.1
       - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247
       - uses: suzuki-shunsuke/repo-404@83b7061638ee4956cf7545a6f7efe594e5ad0247
       - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
