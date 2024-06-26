@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	usesPattern          = regexp.MustCompile(`^ +(?:- )?uses: +(.*)@([^ ]+)(?: +# +(?:tag=)?(v?\d+[^ ]*))?`)
+	usesPattern          = regexp.MustCompile(`^ +(?:- )?['"]?uses['"]? *: +(['"]?)(.*?)@([^ '"]+)['"]?(?: +# +(?:tag=)?(v?\d+[^ ]*))?`)
 	fullCommitSHAPattern = regexp.MustCompile(`\b[0-9a-f]{40}\b`)
 	semverPattern        = regexp.MustCompile(`^v?\d+\.\d+\.\d+[^ ]*$`)
 	shortTagPattern      = regexp.MustCompile(`^v\d+$`)
@@ -25,6 +25,7 @@ type Action struct {
 	Tag       string
 	RepoOwner string
 	RepoName  string
+	Quote     string
 }
 
 type VersionType int
@@ -53,17 +54,25 @@ func getVersionType(v string) VersionType {
 	return Other
 }
 
-func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config) (string, error) { //nolint:cyclop,funlen
+func parseAction(line string) *Action {
 	matches := usesPattern.FindStringSubmatch(line)
 	if matches == nil {
+		return nil
+	}
+	return &Action{
+		Quote:   matches[1], // empty, ', "
+		Name:    matches[2], // local action is excluded by the regular expression because local action doesn't have version @
+		Version: matches[3], // full commit hash, main, v3, v3.0.0
+		Tag:     matches[4], // empty, v1, v3.0.0
+	}
+}
+
+func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config) (string, error) { //nolint:cyclop,funlen
+	action := parseAction(line)
+	if action == nil {
 		// Ignore a line if the line doesn't use an action.
 		logE.WithField("line", line).Debug("unmatch")
 		return line, nil
-	}
-	action := &Action{
-		Name:    matches[1], // local action is excluded by the regular expression because local action doesn't have version @
-		Version: matches[2], // full commit hash, main, v3, v3.0.0
-		Tag:     matches[3], // empty, v1, v3.0.0
 	}
 
 	for _, ignoreAction := range cfg.IgnoreActions {
@@ -150,9 +159,9 @@ func (c *Controller) patchLine(line string, action *Action, version, tag string)
 		if version == tag {
 			return line
 		}
-		return strings.Replace(line, "@"+action.Version, fmt.Sprintf("@%s # %s", version, tag), 1)
+		return strings.Replace(line, "@"+action.Version+action.Quote, fmt.Sprintf("@%s%s # %s", version, action.Quote, tag), 1)
 	}
-	return strings.Replace(line, fmt.Sprintf("@%s # %s", action.Version, action.Tag), fmt.Sprintf("@%s # %s", action.Version, tag), 1)
+	return strings.Replace(line, fmt.Sprintf("@%s%s # %s", action.Version, action.Quote, action.Tag), fmt.Sprintf("@%s%s # %s", action.Version, action.Quote, tag), 1)
 }
 
 func (c *Controller) getLongVersionFromSHA(ctx context.Context, action *Action, sha string) (string, error) {
