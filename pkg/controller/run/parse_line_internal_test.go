@@ -204,7 +204,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 	}
 }
 
-func TestController_patchLine(t *testing.T) {
+func Test_patchLine(t *testing.T) {
 	t.Parallel()
 	data := []struct {
 		name    string
@@ -219,8 +219,9 @@ func TestController_patchLine(t *testing.T) {
 			line: "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3",
 			exp:  "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2",
 			action: &Action{
-				Version: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
-				Tag:     "v3",
+				Version:             "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+				VersionTagSeparator: " # ",
+				Tag:                 "v3",
 			},
 			version: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
 			tag:     "v3.5.2",
@@ -239,8 +240,7 @@ func TestController_patchLine(t *testing.T) {
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			ctrl := &Controller{}
-			line := ctrl.patchLine(d.line, d.action, d.version, d.tag)
+			line := patchLine(d.line, d.action, d.version, d.tag)
 			if line != d.exp {
 				t.Fatalf(`wanted %s, got %s`, d.exp, line)
 			}

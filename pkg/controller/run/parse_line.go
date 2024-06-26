@@ -120,7 +120,7 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 			}
 		}
 		// @yyy # longVersion
-		return c.patchLine(line, action, sha, longVersion), nil
+		return patchLine(line, action, sha, longVersion), nil
 	case Semver:
 		// verify commit hash
 		if !cfg.IsVerify {
@@ -150,13 +150,13 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 			logE.Debug("failed to get a long tag")
 			return line, nil
 		}
-		return c.patchLine(line, action, action.Version, longVersion), nil
+		return patchLine(line, action, action.Version, longVersion), nil
 	default:
 		return line, nil
 	}
 }
 
-func (c *Controller) patchLine(line string, action *Action, version, tag string) string {
+func patchLine(line string, action *Action, version, tag string) string {
 	if action.Tag == "" {
 		if version == tag {
 			return line
