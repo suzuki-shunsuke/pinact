@@ -26,9 +26,10 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 			name: "checkout v3",
 			line: "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3",
 			exp: &Action{
-				Name:    "actions/checkout",
-				Version: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
-				Tag:     "v3",
+				Name:                "actions/checkout",
+				Version:             "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+				VersionTagSeparator: " # ",
+				Tag:                 "v3",
 			},
 		},
 		{
@@ -43,20 +44,22 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 			name: "checkout v3 (single quote)",
 			line: `  - "uses": 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # v3`,
 			exp: &Action{
-				Name:    "actions/checkout",
-				Version: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
-				Tag:     "v3",
-				Quote:   "'",
+				Name:                "actions/checkout",
+				Version:             "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+				VersionTagSeparator: " # ",
+				Tag:                 "v3",
+				Quote:               "'",
 			},
 		},
 		{
 			name: "checkout v3 (double quote)",
 			line: `  - 'uses': "actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab" # v3`,
 			exp: &Action{
-				Name:    "actions/checkout",
-				Version: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
-				Tag:     "v3",
-				Quote:   `"`,
+				Name:                "actions/checkout",
+				Version:             "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+				VersionTagSeparator: " # ",
+				Tag:                 "v3",
+				Quote:               `"`,
 			},
 		},
 		{
@@ -77,6 +80,17 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 				Version: "v2",
 				Tag:     "",
 				Quote:   `"`,
+			},
+		},
+		{
+			name: "tag=",
+			line: `      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247 # tag=v3`,
+			exp: &Action{
+				Name:                "actions/checkout",
+				Version:             "83b7061638ee4956cf7545a6f7efe594e5ad0247",
+				VersionTagSeparator: " # tag=",
+				Tag:                 "v3",
+				Quote:               "",
 			},
 		},
 	}
