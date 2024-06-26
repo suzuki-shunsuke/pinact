@@ -12,6 +12,7 @@ jobs:
     # Enable automerge to merge pull requests from Renovate automatically.
     runs-on: ubuntu-latest
     permissions: {}
+    timeout-minutes: 10
     steps:
       - uses: suzuki-shunsuke/enable-auto-merge-action@ec074392e76cd1062925255cd82a86ea1c44b6fd # v0.1.0
         with:
