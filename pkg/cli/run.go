@@ -9,7 +9,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func (runner *Runner) newRunCommand() *cli.Command {
+func (r *Runner) newRunCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "run",
 		Usage: "Pin GitHub Actions versions",
@@ -23,13 +23,20 @@ e.g.
 
 $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 `,
-		Action: runner.runAction,
+		Action: r.runAction,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "verify",
+				Aliases: []string{"v"},
+				Usage:   "verify if pairs of commit SHA and version are correct",
+			},
+		},
 	}
 }
 
-func (runner *Runner) runAction(c *cli.Context) error {
+func (r *Runner) runAction(c *cli.Context) error {
 	ctrl := run.New(c.Context)
-	log.SetLevel(c.String("log-level"), runner.LogE)
+	log.SetLevel(c.String("log-level"), r.LogE)
 	pwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get the current directory: %w", err)
@@ -38,6 +45,7 @@ func (runner *Runner) runAction(c *cli.Context) error {
 		WorkflowFilePaths: c.Args().Slice(),
 		ConfigFilePath:    c.String("config"),
 		PWD:               pwd,
+		IsVerify:          c.Bool("verify"),
 	}
-	return ctrl.Run(c.Context, runner.LogE, param) //nolint:wrapcheck
+	return ctrl.Run(c.Context, r.LogE, param) //nolint:wrapcheck
 }

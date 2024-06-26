@@ -1,0 +1,15 @@
+---
+name: bar
+on: workflow_call
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      # The version annotation is "v3.5.1", so you would think the version of the action is v3.5.1.
+      # But the actual version is v2.7.0 because "ee0669bd1cc54295c223e0bb666b733df41de1c5" is the commit hash of v2.7.0.
+      # https://github.com/actions/checkout/releases/tag/v3.5.1
+      # https://github.com/actions/checkout/releases/tag/v2.7.0
+      # This means version annotations aren't necessarily correct.
+      # pinact run's --verify option verifies version annoations.
+      - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v3.5.1

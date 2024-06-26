@@ -23,15 +23,15 @@ type LDFlags struct {
 	Date    string
 }
 
-func (runner *Runner) Run(ctx context.Context, args ...string) error {
-	compiledDate, err := time.Parse(time.RFC3339, runner.LDFlags.Date)
+func (r *Runner) Run(ctx context.Context, args ...string) error {
+	compiledDate, err := time.Parse(time.RFC3339, r.LDFlags.Date)
 	if err != nil {
 		compiledDate = time.Now()
 	}
 	app := cli.App{
 		Name:     "pinact",
 		Usage:    "Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact",
-		Version:  runner.LDFlags.Version + " (" + runner.LDFlags.Commit + ")",
+		Version:  r.LDFlags.Version + " (" + r.LDFlags.Commit + ")",
 		Compiled: compiledDate,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -50,9 +50,9 @@ func (runner *Runner) Run(ctx context.Context, args ...string) error {
 		},
 		EnableBashCompletion: true,
 		Commands: []*cli.Command{
-			runner.newVersionCommand(),
-			runner.newRunCommand(),
-			runner.newInitCommand(),
+			r.newVersionCommand(),
+			r.newRunCommand(),
+			r.newInitCommand(),
 		},
 	}
 

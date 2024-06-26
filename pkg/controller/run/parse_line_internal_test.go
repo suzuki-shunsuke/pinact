@@ -4,11 +4,92 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/pkg/github"
 	"github.com/suzuki-shunsuke/pinact/pkg/util"
 )
+
+func Test_parseAction(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	data := []struct {
+		name string
+		line string
+		exp  *Action
+	}{
+		{
+			name: "unrelated",
+			line: "unrelated",
+		},
+		{
+			name: "checkout v3",
+			line: "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3",
+			exp: &Action{
+				Name:    "actions/checkout",
+				Version: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+				Tag:     "v3",
+			},
+		},
+		{
+			name: "checkout v2",
+			line: "  uses: actions/checkout@v2",
+			exp: &Action{
+				Name:    "actions/checkout",
+				Version: "v2",
+			},
+		},
+		{
+			name: "checkout v3 (single quote)",
+			line: `  - "uses": 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # v3`,
+			exp: &Action{
+				Name:    "actions/checkout",
+				Version: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+				Tag:     "v3",
+				Quote:   "'",
+			},
+		},
+		{
+			name: "checkout v3 (double quote)",
+			line: `  - 'uses': "actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab" # v3`,
+			exp: &Action{
+				Name:    "actions/checkout",
+				Version: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+				Tag:     "v3",
+				Quote:   `"`,
+			},
+		},
+		{
+			name: "checkout v2 (single quote)",
+			line: `  "uses": 'actions/checkout@v2'`,
+			exp: &Action{
+				Name:    "actions/checkout",
+				Version: "v2",
+				Tag:     "",
+				Quote:   `'`,
+			},
+		},
+		{
+			name: "checkout v2 (double quote)",
+			line: `  'uses': "actions/checkout@v2"`,
+			exp: &Action{
+				Name:    "actions/checkout",
+				Version: "v2",
+				Tag:     "",
+				Quote:   `"`,
+			},
+		},
+	}
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			act := parseAction(d.line)
+			if diff := cmp.Diff(d.exp, act); diff != "" {
+				t.Fatalf(diff)
+			}
+		})
+	}
+}
 
 func TestController_parseLine(t *testing.T) { //nolint:funlen
 	t.Parallel()
@@ -32,6 +113,21 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			name: "checkout v2",
 			line: "  uses: actions/checkout@v2",
 			exp:  "  uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0",
+		},
+		{
+			name: "single quote",
+			line: `  - "uses": 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # v3`,
+			exp:  `  - "uses": 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # v3.5.2`,
+		},
+		{
+			name: "double quote",
+			line: `  - 'uses': "actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab" # v3`,
+			exp:  `  - 'uses': "actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab" # v3.5.2`,
+		},
+		{
+			name: "checkout v2 (single quote)",
+			line: `  "uses": 'actions/checkout@v2'`,
+			exp:  `  "uses": 'actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5' # v2.7.0`,
 		},
 	}
 	ctx := context.Background()
@@ -68,6 +164,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 								},
 							},
 						},
+						Response: &github.Response{},
 					},
 				},
 				commits: map[string]*GetCommitSHA1Result{
@@ -132,54 +229,6 @@ func TestController_patchLine(t *testing.T) {
 			line := ctrl.patchLine(d.line, d.action, d.version, d.tag)
 			if line != d.exp {
 				t.Fatalf(`wanted %s, got %s`, d.exp, line)
-			}
-		})
-	}
-}
-
-func TestController_getConfigPath(t *testing.T) {
-	t.Parallel()
-	data := []struct {
-		name  string
-		paths []string
-		exp   string
-	}{
-		{
-			name:  "no config",
-			paths: []string{},
-			exp:   "",
-		},
-		{
-			name:  "primary",
-			paths: []string{".pinact.yaml"},
-			exp:   ".pinact.yaml",
-		},
-		{
-			name:  "another",
-			paths: []string{".github/pinact.yaml"},
-			exp:   ".github/pinact.yaml",
-		},
-		{
-			name:  "both primary and others",
-			paths: []string{".pinact.yaml", ".github/pinact.yaml"},
-			exp:   ".pinact.yaml",
-		},
-	}
-	for _, d := range data {
-		t.Run(d.name, func(t *testing.T) {
-			t.Parallel()
-			fs := afero.NewMemMapFs()
-			for _, path := range d.paths {
-				if err := afero.WriteFile(fs, path, []byte(""), 0o644); err != nil {
-					t.Fatal(err)
-				}
-			}
-			got, err := getConfigPath(fs)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got != d.exp {
-				t.Fatalf(`wanted %s, got %s`, d.exp, got)
 			}
 		})
 	}

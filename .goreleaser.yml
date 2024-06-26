@@ -1,4 +1,5 @@
 ---
+version: 2
 project_name: pinact
 archives:
   - name_template: "{{.ProjectName}}_{{.Os}}_{{.Arch}}"
