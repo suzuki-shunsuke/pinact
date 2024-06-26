@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/afero"
 )
 
-
 func TestController_getConfigPath(t *testing.T) {
 	t.Parallel()
 	data := []struct {

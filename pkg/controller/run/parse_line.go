@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	usesPattern          = regexp.MustCompile(`^ +(?:- )?['"]?uses['"]? *: +(['"]?)(.*)@([^ ]+)['"]?(?: +# +(?:tag=)?(v?\d+[^ ]*))?`)
+	usesPattern          = regexp.MustCompile(`^ +(?:- )?['"]?uses['"]? *: +(['"]?)(.*?)@([^ '"]+)['"]?(?: +# +(?:tag=)?(v?\d+[^ ]*))?`)
 	fullCommitSHAPattern = regexp.MustCompile(`\b[0-9a-f]{40}\b`)
 	semverPattern        = regexp.MustCompile(`^v?\d+\.\d+\.\d+[^ ]*$`)
 	shortTagPattern      = regexp.MustCompile(`^v\d+$`)
@@ -54,18 +54,25 @@ func getVersionType(v string) VersionType {
 	return Other
 }
 
-func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config) (string, error) { //nolint:cyclop,funlen
+func parseAction(line string) *Action {
 	matches := usesPattern.FindStringSubmatch(line)
 	if matches == nil {
-		// Ignore a line if the line doesn't use an action.
-		logE.WithField("line", line).Debug("unmatch")
-		return line, nil
+		return nil
 	}
-	action := &Action{
+	return &Action{
 		Quote:   matches[1], // empty, ', "
 		Name:    matches[2], // local action is excluded by the regular expression because local action doesn't have version @
 		Version: matches[3], // full commit hash, main, v3, v3.0.0
 		Tag:     matches[4], // empty, v1, v3.0.0
+	}
+}
+
+func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config) (string, error) { //nolint:cyclop,funlen
+	action := parseAction(line)
+	if action == nil {
+		// Ignore a line if the line doesn't use an action.
+		logE.WithField("line", line).Debug("unmatch")
+		return line, nil
 	}
 
 	for _, ignoreAction := range cfg.IgnoreActions {

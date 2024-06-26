@@ -4,11 +4,92 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/pkg/github"
 	"github.com/suzuki-shunsuke/pinact/pkg/util"
 )
+
+func Test_parseAction(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	data := []struct {
+		name string
+		line string
+		exp  *Action
+	}{
+		{
+			name: "unrelated",
+			line: "unrelated",
+		},
+		{
+			name: "checkout v3",
+			line: "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3",
+			exp: &Action{
+				Name:    "actions/checkout",
+				Version: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+				Tag:     "v3",
+			},
+		},
+		{
+			name: "checkout v2",
+			line: "  uses: actions/checkout@v2",
+			exp: &Action{
+				Name:    "actions/checkout",
+				Version: "v2",
+			},
+		},
+		{
+			name: "checkout v3 (single quote)",
+			line: `  - "uses": 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # v3`,
+			exp: &Action{
+				Name:    "actions/checkout",
+				Version: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+				Tag:     "v3",
+				Quote:   "'",
+			},
+		},
+		{
+			name: "checkout v3 (double quote)",
+			line: `  - 'uses': "actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab" # v3`,
+			exp: &Action{
+				Name:    "actions/checkout",
+				Version: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+				Tag:     "v3",
+				Quote:   `"`,
+			},
+		},
+		{
+			name: "checkout v2 (single quote)",
+			line: `  "uses": 'actions/checkout@v2'`,
+			exp: &Action{
+				Name:    "actions/checkout",
+				Version: "v2",
+				Tag:     "",
+				Quote:   `'`,
+			},
+		},
+		{
+			name: "checkout v2 (double quote)",
+			line: `  'uses': "actions/checkout@v2"`,
+			exp: &Action{
+				Name:    "actions/checkout",
+				Version: "v2",
+				Tag:     "",
+				Quote:   `"`,
+			},
+		},
+	}
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			act := parseAction(d.line)
+			if diff := cmp.Diff(d.exp, act); diff != "" {
+				t.Fatalf(diff)
+			}
+		})
+	}
+}
 
 func TestController_parseLine(t *testing.T) { //nolint:funlen
 	t.Parallel()
