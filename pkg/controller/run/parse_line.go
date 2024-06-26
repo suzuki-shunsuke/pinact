@@ -13,13 +13,14 @@ import (
 )
 
 var (
-	usesPattern          = regexp.MustCompile(`^ +(?:- )?['"]?uses['"]? *: +(['"]?)(.*?)@([^ '"]+)['"]?(?:( +# +(?:tag=)?)(v?\d+[^ ]*))?`)
+	usesPattern          = regexp.MustCompile(`^( +(?:- )?['"]?uses['"]? *: +)(['"]?)(.*?)@([^ '"]+)['"]?(?:( +# +(?:tag=)?)(v?\d+[^ ]*)(.*))?`)
 	fullCommitSHAPattern = regexp.MustCompile(`\b[0-9a-f]{40}\b`)
 	semverPattern        = regexp.MustCompile(`^v?\d+\.\d+\.\d+[^ ]*$`)
 	shortTagPattern      = regexp.MustCompile(`^v\d+$`)
 )
 
 type Action struct {
+	Uses                string
 	Name                string
 	Version             string
 	Tag                 string
@@ -27,6 +28,7 @@ type Action struct {
 	RepoOwner           string
 	RepoName            string
 	Quote               string
+	Suffix              string
 }
 
 type VersionType int
@@ -61,11 +63,13 @@ func parseAction(line string) *Action {
 		return nil
 	}
 	return &Action{
-		Quote:               matches[1], // empty, ', "
-		Name:                matches[2], // local action is excluded by the regular expression because local action doesn't have version @
-		Version:             matches[3], // full commit hash, main, v3, v3.0.0
-		VersionTagSeparator: matches[4], // empty, " # ", " # tag="
-		Tag:                 matches[5], // empty, v1, v3.0.0
+		Uses:                matches[1], // " - uses: "
+		Quote:               matches[2], // empty, ', "
+		Name:                matches[3], // local action is excluded by the regular expression because local action doesn't have version @
+		Version:             matches[4], // full commit hash, main, v3, v3.0.0
+		VersionTagSeparator: matches[5], // empty, " # ", " # tag="
+		Tag:                 matches[6], // empty, v1, v3.0.0
+		Suffix:              matches[7],
 	}
 }
 
@@ -120,7 +124,7 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 			}
 		}
 		// @yyy # longVersion
-		return patchLine(line, action, sha, longVersion), nil
+		return patchLine(action, sha, longVersion), nil
 	case Semver:
 		// verify commit hash
 		if !cfg.IsVerify {
@@ -150,20 +154,18 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 			logE.Debug("failed to get a long tag")
 			return line, nil
 		}
-		return patchLine(line, action, action.Version, longVersion), nil
+		return patchLine(action, action.Version, longVersion), nil
 	default:
 		return line, nil
 	}
 }
 
-func patchLine(line string, action *Action, version, tag string) string {
-	if action.Tag == "" {
-		if version == tag {
-			return line
-		}
-		return strings.Replace(line, "@"+action.Version+action.Quote, fmt.Sprintf("@%s%s # %s", version, action.Quote, tag), 1)
+func patchLine(action *Action, version, tag string) string {
+	sep := action.VersionTagSeparator
+	if sep == "" {
+		sep = " # "
 	}
-	return strings.Replace(line, fmt.Sprintf("@%s%s%s%s", action.Version, action.Quote, action.VersionTagSeparator, action.Tag), fmt.Sprintf("@%s%s%s%s", action.Version, action.Quote, action.VersionTagSeparator, tag), 1)
+	return action.Uses + action.Quote + action.Name + "@" + version + action.Quote + sep + tag + action.Suffix
 }
 
 func (c *Controller) getLongVersionFromSHA(ctx context.Context, action *Action, sha string) (string, error) {

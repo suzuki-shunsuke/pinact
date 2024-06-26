@@ -26,6 +26,7 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 			name: "checkout v3",
 			line: "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3",
 			exp: &Action{
+				Uses:                "  - uses: ",
 				Name:                "actions/checkout",
 				Version:             "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
 				VersionTagSeparator: " # ",
@@ -36,6 +37,7 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 			name: "checkout v2",
 			line: "  uses: actions/checkout@v2",
 			exp: &Action{
+				Uses:    "  uses: ",
 				Name:    "actions/checkout",
 				Version: "v2",
 			},
@@ -44,6 +46,7 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 			name: "checkout v3 (single quote)",
 			line: `  - "uses": 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # v3`,
 			exp: &Action{
+				Uses:                `  - "uses": `,
 				Name:                "actions/checkout",
 				Version:             "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
 				VersionTagSeparator: " # ",
@@ -55,6 +58,7 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 			name: "checkout v3 (double quote)",
 			line: `  - 'uses': "actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab" # v3`,
 			exp: &Action{
+				Uses:                `  - 'uses': `,
 				Name:                "actions/checkout",
 				Version:             "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
 				VersionTagSeparator: " # ",
@@ -66,6 +70,7 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 			name: "checkout v2 (single quote)",
 			line: `  "uses": 'actions/checkout@v2'`,
 			exp: &Action{
+				Uses:    `  "uses": `,
 				Name:    "actions/checkout",
 				Version: "v2",
 				Tag:     "",
@@ -76,6 +81,7 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 			name: "checkout v2 (double quote)",
 			line: `  'uses': "actions/checkout@v2"`,
 			exp: &Action{
+				Uses:    `  'uses': `,
 				Name:    "actions/checkout",
 				Version: "v2",
 				Tag:     "",
@@ -86,6 +92,7 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 			name: "tag=",
 			line: `      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247 # tag=v3`,
 			exp: &Action{
+				Uses:                `      - uses: `,
 				Name:                "actions/checkout",
 				Version:             "83b7061638ee4956cf7545a6f7efe594e5ad0247",
 				VersionTagSeparator: " # tag=",
@@ -208,7 +215,6 @@ func Test_patchLine(t *testing.T) {
 	t.Parallel()
 	data := []struct {
 		name    string
-		line    string
 		tag     string
 		version string
 		action  *Action
@@ -216,9 +222,10 @@ func Test_patchLine(t *testing.T) {
 	}{
 		{
 			name: "checkout v3",
-			line: "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3",
-			exp:  "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2",
+			exp:  "  - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v3.5.2",
 			action: &Action{
+				Uses:                "  - uses: ",
+				Name:                "actions/checkout",
 				Version:             "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
 				VersionTagSeparator: " # ",
 				Tag:                 "v3",
@@ -228,9 +235,10 @@ func Test_patchLine(t *testing.T) {
 		},
 		{
 			name: "checkout v2",
-			line: "  uses: actions/checkout@v2",
 			exp:  "  uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.17.0",
 			action: &Action{
+				Uses:    "  uses: ",
+				Name:    "actions/checkout",
 				Version: "v2",
 			},
 			version: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
@@ -240,7 +248,7 @@ func Test_patchLine(t *testing.T) {
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			line := patchLine(d.line, d.action, d.version, d.tag)
+			line := patchLine(d.action, d.version, d.tag)
 			if line != d.exp {
 				t.Fatalf(`wanted %s, got %s`, d.exp, line)
 			}
