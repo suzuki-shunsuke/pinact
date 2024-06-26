@@ -166,7 +166,7 @@ func (c *Controller) patchLine(line string, action *Action, version, tag string)
 
 func (c *Controller) getLongVersionFromSHA(ctx context.Context, action *Action, sha string) (string, error) {
 	opts := &github.ListOptions{
-		PerPage: 100, //nolint:gomnd
+		PerPage: 100, //nolint:mnd
 	}
 	// Get long tag from commit hash
 	for range 10 {
