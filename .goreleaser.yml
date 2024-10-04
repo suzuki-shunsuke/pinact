@@ -3,6 +3,9 @@ version: 2
 project_name: pinact
 archives:
   - name_template: "{{.ProjectName}}_{{.Os}}_{{.Arch}}"
+    format_overrides:
+      - goos: windows
+        format: zip
 builds:
   - binary: pinact
     main: cmd/pinact/main.go
