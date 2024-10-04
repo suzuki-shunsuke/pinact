@@ -106,7 +106,7 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 			t.Parallel()
 			act := parseAction(d.line)
 			if diff := cmp.Diff(d.exp, act); diff != "" {
-				t.Fatalf(diff)
+				t.Fatal(diff)
 			}
 		})
 	}
