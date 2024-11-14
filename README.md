@@ -301,6 +301,24 @@ The regular expression of target files. If files are passed via positional comma
 
 Action and reusable workflow names that pinact ignores.
 
+## Comparison
+
+### Renovate - helpers:pinGitHubActionDigestsToSemver
+
+Renovate has the preset [helpers:pinGitHubActionDigestsToSemver](https://docs.renovatebot.com/presets-helpers/#helperspingithubactiondigeststosemver) now, but pinact is still useful:
+
+1. pinact is useful when we send pull requests to add actions.
+In this case, we can't pin actions by Renovate before merging pull requests.
+If we use linters such as [ghalint](https://github.com/suzuki-shunsuke/ghalint) in CI, we need to pin actions before merging pull requests.
+
+https://github.com/suzuki-shunsuke/ghalint/blob/main/docs/policies/008.md
+
+2. pinact is useful to update actions manually for some reasons.
+When we use Renovate actions are updated by Renovate so we don't need to update actions manually, but sometimes we want to update actions manually.
+In this case, pinact is useful to pin actions.
+3. pinact is useful for non Renovate users
+4. [pinact supports verifying version annotations](https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md)
+
 ## See also
 
 - [Renovate github-actions Manager - Additional Information](https://docs.renovatebot.com/modules/manager/github-actions/#additional-information)
