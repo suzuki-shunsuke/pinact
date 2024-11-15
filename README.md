@@ -98,7 +98,7 @@ You can install pinact using [Homebrew](https://brew.sh/).
 $ brew install suzuki-shunsuke/pinact/pinact
 ```
 
-## aqua
+### aqua
 
 `aqua-registry >= v3.154.0`
 
@@ -108,7 +108,7 @@ You can install pinact using [aqua](https://aquaproj.github.io/).
 $ aqua g -i suzuki-shunsuke/pinact
 ```
 
-## GitHub Releases
+### GitHub Releases
 
 You can download an asset from [GitHub Reelases](https://github.com/suzuki-shunsuke/pinact/releases).
 Please unarchive it and install a pre built binary into `$PATH`. 
