@@ -47,6 +47,11 @@ index 84bd67a..5d92e44 100644
 It is a good manner to pin GitHub Actions versions by commit hash.
 GitHub tags are mutable so they have a substantial security and reliability risk.
 
+See also [Security hardening for GitHub Actions - GitHub Docs](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions)
+
+> Pinning an action to a full length commit SHA is currently the only way to use an action as an immutable release.
+> Pinning to a particular SHA helps mitigate the risk of a bad actor adding a backdoor to the action's repository, as they would need to generate a SHA-1 collision for a valid Git object payload
+
 :thumbsup:
 
 ```yaml
@@ -63,27 +68,16 @@ uses: actions/cache@v3
 uses: actions/cache@v3.3.1
 ```
 
-[Renovate's helpers:pinGitHubActionDigests](https://docs.renovatebot.com/presets-helpers/#helperspingithubactiondigests) pins GitHub Actions versions by commit hash, but this doesn't change the short format tag such as `v2` to the long format tag such as `v2.0.0`.
+## Why not using Renovate's helpers:pinGitHubActionDigestsToSemver preset?
 
-```yaml
-uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3
-```
+The Renovate preset [helpers:pinGitHubActionDigestsToSemver](https://docs.renovatebot.com/presets-helpers/#helperspingithubactiondigeststosemver) is useful, but pinact is still useful:
 
-Even if the tag is short Renovate will update the commit hash, but you can't understand what is changed from the Renovate's pull request.
-
-e.g. https://github.com/suzuki-shunsuke/test-github-action/pull/141
-
-<img width="937" alt="image" src="https://user-images.githubusercontent.com/13323303/231947080-75930df5-a471-4b1a-a5ab-de5a270d7738.png">
-
-pinact converts short tags to long tags, so you can understand what is changed from the Renovate's pull request.
-
-```yaml
-uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.5.1
-```
-
-e.g. https://github.com/suzuki-shunsuke/test-github-action/pull/143
-
-<img width="947" alt="image" src="https://user-images.githubusercontent.com/13323303/231948517-01fcbf19-9f6d-467a-9bb5-7cba097f2233.png">
+1. Renovate can't pin actions in pull requests before merging them.
+If you use linters such as [ghalint](https://github.com/suzuki-shunsuke/ghalint) in CI, you need to pin actions before merging pull requests
+(ref. [ghalint policy to enforce actions to be pinned](https://github.com/suzuki-shunsuke/ghalint/blob/main/docs/policies/008.md))
+2. Even if you use Renovate, sometimes you would want to update actions manually
+3. pinact is useful for non Renovate users
+4. [pinact supports verifying version annotations](https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md)
 
 ## Install
 
@@ -301,29 +295,10 @@ The regular expression of target files. If files are passed via positional comma
 
 Action and reusable workflow names that pinact ignores.
 
-## Comparison
-
-### Renovate - helpers:pinGitHubActionDigestsToSemver
-
-Renovate has the preset [helpers:pinGitHubActionDigestsToSemver](https://docs.renovatebot.com/presets-helpers/#helperspingithubactiondigeststosemver) now, but pinact is still useful:
-
-1. pinact is useful when we send pull requests to add actions.
-In this case, we can't pin actions by Renovate before merging pull requests.
-If we use linters such as [ghalint](https://github.com/suzuki-shunsuke/ghalint) in CI, we need to pin actions before merging pull requests.
-
-https://github.com/suzuki-shunsuke/ghalint/blob/main/docs/policies/008.md
-
-2. pinact is useful to update actions manually for some reasons.
-When we use Renovate actions are updated by Renovate so we don't need to update actions manually, but sometimes we want to update actions manually.
-In this case, pinact is useful to pin actions.
-3. pinact is useful for non Renovate users
-4. [pinact supports verifying version annotations](https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md)
-
 ## See also
 
 - [Renovate github-actions Manager - Additional Information](https://docs.renovatebot.com/modules/manager/github-actions/#additional-information)
-- [Renovate - helpers:pinGitHubActionDigests](https://docs.renovatebot.com/presets-helpers/#helperspingithubactiondigests): This is useful, but this doesn't change the short format tag such as `v2` to the long format tag such as `v2.0.0`
-- [sethvargo/ratchet](https://github.com/sethvargo/ratchet): This is a great tool, but there are [known issues](https://github.com/sethvargo/ratchet#known-issues)
+- [sethvargo/ratchet](https://github.com/sethvargo/ratchet) is a great tool, but there are [known issues](https://github.com/sethvargo/ratchet#known-issues).
 
 ## LICENSE
 
