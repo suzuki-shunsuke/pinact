@@ -8,10 +8,10 @@ NAME:
    pinact - Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact
 
 USAGE:
-   pinact [global options] command [command options] [arguments...]
+   pinact [global options] command [command options]
 
 VERSION:
-   0.1.2 (653c220664e6901b11c53a329e1d21af58465c9d)
+   1.1.0 (175ef6468b3ff93c52f4194670b5d79e118c7299)
 
 COMMANDS:
    version  Show version
@@ -34,7 +34,7 @@ NAME:
    pinact init - Create .pinact.yaml if it doesn't exist
 
 USAGE:
-   pinact init [command options] [arguments...]
+   pinact init [command options]
 
 DESCRIPTION:
    Create .pinact.yaml if it doesn't exist
@@ -60,7 +60,7 @@ NAME:
    pinact run - Pin GitHub Actions versions
 
 USAGE:
-   pinact run [command options] [arguments...]
+   pinact run [command options]
 
 DESCRIPTION:
    If no argument is passed, pinact searches GitHub Actions workflow files from .github/workflows.
@@ -75,5 +75,7 @@ DESCRIPTION:
 
 
 OPTIONS:
-   --help, -h  show help
+   --verify, -v  Verify if pairs of commit SHA and version are correct (default: false)
+   --update, -u  Update actions to latest versions (default: false)
+   --help, -h    show help
 ```
