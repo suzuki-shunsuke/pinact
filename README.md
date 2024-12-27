@@ -40,7 +40,7 @@ index 84bd67a..5d92e44 100644
      permissions:
 ```
 
-pinact also supports [verifying version annotations](docs/codes/001.md) and [updating actions]().
+pinact also supports [verifying version annotations](docs/codes/001.md) and [updating actions](#update-actions).
 
 ## Motivation
 
