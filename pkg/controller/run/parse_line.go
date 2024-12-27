@@ -73,7 +73,7 @@ func parseAction(line string) *Action {
 	}
 }
 
-func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config) (string, error) { //nolint:cyclop,funlen
+func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config) (string, error) {
 	action := parseAction(line)
 	if action == nil {
 		// Ignore a line if the line doesn't use an action.
@@ -98,66 +98,126 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 
 	switch getVersionType(action.Tag) {
 	case Empty:
-		typ := getVersionType(action.Version)
-		switch typ {
-		case Shortsemver, Semver:
-		default:
+		return c.parseNoTagLine(ctx, logE, line, action)
+	case Semver:
+		// @xxx # v3.0.0
+		return c.parseSemverTagLine(ctx, logE, line, cfg, action)
+	case Shortsemver:
+		// @xxx # v3
+		// @<full commit hash> # v3
+		return c.parseShortSemverTagLine(ctx, logE, line, action)
+	default:
+		return line, nil
+	}
+}
+
+func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, line string, action *Action) (string, error) {
+	typ := getVersionType(action.Version)
+	switch typ {
+	case Shortsemver, Semver:
+	default:
+		return line, nil
+	}
+	// @xxx
+	if c.update {
+		// get the latest version
+		lv, _, err := c.GetLatestVersion(ctx, action.RepoOwner, action.RepoName)
+		if err != nil {
+			logerr.WithError(logE, err).Warn("get the latest version")
 			return line, nil
 		}
-		// @xxx
-		// Get commit hash from tag
-		// https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#get-a-reference
-		// > The :ref in the URL must be formatted as heads/<branch name> for branches and tags/<tag name> for tags. If the :ref doesn't match an existing ref, a 404 is returned.
-		sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Version, "")
+		sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
 		if err != nil {
 			logerr.WithError(logE, err).Warn("get a reference")
 			return line, nil
 		}
-		longVersion := action.Version
-		if typ == Shortsemver {
-			v, err := c.getLongVersionFromSHA(ctx, action, sha)
-			if err != nil {
-				return "", err
-			}
-			if v != "" {
-				longVersion = v
-			}
-		}
-		// @yyy # longVersion
-		return patchLine(action, sha, longVersion), nil
-	case Semver:
-		// verify commit hash
-		if !cfg.IsVerify {
-			return line, nil
-		}
-		// @xxx # v3.0.0
-		// @<full commit hash> # v3.0.0
-		if FullCommitSHA != getVersionType(action.Version) {
-			return line, nil
-		}
-		if err := c.verify(ctx, action); err != nil {
-			return "", fmt.Errorf("verify the version annotation: %w", err)
-		}
+		return patchLine(action, sha, lv), nil
+	}
+
+	// Get commit hash from tag
+	// https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#get-a-reference
+	// > The :ref in the URL must be formatted as heads/<branch name> for branches and tags/<tag name> for tags. If the :ref doesn't match an existing ref, a 404 is returned.
+	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Version, "")
+	if err != nil {
+		logerr.WithError(logE, err).Warn("get a reference")
 		return line, nil
-	case Shortsemver:
-		// @xxx # v3
-		// @<full commit hash> # v3
-		if FullCommitSHA != getVersionType(action.Version) {
-			return line, nil
-		}
-		// replace Shortsemer to Semver
-		longVersion, err := c.getLongVersionFromSHA(ctx, action, action.Version)
+	}
+	longVersion := action.Version
+	if typ == Shortsemver {
+		v, err := c.getLongVersionFromSHA(ctx, action, sha)
 		if err != nil {
 			return "", err
 		}
-		if longVersion == "" {
-			logE.Debug("failed to get a long tag")
+		if v != "" {
+			longVersion = v
+		}
+	}
+	// @yyy # longVersion
+	return patchLine(action, sha, longVersion), nil
+}
+
+func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config, action *Action) (string, error) {
+	// @xxx # v3.0.0
+	if c.update {
+		// get the latest version
+		lv, _, err := c.GetLatestVersion(ctx, action.RepoOwner, action.RepoName)
+		if err != nil {
+			logerr.WithError(logE, err).Warn("get the latest version")
 			return line, nil
 		}
-		return patchLine(action, action.Version, longVersion), nil
-	default:
+		if action.Tag != lv {
+			sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
+			if err != nil {
+				logerr.WithError(logE, err).Warn("get a reference")
+				return line, nil
+			}
+			return patchLine(action, sha, lv), nil
+		}
+	}
+	// verify commit hash
+	if !cfg.IsVerify {
 		return line, nil
 	}
+	// @xxx # v3.0.0
+	// @<full commit hash> # v3.0.0
+	if FullCommitSHA != getVersionType(action.Version) {
+		return line, nil
+	}
+	if err := c.verify(ctx, action); err != nil {
+		return "", fmt.Errorf("verify the version annotation: %w", err)
+	}
+	return line, nil
+}
+
+func (c *Controller) parseShortSemverTagLine(ctx context.Context, logE *logrus.Entry, line string, action *Action) (string, error) {
+	// @xxx # v3
+	// @<full commit hash> # v3
+	if FullCommitSHA != getVersionType(action.Version) {
+		return line, nil
+	}
+	if c.update {
+		lv, _, err := c.GetLatestVersion(ctx, action.RepoOwner, action.RepoName)
+		if err != nil {
+			logerr.WithError(logE, err).Warn("get the latest version")
+			return line, nil
+		}
+		sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
+		if err != nil {
+			logerr.WithError(logE, err).Warn("get a reference")
+			return line, nil
+		}
+		return patchLine(action, sha, lv), nil
+	}
+	// replace Shortsemer to Semver
+	longVersion, err := c.getLongVersionFromSHA(ctx, action, action.Version)
+	if err != nil {
+		return "", err
+	}
+	if longVersion == "" {
+		logE.Debug("failed to get a long tag")
+		return line, nil
+	}
+	return patchLine(action, action.Version, longVersion), nil
 }
 
 func patchLine(action *Action, version, tag string) string {

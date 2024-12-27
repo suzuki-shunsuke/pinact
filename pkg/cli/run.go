@@ -35,7 +35,9 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 }
 
 func (r *Runner) runAction(c *cli.Context) error {
-	ctrl := run.New(c.Context)
+	ctrl := run.New(c.Context, &run.InputNew{
+		Update: c.Bool("update"),
+	})
 	log.SetLevel(c.String("log-level"), r.LogE)
 	pwd, err := os.Getwd()
 	if err != nil {
