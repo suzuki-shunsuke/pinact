@@ -16,6 +16,7 @@ type ParamRun struct {
 	ConfigFilePath    string
 	PWD               string
 	IsVerify          bool
+	Update            bool
 }
 
 func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRun) error {

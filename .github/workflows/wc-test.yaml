@@ -30,3 +30,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{github.token}}
       - run: diff testdata/foo.yaml testdata/foo.yaml.after
+      - run: pinact run -u
+        env:
+          GITHUB_TOKEN: ${{github.token}}
