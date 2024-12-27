@@ -79,7 +79,7 @@ func (c *Controller) GetLatestVersion(ctx context.Context, owner string, repo st
 		arr[i] = v
 	}
 	sort.Slice(arr, func(i, j int) bool {
-		return arr[i].LessThan(arr[j])
+		return arr[i].GreaterThan(arr[j])
 	})
 	return arr[0].Original(), resp, nil
 }

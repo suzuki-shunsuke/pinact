@@ -28,7 +28,12 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 			&cli.BoolFlag{
 				Name:    "verify",
 				Aliases: []string{"v"},
-				Usage:   "verify if pairs of commit SHA and version are correct",
+				Usage:   "Verify if pairs of commit SHA and version are correct",
+			},
+			&cli.BoolFlag{
+				Name:    "update",
+				Aliases: []string{"u"},
+				Usage:   "Update actions to latest versions",
 			},
 		},
 	}
