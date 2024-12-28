@@ -122,7 +122,7 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, lin
 	// @xxx
 	if c.update {
 		// get the latest version
-		lv, _, err := c.GetLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
+		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
 		if err != nil {
 			logerr.WithError(logE, err).Warn("get the latest version")
 			return line, nil
@@ -161,7 +161,7 @@ func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry,
 	// @xxx # v3.0.0
 	if c.update {
 		// get the latest version
-		lv, _, err := c.GetLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
+		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
 		if err != nil {
 			logerr.WithError(logE, err).Warn("get the latest version")
 			return line, nil
@@ -197,7 +197,7 @@ func (c *Controller) parseShortSemverTagLine(ctx context.Context, logE *logrus.E
 		return line, nil
 	}
 	if c.update {
-		lv, _, err := c.GetLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
+		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
 		if err != nil {
 			logerr.WithError(logE, err).Warn("get the latest version")
 			return line, nil

@@ -22,6 +22,7 @@ func New(ctx context.Context, input *InputNew) *Controller {
 	return &Controller{
 		repositoriesService: &RepositoriesServiceImpl{
 			tags:                map[string]*ListTagsResult{},
+			releases:            map[string]*ListReleasesResult{},
 			commits:             map[string]*GetCommitSHA1Result{},
 			RepositoriesService: gh.Repositories,
 		},
