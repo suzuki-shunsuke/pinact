@@ -3,9 +3,10 @@ package run
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/hashicorp/go-version"
+	"github.com/sirupsen/logrus"
+	"github.com/suzuki-shunsuke/logrus-error/logerr"
 	"github.com/suzuki-shunsuke/pinact/pkg/github"
 )
 
@@ -62,7 +63,7 @@ func (r *RepositoriesServiceImpl) ListTags(ctx context.Context, owner string, re
 	return tags, resp, err //nolint:wrapcheck
 }
 
-func (c *Controller) GetLatestVersion(ctx context.Context, owner string, repo string) (string, *github.Response, error) {
+func (c *Controller) GetLatestVersion(ctx context.Context, logE *logrus.Entry, owner string, repo string) (string, *github.Response, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
@@ -70,16 +71,30 @@ func (c *Controller) GetLatestVersion(ctx context.Context, owner string, repo st
 	if err != nil {
 		return "", resp, fmt.Errorf("list tags: %w", err)
 	}
-	arr := make([]*version.Version, len(tags))
-	for i, tag := range tags {
+	var latestSemver *version.Version
+	lv := ""
+	for _, tag := range tags {
 		v, err := version.NewVersion(tag.GetName())
 		if err != nil {
-			return "", nil, fmt.Errorf("parse a version: %w", err)
+			logerr.WithError(logE, err).Warn("parse a version")
 		}
-		arr[i] = v
+		if latestSemver != nil {
+			if v.GreaterThan(latestSemver) {
+				latestSemver = v
+			}
+			continue
+		}
+		latestSemver = v
+		if lv == "" {
+			lv = tag.GetName()
+			continue
+		}
+		if a := tag.GetName(); a > lv {
+			lv = a
+		}
 	}
-	sort.Slice(arr, func(i, j int) bool {
-		return arr[i].GreaterThan(arr[j])
-	})
-	return arr[0].Original(), resp, nil
+	if latestSemver != nil {
+		return latestSemver.Original(), resp, nil
+	}
+	return lv, resp, nil
 }
