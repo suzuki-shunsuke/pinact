@@ -81,11 +81,12 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 		return line, nil
 	}
 
+	logE = logE.WithField("action", action.Name)
+
 	for _, ignoreAction := range cfg.IgnoreActions {
 		if action.Name == ignoreAction.Name {
 			logE.WithFields(logrus.Fields{
-				"line":   line,
-				"action": action.Name,
+				"line": line,
 			}).Debug("ignore the action")
 			return line, nil
 		}
@@ -96,18 +97,16 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 		return line, nil
 	}
 
-	actionLogE := logE.WithField("action", action.Name)
-
 	switch getVersionType(action.Tag) {
 	case Empty:
-		return c.parseNoTagLine(ctx, actionLogE, line, action)
+		return c.parseNoTagLine(ctx, logE, line, action)
 	case Semver:
 		// @xxx # v3.0.0
-		return c.parseSemverTagLine(ctx, actionLogE, line, cfg, action)
+		return c.parseSemverTagLine(ctx, logE, line, cfg, action)
 	case Shortsemver:
 		// @xxx # v3
 		// @<full commit hash> # v3
-		return c.parseShortSemverTagLine(ctx, actionLogE, line, action)
+		return c.parseShortSemverTagLine(ctx, logE, line, action)
 	default:
 		return line, nil
 	}
