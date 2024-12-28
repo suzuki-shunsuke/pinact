@@ -10,13 +10,14 @@ import (
 )
 
 type (
-	ListOptions   = github.ListOptions
-	Reference     = github.Reference
-	Response      = github.Response
-	RepositoryTag = github.RepositoryTag
-	Client        = github.Client
-	GitObject     = github.GitObject
-	Commit        = github.Commit
+	ListOptions       = github.ListOptions
+	Reference         = github.Reference
+	Response          = github.Response
+	RepositoryTag     = github.RepositoryTag
+	RepositoryRelease = github.RepositoryRelease
+	Client            = github.Client
+	GitObject         = github.GitObject
+	Commit            = github.Commit
 )
 
 func New(ctx context.Context) *Client {
