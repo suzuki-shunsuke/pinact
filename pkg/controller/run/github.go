@@ -76,7 +76,7 @@ func (c *Controller) GetLatestVersion(ctx context.Context, logE *logrus.Entry, o
 	for _, tag := range tags {
 		v, err := version.NewVersion(tag.GetName())
 		if err != nil {
-			logerr.WithError(logE, err).Debug("parse a version")
+			logerr.WithError(logE, err).WithField("action_version", tag.GetName()).Debug("parse a version")
 		}
 		if latestSemver != nil {
 			if v.GreaterThan(latestSemver) {
