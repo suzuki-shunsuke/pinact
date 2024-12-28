@@ -96,16 +96,18 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 		return line, nil
 	}
 
+	actionLogE := logE.WithField("action", action.Name)
+
 	switch getVersionType(action.Tag) {
 	case Empty:
-		return c.parseNoTagLine(ctx, logE, line, action)
+		return c.parseNoTagLine(ctx, actionLogE, line, action)
 	case Semver:
 		// @xxx # v3.0.0
-		return c.parseSemverTagLine(ctx, logE, line, cfg, action)
+		return c.parseSemverTagLine(ctx, actionLogE, line, cfg, action)
 	case Shortsemver:
 		// @xxx # v3
 		// @<full commit hash> # v3
-		return c.parseShortSemverTagLine(ctx, logE, line, action)
+		return c.parseShortSemverTagLine(ctx, actionLogE, line, action)
 	default:
 		return line, nil
 	}
