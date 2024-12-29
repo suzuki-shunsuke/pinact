@@ -169,6 +169,23 @@ The regular expression of target files. If files are passed via positional comma
 
 Action and reusable workflow names that pinact ignores.
 
+### JSON Schema
+
+- [pinact.json](json-schema/pinact.json)
+- https://raw.githubusercontent.com/suzuki-shunsuke/pinact/refs/heads/main/json-schema/pinact.json
+
+If you look for a CLI tool to validate configuration with JSON Schema, [ajv-cli](https://ajv.js.org/packages/ajv-cli.html) is useful.
+
+```sh
+ajv --spec=draft2020 -s json-schema/pinact.json -d pinact.yaml
+```
+
+#### Input Complementation by YAML Language Server
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/refs/heads/main/json-schema/pinact.json
+```
+
 ## See also
 
 - [Renovate github-actions Manager - Additional Information](https://docs.renovatebot.com/modules/manager/github-actions/#additional-information)

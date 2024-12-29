@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	templateConfig = `# pinact - https://github.com/suzuki-shunsuke/pinact
+	templateConfig = `# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/refs/heads/main/json-schema/pinact.json
+# pinact - https://github.com/suzuki-shunsuke/pinact
 files:
   - pattern: "^\\.github/workflows/.*\\.ya?ml$"
   - pattern: "^(.*/)?action\\.ya?ml$"

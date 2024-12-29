@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/suzuki-shunsuke/pinact/pkg/controller/run/config",
+  "$ref": "#/$defs/Config",
+  "$defs": {
+    "Config": {
+      "properties": {
+        "files": {
+          "items": {
+            "$ref": "#/$defs/File"
+          },
+          "type": "array",
+          "description": "Target files. If files are passed via positional command line arguments"
+        },
+        "ignore_actions": {
+          "items": {
+            "$ref": "#/$defs/IgnoreAction"
+          },
+          "type": "array",
+          "description": "Actions and reusable workflows that pinact ignores"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "File": {
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "description": "A regular expression of target files. If files are passed via positional command line arguments"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "pattern"
+      ]
+    },
+    "IgnoreAction": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Action and reusable workflow names that pinact ignores"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name"
+      ]
+    }
+  }
+}

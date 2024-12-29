@@ -51,3 +51,8 @@ tasks:
   description: Generate USAGE.md
   usage: Generate USAGE.md
   script: bash scripts/generate-usage.sh
+- name: js
+  description: Generate JSON Schema
+  usage: Generate JSON Schema
+  script: "go run ./cmd/gen-jsonschema"
+
