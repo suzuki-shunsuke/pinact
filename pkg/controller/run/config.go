@@ -8,17 +8,17 @@ import (
 )
 
 type Config struct {
-	Files         []*File
-	IgnoreActions []*IgnoreAction `yaml:"ignore_actions"`
-	IsVerify      bool            `yaml:"-"`
+	Files         []*File         `json:"files,omitempty" jsonschema:"description=Target files. If files are passed via positional command line arguments, the configuration is ignored"`
+	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores"`
+	IsVerify      bool            `json:"-" yaml:"-"`
 }
 
 type File struct {
-	Pattern string
+	Pattern string `json:"pattern" jsonschema:"description=A regular expression of target files. If files are passed via positional command line arguments, this is ignored"`
 }
 
 type IgnoreAction struct {
-	Name string
+	Name string `json:"name" jsonschema:"description=Action and reusable workflow names that pinact ignores"`
 }
 
 func getConfigPath(fs afero.Fs) (string, error) {
