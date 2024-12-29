@@ -55,4 +55,3 @@ tasks:
   description: Generate JSON Schema
   usage: Generate JSON Schema
   script: "go run ./cmd/gen-jsonschema"
-
