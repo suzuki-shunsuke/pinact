@@ -8,7 +8,7 @@ import (
 )
 
 type Config struct {
-	Files         []*File         `json:"files,omitempty" jsonschema:"description=Target files. If files are passed via positional command line arguments, the configuration is ignored"`
+	Files         []*File         `json:"files,omitempty" jsonschema:"description=Target files. If files are passed via positional command line arguments, this is ignored"`
 	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores"`
 	IsVerify      bool            `json:"-" yaml:"-"`
 }
