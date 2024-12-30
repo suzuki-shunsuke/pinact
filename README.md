@@ -2,9 +2,8 @@
 
 [Motivation](#motivation) | [Install](INSTALL.md) | [How to use](#how-to-use) | [GitHub Actions](https://github.com/suzuki-shunsuke/pinact-action) | [Configuration](#configuration) | [LICENSE](LICENSE)
 
-Pin GitHub Actions versions
-
-pinact edits GitHub Workflow files and pins versions of Actions and Reusable Workflows.
+pinact is a CLI to edit GitHub Workflow files and pins versions of Actions and Reusable Workflows.
+pinact can also [update their versions](#update-actions) and [verify version annotations](docs/codes/001.md).
 
 ```console
 $ pinact run
@@ -40,7 +39,19 @@ index 84bd67a..5d92e44 100644
      permissions:
 ```
 
-pinact also supports [verifying version annotations](docs/codes/001.md) and [updating actions](#update-actions).
+## Update actions
+
+[#663](https://github.com/suzuki-shunsuke/pinact/pull/663) pinact >= v1.1.0
+
+You can update actions using the `-update (-u)` option:
+
+```sh
+pinact run -u
+```
+
+## Verify version annotations
+
+Please see [the document](docs/codes/001.md).
 
 ## Motivation
 
@@ -85,10 +96,6 @@ pinact calls GitHub REST API to get commit hashes and tags.
 You can pass GitHub Access token via environment variable `GITHUB_TOKEN`.
 If no GitHub Access token is passed, pinact calls GitHub REST API without access token.
 
-## Usage
-
-Please see [USAGE](USAGE.md).
-
 ## How to use
 
 Please run `pinact run` on a Git repository root directory, then target files are fixed.
@@ -119,20 +126,6 @@ $ pinact init '.github/pinact.yaml'
 ```
 
 About the configuration, please see [Configuration](#Configuration).
-
-## Update actions
-
-[#663](https://github.com/suzuki-shunsuke/pinact/pull/663) pinact >= v1.1.0
-
-You can update actions using the `-update (-u)` option:
-
-```sh
-pinact run -u
-```
-
-## Verify version annotations
-
-Please see [the document](docs/codes/001.md).
 
 ## GitHub Actions
 
@@ -183,7 +176,7 @@ ajv --spec=draft2020 -s json-schema/pinact.json -d pinact.yaml
 #### Input Complementation by YAML Language Server
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/refs/heads/main/json-schema/pinact.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/main/json-schema/pinact.json
 ```
 
 ## See also
