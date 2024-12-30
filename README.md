@@ -175,8 +175,18 @@ ajv --spec=draft2020 -s json-schema/pinact.json -d pinact.yaml
 
 #### Input Complementation by YAML Language Server
 
+[Please see the comment too.](https://github.com/szksh-lab/.github/issues/67#issuecomment-2564960491)
+
+Version: `main`
+
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/main/json-schema/pinact.json
+```
+
+Or pinning version:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/v1.1.2/json-schema/pinact.json
 ```
 
 ## See also

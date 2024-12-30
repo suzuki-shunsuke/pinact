@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/v1.1.2/json-schema/pinact.json
 # pinact - https://github.com/suzuki-shunsuke/pinact
 files:
   - pattern: "^\\.github/workflows/.*\\.ya?ml$"
