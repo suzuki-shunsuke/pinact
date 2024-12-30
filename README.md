@@ -2,7 +2,7 @@
 
 [Motivation](#motivation) | [Install](INSTALL.md) | [How to use](#how-to-use) | [GitHub Actions](https://github.com/suzuki-shunsuke/pinact-action) | [Configuration](#configuration) | [LICENSE](LICENSE)
 
-pinact is a CLI to edit GitHub Workflow files and pins versions of Actions and Reusable Workflows.
+pinact is a CLI to edit GitHub Workflow and Composite action files and pin versions of Actions and Reusable Workflows.
 pinact can also [update their versions](#update-actions) and [verify version annotations](docs/codes/001.md).
 
 ```console
