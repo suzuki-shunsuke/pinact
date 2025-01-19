@@ -22,7 +22,7 @@ type IgnoreAction struct {
 }
 
 func getConfigPath(fs afero.Fs) (string, error) {
-	for _, path := range []string{".pinact.yaml", ".github/pinact.yaml"} {
+	for _, path := range []string{".pinact.yaml", ".github/pinact.yaml", ".pinact.yml", ".github/pinact.yml"} {
 		f, err := afero.Exists(fs, path)
 		if err != nil {
 			return "", fmt.Errorf("check if %s exists: %w", path, err)

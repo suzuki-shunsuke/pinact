@@ -30,7 +30,7 @@ index 84bd67a..5d92e44 100644
          with:
            path: prime-numbers
            key: ${{ runner.os }}-primes
- 
+
    actionlint:
 -    uses: suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml@v0.5.0
 +    uses: suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml@b6a5f966d4504893b2aeb60cf2b0de8946e48504 # v0.5.0
@@ -135,7 +135,7 @@ We develop GitHub Actions to pin GitHub Actions and reusable workflows by pinact
 
 ## Configuration
 
-pinact supports a configuration file `.pinact.yaml` or `.github/pinact.yaml`.
+pinact supports a configuration file `.pinact.yaml`, `.github/pinact.yaml`, `.pinact.yml` or `.github/pinact.yml`.
 You can also specify the configuration file path by the environment variable `PINACT_CONFIG` or command line option `-c`.
 
 .pinact.yaml
