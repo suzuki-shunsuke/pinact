@@ -5,13 +5,6 @@
   "$defs": {
     "Config": {
       "properties": {
-        "files": {
-          "items": {
-            "$ref": "#/$defs/File"
-          },
-          "type": "array",
-          "description": "Target files. If files are passed via positional command line arguments"
-        },
         "ignore_actions": {
           "items": {
             "$ref": "#/$defs/IgnoreAction"
