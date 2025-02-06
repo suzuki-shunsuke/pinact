@@ -11,12 +11,12 @@ USAGE:
    pinact [global options] command [command options]
 
 VERSION:
-   1.2.0 (939e08ac7c561388a00d179d5fdfd27cf7250dcf)
+   1.2.1 (e12bacec710be95d896cf0da4747ce6e42ebb77d)
 
 COMMANDS:
-   version  Show version
-   run      Pin GitHub Actions versions
    init     Create .pinact.yaml if it doesn't exist
+   run      Pin GitHub Actions versions
+   version  Show version
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
