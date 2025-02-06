@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/suzuki-shunsuke/urfave-cli-help-all/helpall"
 	"github.com/urfave/cli/v2"
 )
 
@@ -53,6 +54,7 @@ func (r *Runner) Run(ctx context.Context, args ...string) error {
 			r.newVersionCommand(),
 			r.newRunCommand(),
 			r.newInitCommand(),
+			helpall.New(nil),
 		},
 	}
 
