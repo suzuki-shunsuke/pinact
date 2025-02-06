@@ -11,7 +11,7 @@ USAGE:
    pinact [global options] command [command options]
 
 VERSION:
-   1.1.0 (175ef6468b3ff93c52f4194670b5d79e118c7299)
+   1.2.0 (939e08ac7c561388a00d179d5fdfd27cf7250dcf)
 
 COMMANDS:
    version  Show version
