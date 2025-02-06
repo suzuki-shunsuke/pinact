@@ -4,78 +4,16 @@
 
 ```console
 $ pinact help
-NAME:
-   pinact - Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact
-
-USAGE:
-   pinact [global options] command [command options]
-
-VERSION:
-   1.1.0 (175ef6468b3ff93c52f4194670b5d79e118c7299)
-
-COMMANDS:
-   version  Show version
-   run      Pin GitHub Actions versions
-   init     Create .pinact.yaml if it doesn't exist
-   help, h  Shows a list of commands or help for one command
-
-GLOBAL OPTIONS:
-   --log-level value         log level [$PINACT_LOG_LEVEL]
-   --config value, -c value  configuration file path [$PINACT_CONFIG]
-   --help, -h                show help
-   --version, -v             print the version
 ```
 
 ## pinact init
 
 ```console
 $ pinact help init
-NAME:
-   pinact init - Create .pinact.yaml if it doesn't exist
-
-USAGE:
-   pinact init [command options]
-
-DESCRIPTION:
-   Create .pinact.yaml if it doesn't exist
-
-   $ pinact init
-
-   You can also pass configuration file path.
-
-   e.g.
-
-   $ pinact init .github/pinact.yaml
-
-
-OPTIONS:
-   --help, -h  show help
 ```
 
 ## pinact run
 
 ```console
 $ pinact help run
-NAME:
-   pinact run - Pin GitHub Actions versions
-
-USAGE:
-   pinact run [command options]
-
-DESCRIPTION:
-   If no argument is passed, pinact searches GitHub Actions workflow files from .github/workflows.
-
-   $ pinact run
-
-   You can also pass workflow file paths as arguments.
-
-   e.g.
-
-   $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
-
-
-OPTIONS:
-   --verify, -v  Verify if pairs of commit SHA and version are correct (default: false)
-   --update, -u  Update actions to latest versions (default: false)
-   --help, -h    show help
 ```
