@@ -4,7 +4,7 @@ go 1.23.4
 
 require (
 	github.com/google/go-cmp v0.6.0
-	github.com/google/go-github/v68 v68.0.0
+	github.com/google/go-github/v69 v69.0.0
 	github.com/hashicorp/go-version v1.7.0
 	github.com/mattn/go-colorable v0.1.14
 	github.com/sirupsen/logrus v1.9.3
