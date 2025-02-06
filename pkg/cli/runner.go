@@ -51,9 +51,9 @@ func (r *Runner) Run(ctx context.Context, args ...string) error {
 		},
 		EnableBashCompletion: true,
 		Commands: []*cli.Command{
-			r.newVersionCommand(),
-			r.newRunCommand(),
 			r.newInitCommand(),
+			r.newRunCommand(),
+			r.newVersionCommand(),
 			helpall.New(nil),
 		},
 	}
