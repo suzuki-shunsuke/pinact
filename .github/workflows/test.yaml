@@ -38,6 +38,7 @@ jobs:
         with:
           needs: ${{ toJson(needs) }} # Required
     needs:
+      - path-filter
       - renovate-config-validator
       - ghalint
       - test
