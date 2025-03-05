@@ -8,6 +8,7 @@ jobs:
     outputs:
       renovate-config-validator: ${{steps.changes.outputs.renovate-config-validator}}
       ghalint: ${{steps.changes.outputs.ghalint}}
+      workflow: ${{steps.changes.outputs.workflow}}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions: {}
@@ -16,6 +17,8 @@ jobs:
         id: changes
         with:
           filters: |
+            workflow:
+              - .github/workflows/test.yaml
             renovate-config-validator:
               - renovate.json5
               - .github/workflows/test.yaml
@@ -37,6 +40,7 @@ jobs:
       - uses: suzuki-shunsuke/required-status-check-action@a52347cde051d0025422712a4afb08304265a68d # v0.1.1
         with:
           needs: ${{ toJson(needs) }} # Required
+          check_workflow: ${{ needs.path-filter.outputs.workflow }}
     needs:
       - path-filter
       - renovate-config-validator
