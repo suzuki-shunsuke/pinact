@@ -31,10 +31,12 @@ jobs:
     # If all dependent jobs succeed or are skipped this job succeeds.
     runs-on: ubuntu-latest
     permissions: {}
-    if: failure()
+    if: always()
     timeout-minutes: 10
     steps:
-      - run: exit 1
+      - uses: suzuki-shunsuke/required-status-check-action@a52347cde051d0025422712a4afb08304265a68d # v0.1.1
+        with:
+          needs: ${{ toJson(needs) }} # Required
     needs:
       - renovate-config-validator
       - ghalint
