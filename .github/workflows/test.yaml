@@ -37,7 +37,7 @@ jobs:
     if: always()
     timeout-minutes: 10
     steps:
-      - uses: suzuki-shunsuke/required-status-check-action@a52347cde051d0025422712a4afb08304265a68d # v0.1.1
+      - uses: suzuki-shunsuke/required-status-check-action@2b5a46064846b09381852c2c4217e898f639e768 # v0.1.3
         with:
           needs: ${{ toJson(needs) }} # Required
           check_workflow: ${{ needs.path-filter.outputs.workflow }}
