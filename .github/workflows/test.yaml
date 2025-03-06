@@ -10,7 +10,7 @@ jobs:
       ghalint: ${{steps.changes.outputs.ghalint}}
       workflow: ${{steps.changes.outputs.workflow}}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     permissions: {}
     steps:
       - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
