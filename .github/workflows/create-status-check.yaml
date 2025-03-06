@@ -8,6 +8,7 @@ on:
 jobs:
   status-check:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     permissions:
       statuses: write # To update commit statuses
     steps:

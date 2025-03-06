@@ -17,6 +17,8 @@ jobs:
         id: changes
         with:
           filters: |
+            workflow:
+              - .github/workflows/test.yaml
             renovate-config-validator:
               - renovate.json5
               - .github/workflows/test.yaml
@@ -26,6 +28,24 @@ jobs:
               - aqua/aqua.yaml
               - aqua/imports/ghalint.yaml
               - ghalint.yaml
+
+  status-check:
+    # This job is used for main branch's branch protection rule's status check.
+    # If all dependent jobs succeed or are skipped this job succeeds.
+    runs-on: ubuntu-latest
+    permissions: {}
+    if: always()
+    timeout-minutes: 10
+    steps:
+      - uses: suzuki-shunsuke/required-status-check-action@2b5a46064846b09381852c2c4217e898f639e768 # v0.1.3
+        with:
+          needs: ${{ toJson(needs) }} # Required
+          check_workflow: ${{ needs.path-filter.outputs.workflow }}
+    needs:
+      - path-filter
+      - renovate-config-validator
+      - ghalint
+      - test
 
   renovate-config-validator:
     uses: ./.github/workflows/wc-renovate-config-validator.yaml
