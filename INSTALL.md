@@ -14,6 +14,14 @@ There are some ways to install pinact.
 
 You can install pinact using [Homebrew](https://brew.sh/).
 
+[Homebrew Core Formula: pinact](https://formulae.brew.sh/formula/pinact)
+
+```sh
+brew install pinact
+```
+
+Or
+
 ```sh
 brew install suzuki-shunsuke/pinact/pinact
 ```
