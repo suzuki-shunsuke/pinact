@@ -40,7 +40,7 @@
       "properties": {
         "name": {
           "type": "string",
-          "description": "Action and reusable workflow names that pinact ignores"
+          "description": "A regular expression to ignore actions and reusable workflows"
         }
       },
       "additionalProperties": false,
