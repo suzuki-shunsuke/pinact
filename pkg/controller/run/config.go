@@ -19,7 +19,7 @@ type File struct {
 }
 
 type IgnoreAction struct {
-	Name   string `json:"name" jsonschema:"description=Action and reusable workflow names that pinact ignores"`
+	Name   string `json:"name" jsonschema:"description=A regular expression to ignore actions and reusable workflows"`
 	regexp *regexp.Regexp
 }
 
