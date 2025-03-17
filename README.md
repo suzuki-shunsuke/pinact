@@ -160,7 +160,11 @@ The regular expression of target files. If files are passed via positional comma
 
 ### `ignore_actions[].name`
 
-Action and reusable workflow names that pinact ignores.
+> [!TIP]
+> As of pinact v1.3.0, regular expressions are supported. [#798](https://github.com/suzuki-shunsuke/pinact/pull/798)
+
+A regular expression to ignore actions and reusable workflows.
+Actions and reusable workflows matching the regular expression are ignored.
 
 ### JSON Schema
 
