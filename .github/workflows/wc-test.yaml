@@ -20,6 +20,7 @@ jobs:
           aqua_version: v2.45.1
         env:
           AQUA_GITHUB_TOKEN: ${{github.token}}
+      - run: rm "$(aqua root-dir)/bin/pinact"
       - run: golangci-lint run --timeout 120s
         env:
           AQUA_GITHUB_TOKEN: ${{github.token}}
