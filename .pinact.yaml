@@ -8,4 +8,4 @@ files:
 ignore_actions:
   - name: actions/setup-java
   - name: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml
-  - name: "^aquaproj/"
+  - name: "^peaceiris/"
