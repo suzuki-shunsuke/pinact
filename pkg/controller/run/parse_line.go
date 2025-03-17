@@ -84,7 +84,7 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 	logE = logE.WithField("action", action.Name)
 
 	for _, ignoreAction := range cfg.IgnoreActions {
-		if action.Name == ignoreAction.Name {
+		if ignoreAction.Match(action.Name) {
 			logE.WithFields(logrus.Fields{
 				"line": line,
 			}).Debug("ignore the action")

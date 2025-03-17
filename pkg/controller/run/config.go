@@ -2,6 +2,7 @@ package run
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v3"
@@ -18,7 +19,12 @@ type File struct {
 }
 
 type IgnoreAction struct {
-	Name string `json:"name" jsonschema:"description=Action and reusable workflow names that pinact ignores"`
+	Name   string `json:"name" jsonschema:"description=Action and reusable workflow names that pinact ignores"`
+	regexp *regexp.Regexp
+}
+
+func (ia *IgnoreAction) Match(name string) bool {
+	return ia.regexp.MatchString(name)
 }
 
 func getConfigPath(fs afero.Fs) (string, error) {
@@ -52,6 +58,12 @@ func (c *Controller) readConfig(configFilePath string, cfg *Config) error {
 	defer f.Close()
 	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
 		return fmt.Errorf("decode a configuration file as YAML: %w", err)
+	}
+	for _, ignoreAction := range cfg.IgnoreActions {
+		ignoreAction.regexp, err = regexp.Compile(ignoreAction.Name)
+		if err != nil {
+			return fmt.Errorf("compile a regular expression: %w", err)
+		}
 	}
 	return nil
 }
