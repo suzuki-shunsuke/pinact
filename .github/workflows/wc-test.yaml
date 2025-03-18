@@ -27,10 +27,16 @@ jobs:
       - run: go test -v ./... -race -covermode=atomic
       - run: go install ./cmd/pinact
       - run: pinact -v
-      - run: pinact run
+      - run: pinact run testdata/foo.yaml
         env:
           GITHUB_TOKEN: ${{github.token}}
       - run: diff testdata/foo.yaml testdata/foo.yaml.after
+      - run: pinact run
+        working-directory: testdata/actions
+        env:
+          GITHUB_TOKEN: ${{github.token}}
+      - run: diff -r testdata/actions testdata/actions.after
+
       - run: pinact run -u
         env:
           GITHUB_TOKEN: ${{github.token}}
