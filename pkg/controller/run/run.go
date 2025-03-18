@@ -3,6 +3,7 @@ package run
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -17,6 +18,7 @@ type ParamRun struct {
 	PWD               string
 	IsVerify          bool
 	Update            bool
+	Check             bool
 }
 
 func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRun) error {
@@ -25,16 +27,26 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 		return err
 	}
 	cfg.IsVerify = param.IsVerify
+	cfg.Check = param.Check
 	workflowFilePaths, err := c.searchFiles(logE, param.WorkflowFilePaths, cfg, param.PWD)
 	if err != nil {
 		return fmt.Errorf("search target files: %w", err)
 	}
 
+	failed := false
 	for _, workflowFilePath := range workflowFilePaths {
 		logE := logE.WithField("workflow_file", workflowFilePath)
 		if err := c.runWorkflow(ctx, logE, workflowFilePath, cfg); err != nil {
-			logerr.WithError(logE, err).Warn("update a workflow")
+			if !param.Check {
+				logerr.WithError(logE, err).Warn("update a workflow")
+				continue
+			}
+			logerr.WithError(logE, err).Error("update a workflow")
+			failed = true
 		}
+	}
+	if failed {
+		return errors.New("update some workflows")
 	}
 	return nil
 }
@@ -52,6 +64,9 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 			continue
 		}
 		if line != l {
+			if cfg.Check {
+				return errors.New("actions aren't pinned")
+			}
 			changed = true
 		}
 		lines[i] = l
