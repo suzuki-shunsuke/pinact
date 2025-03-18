@@ -41,12 +41,12 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 				logerr.WithError(logE, err).Warn("update a workflow")
 				continue
 			}
-			logerr.WithError(logE, err).Error("update a workflow")
+			logerr.WithError(logE, err).Error("check a workflow")
 			failed = true
 		}
 	}
 	if failed {
-		return errors.New("update some workflows")
+		return errors.New("actions aren't pinned")
 	}
 	return nil
 }
