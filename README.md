@@ -5,8 +5,8 @@
 pinact is a CLI to edit GitHub Workflow and Composite action files and pin versions of Actions and Reusable Workflows.
 pinact can also [update their versions](#update-actions) and [verify version annotations](docs/codes/001.md).
 
-```console
-$ pinact run
+```sh
+pinact run
 ```
 
 ```diff
@@ -100,8 +100,8 @@ If no GitHub Access token is passed, pinact calls GitHub REST API without access
 
 Please run `pinact run` on a Git repository root directory, then target files are fixed.
 
-```console
-$ pinact run
+```sh
+pinact run
 ```
 
 Default target files are:
@@ -123,21 +123,27 @@ You can change target files by command line arguments or configuration files.
 
 e.g.
 
-```console
-$ pinact run action.yaml
+```sh
+pinact run example.yaml
+```
+
+pinact can fix example codes in documents too.
+
+```sh
+pinact run README.md
 ```
 
 A configuration file is optional.
 You can create a configuration file `.pinact.yaml` by `pinact init`.
 
-```console
-$ pinact init
+```sh
+pinact init
 ```
 
 You can change the output path.
 
-```console
-$ pinact init '.github/pinact.yaml'
+```sh
+pinact init '.github/pinact.yaml'
 ```
 
 About the configuration, please see [Configuration](#Configuration).
