@@ -104,7 +104,22 @@ Please run `pinact run` on a Git repository root directory, then target files ar
 $ pinact run
 ```
 
-Default target files are `\.github/workflows/.*\.ya?ml$`, but you can change target files by command line arguments or configuration files.
+Default target files are:
+
+```
+.github/workflows/*.yml
+.github/workflows/*.yaml
+action.yml
+action.yaml
+*/action.yml
+*/action.yaml
+*/*/action.yml
+*/*/action.yaml
+*/*/*/action.yml
+*/*/*/action.yaml
+```
+
+You can change target files by command line arguments or configuration files.
 
 e.g.
 
