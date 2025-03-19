@@ -57,19 +57,24 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		return err
 	}
 	changed := false
+	failed := false
 	for i, line := range lines {
 		l, err := c.parseLine(ctx, logE, line, cfg)
 		if err != nil {
 			logerr.WithError(logE, err).Error("parse a line")
+			if cfg.Check {
+				failed = true
+			}
 			continue
 		}
-		if line != l {
-			if cfg.Check {
-				return errors.New("actions aren't pinned")
-			}
-			changed = true
+		if line == l {
+			continue
 		}
+		changed = true
 		lines[i] = l
+	}
+	if failed {
+		return errors.New("actions aren't pinned")
 	}
 	if !changed {
 		return nil

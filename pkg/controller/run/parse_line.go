@@ -73,7 +73,7 @@ func parseAction(line string) *Action {
 	}
 }
 
-func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config) (string, error) {
+func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config) (string, error) { //nolint:cyclop
 	action := parseAction(line)
 	if action == nil {
 		// Ignore a line if the line doesn't use an action.
@@ -90,6 +90,13 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 			}).Debug("ignore the action")
 			return line, nil
 		}
+	}
+
+	if cfg.Check {
+		if fullCommitSHAPattern.MatchString(action.Version) {
+			return line, nil
+		}
+		return line, logerr.WithFields(errors.New("action isn't pinned"), logE.Data) //nolint:wrapcheck
 	}
 
 	if f := c.parseActionName(action); !f {
