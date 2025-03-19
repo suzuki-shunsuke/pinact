@@ -11,7 +11,7 @@ USAGE:
    pinact [global options] command [command options]
 
 VERSION:
-   1.5.0 (b2ce7b581b3eb902d1c23ffc206f386d4cb944d1)
+   1.6.0 (a68e62c54d6e133ca43039719eee0d72ed3bd9a5)
 
 COMMANDS:
    init     Create .pinact.yaml if it doesn't exist
@@ -76,6 +76,7 @@ DESCRIPTION:
 
 OPTIONS:
    --verify, -v  Verify if pairs of commit SHA and version are correct (default: false)
+   --check       Exit with a non-zero status code if actions are not pinned. If this is true, files aren't updated (default: false)
    --update, -u  Update actions to latest versions (default: false)
    --help, -h    show help
 ```
