@@ -123,7 +123,6 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 		{
 			name: "unrelated",
 			line: "unrelated",
-			exp:  "unrelated",
 		},
 		{
 			name: "checkout v3",
