@@ -88,10 +88,13 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		changed = true
 		lines[i] = l
 	}
-	if failed {
+	if cfg.Check && failed {
 		return ErrNotPinned
 	}
 	if !changed {
+		if cfg.Fail && failed {
+			return ErrNotPinned
+		}
 		return nil
 	}
 	f, err := os.Create(workflowFilePath)
@@ -101,6 +104,9 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 	defer f.Close()
 	if _, err := f.WriteString(strings.Join(lines, "\n") + "\n"); err != nil {
 		return fmt.Errorf("write a workflow file: %w", err)
+	}
+	if cfg.Fail && failed {
+		return ErrNotPinned
 	}
 	return nil
 }
