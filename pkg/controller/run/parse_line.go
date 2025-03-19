@@ -96,7 +96,9 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 		if fullCommitSHAPattern.MatchString(action.Version) {
 			return line, nil
 		}
-		return line, logerr.WithFields(errors.New("action isn't pinned"), logE.Data) //nolint:wrapcheck
+		return line, logerr.WithFields(errors.New("action isn't pinned"), logrus.Fields{ //nolint:wrapcheck
+			"action": action.Name + "@" + action.Version,
+		})
 	}
 
 	if f := c.parseActionName(action); !f {
