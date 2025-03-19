@@ -39,7 +39,7 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 	failed := false
 	for _, workflowFilePath := range workflowFilePaths {
 		logE := logE.WithField("workflow_file", workflowFilePath)
-		if err := c.runWorkflow(ctx, logE, workflowFilePath, cfg); err != nil {
+		if err := c.runWorkflow(ctx, logE, workflowFilePath, cfg); err != nil { //nolint:nestif
 			if param.Check {
 				failed = true
 				if !errors.Is(err, ErrNotPinned) {
@@ -49,6 +49,9 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 			}
 			if param.Fail {
 				failed = true
+				if errors.Is(err, ErrNotPinned) {
+					continue
+				}
 			}
 			logerr.WithError(logE, err).Warn("update a workflow")
 		}
