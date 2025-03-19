@@ -37,19 +37,23 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 	for _, workflowFilePath := range workflowFilePaths {
 		logE := logE.WithField("workflow_file", workflowFilePath)
 		if err := c.runWorkflow(ctx, logE, workflowFilePath, cfg); err != nil {
-			if !param.Check {
-				logerr.WithError(logE, err).Warn("update a workflow")
+			if param.Check {
+				failed = true
+				if !errors.Is(err, ErrNotPinned) {
+					logerr.WithError(logE, err).Error("check a workflow")
+				}
 				continue
 			}
-			logerr.WithError(logE, err).Error("check a workflow")
-			failed = true
+			logerr.WithError(logE, err).Warn("update a workflow")
 		}
 	}
 	if failed {
-		return errors.New("actions aren't pinned")
+		return ErrNotPinned
 	}
 	return nil
 }
+
+var ErrNotPinned = errors.New("actions aren't pinned")
 
 func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string, cfg *Config) error {
 	lines, err := c.readWorkflow(workflowFilePath)
@@ -74,7 +78,7 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		lines[i] = l
 	}
 	if failed {
-		return errors.New("actions aren't pinned")
+		return ErrNotPinned
 	}
 	if !changed {
 		return nil
