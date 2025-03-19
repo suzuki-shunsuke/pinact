@@ -39,20 +39,6 @@ index 84bd67a..5d92e44 100644
      permissions:
 ```
 
-## Update actions
-
-[#663](https://github.com/suzuki-shunsuke/pinact/pull/663) pinact >= v1.1.0
-
-You can update actions using the `-update (-u)` option:
-
-```sh
-pinact run -u
-```
-
-## Verify version annotations
-
-Please see [the document](docs/codes/001.md).
-
 ## Motivation
 
 It is a good manner to pin GitHub Actions versions by commit hash.
@@ -127,6 +113,16 @@ e.g.
 pinact run example.yaml
 ```
 
+### Update actions
+
+[#663](https://github.com/suzuki-shunsuke/pinact/pull/663) pinact >= v1.1.0
+
+You can update actions using the `-update (-u)` option:
+
+```sh
+pinact run -u
+```
+
 ### Fix example codes in documents
 
 pinact can fix example codes in documents too.
@@ -177,6 +173,10 @@ ERRO[0000] parse a line                                  action=suzuki-shunsuke/
 $ echo $?
 1
 ```
+
+### Verify version annotations
+
+Please see [the document](docs/codes/001.md).
 
 ## GitHub Actions
 
