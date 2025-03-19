@@ -16,7 +16,7 @@ var (
 	usesPattern          = regexp.MustCompile(`^( *(?:- )?['"]?uses['"]? *: +)(['"]?)(.*?)@([^ '"]+)['"]?(?:( +# +(?:tag=)?)(v?\d+[^ ]*)(.*))?`)
 	fullCommitSHAPattern = regexp.MustCompile(`\b[0-9a-f]{40}\b`)
 	semverPattern        = regexp.MustCompile(`^v?\d+\.\d+\.\d+[^ ]*$`)
-	shortTagPattern      = regexp.MustCompile(`^v\d+$`)
+	shortTagPattern      = regexp.MustCompile(`^v?\d+(\.\d+)?$`)
 )
 
 type Action struct {
