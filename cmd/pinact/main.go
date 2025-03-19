@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/signal"
 	"syscall"
@@ -9,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/logrus-error/logerr"
 	"github.com/suzuki-shunsuke/pinact/pkg/cli"
+	"github.com/suzuki-shunsuke/pinact/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/pkg/log"
 )
 
@@ -25,6 +27,9 @@ type HasExitCode interface {
 func main() {
 	logE := log.New(version)
 	if err := core(logE); err != nil {
+		if errors.Is(err, run.ErrNotPinned) {
+			os.Exit(1)
+		}
 		logerr.WithError(logE, err).Fatal("pinact failed")
 	}
 }

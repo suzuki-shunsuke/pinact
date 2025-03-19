@@ -3,6 +3,7 @@ package run
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -17,6 +18,7 @@ type ParamRun struct {
 	PWD               string
 	IsVerify          bool
 	Update            bool
+	Check             bool
 }
 
 func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRun) error {
@@ -25,19 +27,33 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 		return err
 	}
 	cfg.IsVerify = param.IsVerify
+	cfg.Check = param.Check
 	workflowFilePaths, err := c.searchFiles(logE, param.WorkflowFilePaths, cfg, param.PWD)
 	if err != nil {
 		return fmt.Errorf("search target files: %w", err)
 	}
 
+	failed := false
 	for _, workflowFilePath := range workflowFilePaths {
 		logE := logE.WithField("workflow_file", workflowFilePath)
 		if err := c.runWorkflow(ctx, logE, workflowFilePath, cfg); err != nil {
+			if param.Check {
+				failed = true
+				if !errors.Is(err, ErrNotPinned) {
+					logerr.WithError(logE, err).Error("check a workflow")
+				}
+				continue
+			}
 			logerr.WithError(logE, err).Warn("update a workflow")
 		}
 	}
+	if failed {
+		return ErrNotPinned
+	}
 	return nil
 }
+
+var ErrNotPinned = errors.New("actions aren't pinned")
 
 func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string, cfg *Config) error {
 	lines, err := c.readWorkflow(workflowFilePath)
@@ -45,16 +61,24 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		return err
 	}
 	changed := false
+	failed := false
 	for i, line := range lines {
 		l, err := c.parseLine(ctx, logE, line, cfg)
 		if err != nil {
 			logerr.WithError(logE, err).Error("parse a line")
+			if cfg.Check {
+				failed = true
+			}
 			continue
 		}
-		if line != l {
-			changed = true
+		if line == l {
+			continue
 		}
+		changed = true
 		lines[i] = l
+	}
+	if failed {
+		return ErrNotPinned
 	}
 	if !changed {
 		return nil
