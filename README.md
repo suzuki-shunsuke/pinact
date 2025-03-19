@@ -127,11 +127,15 @@ e.g.
 pinact run example.yaml
 ```
 
+### Fix example codes in documents
+
 pinact can fix example codes in documents too.
 
 ```sh
 pinact run README.md
 ```
+
+### Generate a configuration file `.pinact.yaml`
 
 A configuration file is optional.
 You can create a configuration file `.pinact.yaml` by `pinact init`.
@@ -147,6 +151,32 @@ pinact init '.github/pinact.yaml'
 ```
 
 About the configuration, please see [Configuration](#Configuration).
+
+### Validation
+
+`pinact >= v1.6.0` [#816](https://github.com/suzuki-shunsuke/pinact/pull/816)
+
+Instead of fixing files, you can validate if actions are pinned by `--check` option:
+
+```sh
+pinact run --check
+```
+
+Using this option, pinact doesn't fix files.
+If actions aren't pinned, the command fails.
+
+```console
+$ pinact run --check
+ERRO[0000] parse a line                                  action=actions/checkout@v2 error="action isn't pinned" pinact_version= program=pinact workflow_file=testdata/foo.yaml
+ERRO[0000] parse a line                                  action=actions/cache@v3.3.1 error="action isn't pinned" pinact_version= program=pinact workflow_file=testdata/foo.yaml
+ERRO[0000] parse a line                                  action=rharkor/caching-for-turbo@v1.6 error="action isn't pinned" pinact_version= program=pinact workflow_file=testdata/foo.yaml
+ERRO[0000] parse a line                                  action=actions/checkout@v3 error="action isn't pinned" pinact_version= program=pinact workflow_file=testdata/foo.yaml
+ERRO[0000] parse a line                                  action=actions/checkout@v3 error="action isn't pinned" pinact_version= program=pinact workflow_file=testdata/foo.yaml
+ERRO[0000] parse a line                                  action=suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml@v0.5.0 error="action isn't pinned" pinact_version= program=pinact workflow_file=testdata/foo.yaml
+
+$ echo $?
+1
+```
 
 ## GitHub Actions
 
