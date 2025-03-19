@@ -79,7 +79,7 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 			logerr.WithError(logE, err).Warn("parse a line")
 			continue
 		}
-		if line == "" || line == l {
+		if l == "" || line == l {
 			continue
 		}
 		changed = true
