@@ -35,6 +35,10 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Usage: "Exit with a non-zero status code if actions are not pinned. If this is true, files aren't updated",
 			},
 			&cli.BoolFlag{
+				Name:  "fail",
+				Usage: "Exit with a non-zero status code if actions can't be pinned",
+			},
+			&cli.BoolFlag{
 				Name:    "update",
 				Aliases: []string{"u"},
 				Usage:   "Update actions to latest versions",
@@ -58,6 +62,7 @@ func (r *Runner) runAction(c *cli.Context) error {
 		PWD:               pwd,
 		IsVerify:          c.Bool("verify"),
 		Check:             c.Bool("check"),
+		Fail:              c.Bool("fail"),
 	}
 	return ctrl.Run(c.Context, r.LogE, param) //nolint:wrapcheck
 }

@@ -13,6 +13,7 @@ type Config struct {
 	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores"`
 	IsVerify      bool            `json:"-" yaml:"-"`
 	Check         bool            `json:"-" yaml:"-"`
+	Fail          bool            `json:"-" yaml:"-"`
 }
 
 type File struct {

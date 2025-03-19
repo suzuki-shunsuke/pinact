@@ -19,6 +19,7 @@ type ParamRun struct {
 	IsVerify          bool
 	Update            bool
 	Check             bool
+	Fail              bool
 }
 
 func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRun) error {
@@ -28,7 +29,9 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 	}
 	cfg.IsVerify = param.IsVerify
 	cfg.Check = param.Check
-	workflowFilePaths, err := c.searchFiles(logE, param.WorkflowFilePaths, cfg, param.PWD)
+	cfg.Fail = param.Fail
+	c.cfg = cfg
+	workflowFilePaths, err := c.searchFiles(logE, param.WorkflowFilePaths, param.PWD)
 	if err != nil {
 		return fmt.Errorf("search target files: %w", err)
 	}
@@ -44,6 +47,9 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 				}
 				continue
 			}
+			if param.Fail {
+				failed = true
+			}
 			logerr.WithError(logE, err).Warn("update a workflow")
 		}
 	}
@@ -55,7 +61,7 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 
 var ErrNotPinned = errors.New("actions aren't pinned")
 
-func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string, cfg *Config) error {
+func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string, cfg *Config) error { //nolint:cyclop
 	lines, err := c.readWorkflow(workflowFilePath)
 	if err != nil {
 		return err
@@ -63,15 +69,17 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 	changed := false
 	failed := false
 	for i, line := range lines {
-		l, err := c.parseLine(ctx, logE, line, cfg)
+		l, err := c.parseLine(ctx, logE, line)
 		if err != nil {
-			logerr.WithError(logE, err).Error("parse a line")
-			if cfg.Check {
+			if cfg.Check || cfg.Fail {
+				logerr.WithError(logE, err).Error("parse a line")
 				failed = true
+				continue
 			}
+			logerr.WithError(logE, err).Warn("parse a line")
 			continue
 		}
-		if line == l {
+		if line == "" || line == l {
 			continue
 		}
 		changed = true

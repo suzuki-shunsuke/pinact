@@ -197,7 +197,8 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 					},
 				},
 			}, afero.NewMemMapFs())
-			line, err := ctrl.parseLine(ctx, logE, d.line, &Config{})
+			ctrl.cfg = &Config{}
+			line, err := ctrl.parseLine(ctx, logE, d.line)
 			if err != nil {
 				if d.isErr {
 					return
