@@ -119,22 +119,16 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 		// @<full commit hash> # v3
 		return c.parseShortSemverTagLine(ctx, logE, action)
 	default:
-		if c.cfg.Fail {
-			return "", ErrCantPinned
-		}
-		return "", nil
+		return "", ErrCantPinned
 	}
 }
 
-func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) { //nolint:cyclop
+func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) {
 	typ := getVersionType(action.Version)
 	switch typ {
 	case Shortsemver, Semver:
 	default:
-		if c.cfg.Fail {
-			return "", ErrCantPinned
-		}
-		return "", nil
+		return "", ErrCantPinned
 	}
 	// @xxx
 	if c.update {

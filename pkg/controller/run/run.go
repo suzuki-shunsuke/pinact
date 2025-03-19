@@ -19,7 +19,6 @@ type ParamRun struct {
 	IsVerify          bool
 	Update            bool
 	Check             bool
-	Fail              bool
 }
 
 func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRun) error {
@@ -29,7 +28,6 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 	}
 	cfg.IsVerify = param.IsVerify
 	cfg.Check = param.Check
-	cfg.Fail = param.Fail
 	c.cfg = cfg
 	workflowFilePaths, err := c.searchFiles(logE, param.WorkflowFilePaths, param.PWD)
 	if err != nil {
@@ -39,7 +37,7 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 	failed := false
 	for _, workflowFilePath := range workflowFilePaths {
 		logE := logE.WithField("workflow_file", workflowFilePath)
-		if err := c.runWorkflow(ctx, logE, workflowFilePath, cfg); err != nil { //nolint:nestif
+		if err := c.runWorkflow(ctx, logE, workflowFilePath, cfg); err != nil {
 			if param.Check {
 				failed = true
 				if !errors.Is(err, ErrNotPinned) {
@@ -47,13 +45,11 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 				}
 				continue
 			}
-			if param.Fail {
-				failed = true
-				if errors.Is(err, ErrNotPinned) {
-					continue
-				}
+			failed = true
+			if errors.Is(err, ErrNotPinned) {
+				continue
 			}
-			logerr.WithError(logE, err).Warn("update a workflow")
+			logerr.WithError(logE, err).Error("update a workflow")
 		}
 	}
 	if failed {
@@ -74,12 +70,8 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 	for i, line := range lines {
 		l, err := c.parseLine(ctx, logE, line)
 		if err != nil {
-			if cfg.Check || cfg.Fail {
-				logerr.WithError(logE, err).Error("parse a line")
-				failed = true
-				continue
-			}
-			logerr.WithError(logE, err).Warn("parse a line")
+			logerr.WithError(logE, err).Error("parse a line")
+			failed = true
 			continue
 		}
 		if l == "" || line == l {
@@ -92,7 +84,7 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		return ErrNotPinned
 	}
 	if !changed {
-		if cfg.Fail && failed {
+		if failed {
 			return ErrNotPinned
 		}
 		return nil
@@ -105,7 +97,7 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 	if _, err := f.WriteString(strings.Join(lines, "\n") + "\n"); err != nil {
 		return fmt.Errorf("write a workflow file: %w", err)
 	}
-	if cfg.Fail && failed {
+	if failed {
 		return ErrNotPinned
 	}
 	return nil
