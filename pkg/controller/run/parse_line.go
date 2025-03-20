@@ -125,7 +125,7 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 	}
 }
 
-func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) {
+func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) { //nolint:cyclop
 	typ := getVersionType(action.Version)
 	switch typ {
 	case Shortsemver, Semver:
