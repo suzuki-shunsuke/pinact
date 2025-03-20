@@ -10,19 +10,19 @@ import (
 	"github.com/spf13/afero"
 )
 
-func (c *Controller) searchFiles(logE *logrus.Entry, workflowFilePaths []string, cfg *Config, pwd string) ([]string, error) {
+func (c *Controller) searchFiles(logE *logrus.Entry, workflowFilePaths []string, pwd string) ([]string, error) {
 	if len(workflowFilePaths) != 0 {
 		return workflowFilePaths, nil
 	}
-	if len(cfg.Files) > 0 {
-		return c.searchFilesByConfig(logE, cfg, pwd)
+	if len(c.cfg.Files) > 0 {
+		return c.searchFilesByConfig(logE, pwd)
 	}
 	return listWorkflows()
 }
 
-func (c *Controller) searchFilesByConfig(logE *logrus.Entry, cfg *Config, pwd string) ([]string, error) {
-	patterns := make([]*regexp.Regexp, 0, len(cfg.Files))
-	for _, file := range cfg.Files {
+func (c *Controller) searchFilesByConfig(logE *logrus.Entry, pwd string) ([]string, error) {
+	patterns := make([]*regexp.Regexp, 0, len(c.cfg.Files))
+	for _, file := range c.cfg.Files {
 		if file.Pattern == "" {
 			// ignore
 			continue

@@ -11,6 +11,7 @@ type Controller struct {
 	repositoriesService RepositoriesService
 	fs                  afero.Fs
 	update              bool
+	cfg                 *Config
 }
 
 type InputNew struct {

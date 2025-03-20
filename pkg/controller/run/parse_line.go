@@ -73,73 +73,77 @@ func parseAction(line string) *Action {
 	}
 }
 
-func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config) (string, error) { //nolint:cyclop
+var ErrCantPinned = errors.New("action can't be pinned")
+
+func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string) (s string, e error) { //nolint:cyclop
+	defer func() {
+		e = logerr.WithFields(e, logE.Data)
+	}()
 	action := parseAction(line)
 	if action == nil {
 		// Ignore a line if the line doesn't use an action.
 		logE.WithField("line", line).Debug("unmatch")
-		return line, nil
+		return "", nil
 	}
 
-	logE = logE.WithField("action", action.Name)
+	logE = logE.WithField("action", action.Name+"@"+action.Version)
 
-	for _, ignoreAction := range cfg.IgnoreActions {
+	for _, ignoreAction := range c.cfg.IgnoreActions {
 		if ignoreAction.Match(action.Name) {
-			logE.WithFields(logrus.Fields{
-				"line": line,
-			}).Debug("ignore the action")
-			return line, nil
+			logE.Debug("ignore the action")
+			return "", nil
 		}
 	}
 
-	if cfg.Check {
+	if c.cfg.Check {
 		if fullCommitSHAPattern.MatchString(action.Version) {
-			return line, nil
+			return "", nil
 		}
-		return line, logerr.WithFields(errors.New("action isn't pinned"), logrus.Fields{ //nolint:wrapcheck
-			"action": action.Name + "@" + action.Version,
-		})
+		return "", ErrNotPinned
 	}
 
 	if f := c.parseActionName(action); !f {
 		logE.WithField("line", line).Debug("ignore line")
-		return line, nil
+		return "", nil
 	}
 
 	switch getVersionType(action.Tag) {
 	case Empty:
-		return c.parseNoTagLine(ctx, logE, line, action)
+		return c.parseNoTagLine(ctx, logE, action)
 	case Semver:
 		// @xxx # v3.0.0
-		return c.parseSemverTagLine(ctx, logE, line, cfg, action)
+		return c.parseSemverTagLine(ctx, logE, action)
 	case Shortsemver:
 		// @xxx # v3
 		// @<full commit hash> # v3
-		return c.parseShortSemverTagLine(ctx, logE, line, action)
+		return c.parseShortSemverTagLine(ctx, logE, action)
 	default:
-		return line, nil
+		if getVersionType(action.Version) == FullCommitSHA {
+			return "", nil
+		}
+		return "", ErrCantPinned
 	}
 }
 
-func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, line string, action *Action) (string, error) {
+func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) { //nolint:cyclop
 	typ := getVersionType(action.Version)
 	switch typ {
 	case Shortsemver, Semver:
+	case FullCommitSHA:
+		return "", nil
 	default:
-		return line, nil
+		return "", ErrCantPinned
 	}
 	// @xxx
 	if c.update {
 		// get the latest version
 		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
 		if err != nil {
-			logerr.WithError(logE, err).Warn("get the latest version")
-			return line, nil
+			return "", fmt.Errorf("get the latest version: %w", err)
 		}
 		sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
 		if err != nil {
-			logerr.WithError(logE, err).Warn("get a reference")
-			return line, nil
+			return "", fmt.Errorf("get a reference: %w", err)
 		}
 		return patchLine(action, sha, lv), nil
 	}
@@ -149,8 +153,7 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, lin
 	// > The :ref in the URL must be formatted as heads/<branch name> for branches and tags/<tag name> for tags. If the :ref doesn't match an existing ref, a 404 is returned.
 	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Version, "")
 	if err != nil {
-		logerr.WithError(logE, err).Warn("get a reference")
-		return line, nil
+		return "", fmt.Errorf("get a reference: %w", err)
 	}
 	longVersion := action.Version
 	if typ == Shortsemver {
@@ -166,55 +169,51 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, lin
 	return patchLine(action, sha, longVersion), nil
 }
 
-func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry, line string, cfg *Config, action *Action) (string, error) {
+func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) {
 	// @xxx # v3.0.0
 	if c.update {
 		// get the latest version
 		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
 		if err != nil {
-			logerr.WithError(logE, err).Warn("get the latest version")
-			return line, nil
+			return "", fmt.Errorf("get the latest version: %w", err)
 		}
 		if action.Tag != lv {
 			sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
 			if err != nil {
-				logerr.WithError(logE, err).Warn("get a reference")
-				return line, nil
+				return "", fmt.Errorf("get the latest version: %w", err)
 			}
 			return patchLine(action, sha, lv), nil
 		}
 	}
 	// verify commit hash
-	if !cfg.IsVerify {
-		return line, nil
+	if !c.cfg.IsVerify {
+		return "", nil
 	}
 	// @xxx # v3.0.0
 	// @<full commit hash> # v3.0.0
 	if FullCommitSHA != getVersionType(action.Version) {
-		return line, nil
+		return "", nil
 	}
 	if err := c.verify(ctx, action); err != nil {
 		return "", fmt.Errorf("verify the version annotation: %w", err)
 	}
-	return line, nil
+	return "", nil
 }
 
-func (c *Controller) parseShortSemverTagLine(ctx context.Context, logE *logrus.Entry, line string, action *Action) (string, error) {
+func (c *Controller) parseShortSemverTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) {
 	// @xxx # v3
 	// @<full commit hash> # v3
 	if FullCommitSHA != getVersionType(action.Version) {
-		return line, nil
+		return "", ErrCantPinned
 	}
 	if c.update {
 		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
 		if err != nil {
-			logerr.WithError(logE, err).Warn("get the latest version")
-			return line, nil
+			return "", fmt.Errorf("get the latest version: %w", err)
 		}
 		sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
 		if err != nil {
-			logerr.WithError(logE, err).Warn("get a reference")
-			return line, nil
+			return "", fmt.Errorf("get the latest version: %w", err)
 		}
 		return patchLine(action, sha, lv), nil
 	}
@@ -224,8 +223,7 @@ func (c *Controller) parseShortSemverTagLine(ctx context.Context, logE *logrus.E
 		return "", err
 	}
 	if longVersion == "" {
-		logE.Debug("failed to get a long tag")
-		return line, nil
+		return "", errors.New("failed to get a long tag")
 	}
 	return patchLine(action, action.Version, longVersion), nil
 }

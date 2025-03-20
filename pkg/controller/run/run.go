@@ -28,7 +28,8 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 	}
 	cfg.IsVerify = param.IsVerify
 	cfg.Check = param.Check
-	workflowFilePaths, err := c.searchFiles(logE, param.WorkflowFilePaths, cfg, param.PWD)
+	c.cfg = cfg
+	workflowFilePaths, err := c.searchFiles(logE, param.WorkflowFilePaths, param.PWD)
 	if err != nil {
 		return fmt.Errorf("search target files: %w", err)
 	}
@@ -44,7 +45,11 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 				}
 				continue
 			}
-			logerr.WithError(logE, err).Warn("update a workflow")
+			failed = true
+			if errors.Is(err, ErrNotPinned) {
+				continue
+			}
+			logerr.WithError(logE, err).Error("update a workflow")
 		}
 	}
 	if failed {
@@ -55,7 +60,7 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 
 var ErrNotPinned = errors.New("actions aren't pinned")
 
-func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string, cfg *Config) error {
+func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string, cfg *Config) error { //nolint:cyclop
 	lines, err := c.readWorkflow(workflowFilePath)
 	if err != nil {
 		return err
@@ -63,24 +68,25 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 	changed := false
 	failed := false
 	for i, line := range lines {
-		l, err := c.parseLine(ctx, logE, line, cfg)
+		l, err := c.parseLine(ctx, logE, line)
 		if err != nil {
 			logerr.WithError(logE, err).Error("parse a line")
-			if cfg.Check {
-				failed = true
-			}
+			failed = true
 			continue
 		}
-		if line == l {
+		if l == "" || line == l {
 			continue
 		}
 		changed = true
 		lines[i] = l
 	}
-	if failed {
+	if cfg.Check && failed {
 		return ErrNotPinned
 	}
 	if !changed {
+		if failed {
+			return ErrNotPinned
+		}
 		return nil
 	}
 	f, err := os.Create(workflowFilePath)
@@ -90,6 +96,9 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 	defer f.Close()
 	if _, err := f.WriteString(strings.Join(lines, "\n") + "\n"); err != nil {
 		return fmt.Errorf("write a workflow file: %w", err)
+	}
+	if failed {
+		return ErrNotPinned
 	}
 	return nil
 }
