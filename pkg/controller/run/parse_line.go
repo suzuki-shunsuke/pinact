@@ -75,7 +75,10 @@ func parseAction(line string) *Action {
 
 var ErrCantPinned = errors.New("action can't be pinned")
 
-func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string) (string, error) { //nolint:cyclop
+func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string) (s string, e error) { //nolint:cyclop
+	defer func() {
+		e = logerr.WithFields(e, logE.Data)
+	}()
 	action := parseAction(line)
 	if action == nil {
 		// Ignore a line if the line doesn't use an action.
@@ -83,13 +86,11 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 		return "", nil
 	}
 
-	logE = logE.WithField("action", action.Name)
+	logE = logE.WithField("action", action.Name+"@"+action.Version)
 
 	for _, ignoreAction := range c.cfg.IgnoreActions {
 		if ignoreAction.Match(action.Name) {
-			logE.WithFields(logrus.Fields{
-				"line": line,
-			}).Debug("ignore the action")
+			logE.Debug("ignore the action")
 			return "", nil
 		}
 	}
@@ -98,9 +99,7 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 		if fullCommitSHAPattern.MatchString(action.Version) {
 			return "", nil
 		}
-		return "", logerr.WithFields(errors.New("action isn't pinned"), logrus.Fields{ //nolint:wrapcheck
-			"action": action.Name + "@" + action.Version,
-		})
+		return "", ErrNotPinned
 	}
 
 	if f := c.parseActionName(action); !f {
@@ -119,6 +118,9 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 		// @<full commit hash> # v3
 		return c.parseShortSemverTagLine(ctx, logE, action)
 	default:
+		if getVersionType(action.Version) == FullCommitSHA {
+			return "", nil
+		}
 		return "", ErrCantPinned
 	}
 }
@@ -127,6 +129,8 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, act
 	typ := getVersionType(action.Version)
 	switch typ {
 	case Shortsemver, Semver:
+	case FullCommitSHA:
+		return "", nil
 	default:
 		return "", ErrCantPinned
 	}
@@ -200,7 +204,7 @@ func (c *Controller) parseShortSemverTagLine(ctx context.Context, logE *logrus.E
 	// @xxx # v3
 	// @<full commit hash> # v3
 	if FullCommitSHA != getVersionType(action.Version) {
-		return "", nil
+		return "", ErrCantPinned
 	}
 	if c.update {
 		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
