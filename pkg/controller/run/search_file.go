@@ -51,8 +51,9 @@ func (c *Controller) searchFilesByConfig(logE *logrus.Entry, pwd string) ([]stri
 			}).WithError(err).Debug("get a relative path")
 			return nil
 		}
+		sp := filepath.ToSlash(filePath)
 		for _, pattern := range patterns {
-			if pattern.MatchString(filePath) {
+			if pattern.MatchString(sp) {
 				files = append(files, filePath)
 				break
 			}
