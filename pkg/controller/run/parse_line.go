@@ -20,15 +20,15 @@ var (
 )
 
 type Action struct {
-	Uses                string
-	Name                string
-	Version             string
-	Tag                 string
-	VersionTagSeparator string
-	RepoOwner           string
-	RepoName            string
-	Quote               string
-	Suffix              string
+	Uses                    string
+	Name                    string
+	Version                 string
+	VersionComment          string
+	VersionCommentSeparator string
+	RepoOwner               string
+	RepoName                string
+	Quote                   string
+	Suffix                  string
 }
 
 type VersionType int
@@ -63,13 +63,13 @@ func parseAction(line string) *Action {
 		return nil
 	}
 	return &Action{
-		Uses:                matches[1], // " - uses: "
-		Quote:               matches[2], // empty, ', "
-		Name:                matches[3], // local action is excluded by the regular expression because local action doesn't have version @
-		Version:             matches[4], // full commit hash, main, v3, v3.0.0
-		VersionTagSeparator: matches[5], // empty, " # ", " # tag="
-		Tag:                 matches[6], // empty, v1, v3.0.0
-		Suffix:              matches[7],
+		Uses:                    matches[1], // " - uses: "
+		Quote:                   matches[2], // empty, ', "
+		Name:                    matches[3], // local action is excluded by the regular expression because local action doesn't have version @
+		Version:                 matches[4], // full commit hash, main, v3, v3.0.0
+		VersionCommentSeparator: matches[5], // empty, " # ", " # tag="
+		VersionComment:          matches[6], // empty, v1, v3.0.0
+		Suffix:                  matches[7],
 	}
 }
 
@@ -107,7 +107,7 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 		return "", nil
 	}
 
-	switch getVersionType(action.Tag) {
+	switch getVersionType(action.VersionComment) {
 	case Empty:
 		return c.parseNoTagLine(ctx, logE, action)
 	case Semver:
@@ -116,6 +116,7 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 	case Shortsemver:
 		// @xxx # v3
 		// @<full commit hash> # v3
+		logE = logE.WithField("version_annotation", action.VersionComment)
 		return c.parseShortSemverTagLine(ctx, logE, action)
 	default:
 		if getVersionType(action.Version) == FullCommitSHA {
@@ -177,7 +178,7 @@ func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry,
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
-		if action.Tag != lv {
+		if action.VersionComment != lv {
 			sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
 			if err != nil {
 				return "", fmt.Errorf("get the latest version: %w", err)
@@ -223,13 +224,14 @@ func (c *Controller) parseShortSemverTagLine(ctx context.Context, logE *logrus.E
 		return "", err
 	}
 	if longVersion == "" {
-		return "", errors.New("failed to get a long tag")
+		logE.Warn("a long tag whose SHA is same as SHA of the version annotation isn't found")
+		return "", nil
 	}
 	return patchLine(action, action.Version, longVersion), nil
 }
 
 func patchLine(action *Action, version, tag string) string {
-	sep := action.VersionTagSeparator
+	sep := action.VersionCommentSeparator
 	if sep == "" {
 		sep = " # "
 	}
@@ -251,16 +253,16 @@ func (c *Controller) getLongVersionFromSHA(ctx context.Context, action *Action, 
 				continue
 			}
 			tagName := tag.GetName()
-			if action.Tag == "" {
+			if action.VersionComment == "" {
 				if action.Version == tagName {
 					continue
 				}
 			} else {
-				if action.Tag == tagName {
+				if action.VersionComment == tagName {
 					continue
 				}
 			}
-			if strings.HasPrefix(tagName, action.Tag) {
+			if strings.HasPrefix(tagName, action.VersionComment) {
 				return tagName, nil
 			}
 		}
@@ -286,7 +288,7 @@ func (c *Controller) parseActionName(action *Action) bool {
 }
 
 func (c *Controller) verify(ctx context.Context, action *Action) error {
-	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Tag, "")
+	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.VersionComment, "")
 	if err != nil {
 		return fmt.Errorf("get a commit hash: %w", err)
 	}
@@ -296,7 +298,7 @@ func (c *Controller) verify(ctx context.Context, action *Action) error {
 	return logerr.WithFields(errors.New("action_version must be equal to commit_hash_of_version_annotation"), logrus.Fields{ //nolint:wrapcheck
 		"action":                            action.Name,
 		"action_version":                    action.Version,
-		"version_annotation":                action.Tag,
+		"version_annotation":                action.VersionComment,
 		"commit_hash_of_version_annotation": sha,
 		"help_docs":                         "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md",
 	})
