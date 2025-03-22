@@ -52,7 +52,7 @@ func (c *Controller) searchFilesByConfig(logE *logrus.Entry, pwd string) ([]stri
 			return nil
 		}
 		for _, pattern := range patterns {
-			if pattern.MatchString(filePath) {
+			if pattern.MatchString(filepath.ToSlash(filePath)) {
 				files = append(files, filePath)
 				break
 			}
