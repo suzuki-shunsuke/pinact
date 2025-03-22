@@ -5,7 +5,7 @@ archives:
   - name_template: "{{.ProjectName}}_{{.Os}}_{{.Arch}}"
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
 builds:
   - binary: pinact
     main: cmd/pinact/main.go
@@ -71,3 +71,16 @@ brews:
     # Default is empty.
     test: |
       system "#{bin}/pinact --version"
+
+scoops:
+  -
+    description: |
+      Pin GitHub Action versions by full length commit SHA.
+      Edit GitHub Workflow and Composite action files and pin versions of Actions and Reusable Workflows.
+      pinact can also update their versions and verify version annotations
+    license: MIT
+    skip_upload: auto
+    repository:
+      owner: suzuki-shunsuke
+      name: scoop-bucket
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
