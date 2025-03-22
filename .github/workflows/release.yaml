@@ -11,6 +11,12 @@ jobs:
       homebrew: true
       go-version-file: go.mod
       aqua_version: v2.46.0
+      app_token_repositories: >-
+        [
+          "${{github.event.repository.name}}",
+          "homebrew-${{github.event.repository.name}}",
+          "scoop-bucket"
+        ]
     secrets:
       gh_app_id: ${{secrets.APP_ID}}
       gh_app_private_key: ${{secrets.APP_PRIVATE_KEY}}
