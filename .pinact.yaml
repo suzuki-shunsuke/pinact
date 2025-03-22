@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/v2.0.0/json-schema/pinact.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/v2.0.2/json-schema/pinact.json
 # pinact - https://github.com/suzuki-shunsuke/pinact
 ignore_actions:
   - name: actions/setup-java
