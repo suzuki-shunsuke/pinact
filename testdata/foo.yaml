@@ -18,6 +18,7 @@ jobs:
       - uses: peaceiris/actions-gh-pages@v4.0.0
       - 'uses': "actions/checkout@v3"
       - "uses": 'actions/checkout@v3'
+      - uses: cardinalby/git-get-release-action@cf4593dd18e51a1ecfbfb1c68abac9910a8b1e0c # v1
   actionlint:
     uses: suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml@v0.5.0
     with:
