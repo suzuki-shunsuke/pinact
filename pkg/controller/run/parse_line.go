@@ -89,7 +89,7 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 	logE = logE.WithField("action", action.Name+"@"+action.Version)
 
 	for _, ignoreAction := range c.cfg.IgnoreActions {
-		if ignoreAction.Match(action.Name) {
+		if ignoreAction.Match(action.Name, action.Version) {
 			logE.Debug("ignore the action")
 			return "", nil
 		}
