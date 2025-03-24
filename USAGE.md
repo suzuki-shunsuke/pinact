@@ -11,7 +11,7 @@ USAGE:
    pinact [global options] command [command options]
 
 VERSION:
-   2.0.4 (84075d2784010d51329ee7c947ea690ea20d83a6)
+   2.1.0 (406b297ed9b408820a37e848e4eb6b8827d090f9)
 
 COMMANDS:
    init     Create .pinact.yaml if it doesn't exist
