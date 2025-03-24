@@ -20,12 +20,42 @@ type File struct {
 }
 
 type IgnoreAction struct {
-	Name   string `json:"name" jsonschema:"description=A regular expression to ignore actions and reusable workflows"`
-	regexp *regexp.Regexp
+	Name      string `json:"name" jsonschema:"description=A regular expression to ignore actions and reusable workflows"`
+	Ref       string `json:"ref,omitempty" jsonschema:"description=A regular expression to ignore actions and reusable workflows by ref. If not specified, any ref is ignored"`
+	regexp    *regexp.Regexp
+	refRegexp *regexp.Regexp
 }
 
-func (ia *IgnoreAction) Match(name string) bool {
-	return ia.regexp.MatchString(name)
+func NewIgnoreAction(name, ref string) (*IgnoreAction, error) {
+	ia := &IgnoreAction{
+		Name: name,
+		Ref:  ref,
+	}
+
+	var err error
+	ia.regexp, err = regexp.Compile(name)
+	if err != nil {
+		return nil, fmt.Errorf("compile a regular expression: %w", err)
+	}
+
+	if ref != "" {
+		ia.refRegexp, err = regexp.Compile(ref)
+		if err != nil {
+			return nil, fmt.Errorf("compile a regular expression for ref: %w", err)
+		}
+	}
+
+	return ia, nil
+}
+
+func (ia *IgnoreAction) Match(name, ref string) bool {
+	if !ia.regexp.MatchString(name) {
+		return false
+	}
+	if ia.Ref == "" {
+		return true
+	}
+	return ia.refRegexp.MatchString(ref)
 }
 
 func getConfigPath(fs afero.Fs) (string, error) {
@@ -60,11 +90,12 @@ func (c *Controller) readConfig(configFilePath string, cfg *Config) error {
 	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
 		return fmt.Errorf("decode a configuration file as YAML: %w", err)
 	}
-	for _, ignoreAction := range cfg.IgnoreActions {
-		ignoreAction.regexp, err = regexp.Compile(ignoreAction.Name)
+	for i, ignoreAction := range cfg.IgnoreActions {
+		ia, err := NewIgnoreAction(ignoreAction.Name, ignoreAction.Ref)
 		if err != nil {
-			return fmt.Errorf("compile a regular expression: %w", err)
+			return fmt.Errorf("create ignore action %d: %w", i, err)
 		}
+		cfg.IgnoreActions[i] = ia
 	}
 	return nil
 }

@@ -41,6 +41,10 @@
         "name": {
           "type": "string",
           "description": "A regular expression to ignore actions and reusable workflows"
+        },
+        "ref": {
+          "type": "string",
+          "description": "A regular expression to ignore actions and reusable workflows by ref. If not specified"
         }
       },
       "additionalProperties": false,
