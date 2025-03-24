@@ -1,20 +1,42 @@
----
+version: "2"
 linters:
-  enable-all: true
+  default: all
   disable:
-    - wsl
+    - depguard
     - err113
-    - lll
-    - godot
-    - nlreturn
-    - godox
-    - tagliatelle
-    - ireturn
-    - varnamelen
     - exhaustive
     - exhaustruct
-    - nonamedreturns
+    - godot
+    - godox
+    - ireturn
+    - lll
     - musttag
-    - depguard
+    - nlreturn
+    - nonamedreturns
     - tagalign
-    - tenv
+    - tagliatelle
+    - varnamelen
+    - wsl
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
