@@ -1,10 +1,12 @@
-package run
+package run_test
 
 import (
 	"testing"
+
+	"github.com/suzuki-shunsuke/pinact/pkg/controller/run"
 )
 
-func TestIgnoreAction_Match(t *testing.T) {
+func TestIgnoreAction_Match(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	data := []struct {
 		name       string
@@ -75,7 +77,7 @@ func TestIgnoreAction_Match(t *testing.T) {
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			config, err := NewIgnoreAction(d.configName, d.configRef)
+			config, err := run.NewIgnoreAction(d.configName, d.configRef)
 			if err != nil {
 				t.Fatalf("failed to create ignore action: %v", err)
 			}
