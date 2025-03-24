@@ -186,6 +186,7 @@ We develop GitHub Actions to pin GitHub Actions and reusable workflows by pinact
 
 ## Configuration
 
+A configuration file is optional.
 pinact supports a configuration file `.pinact.yaml`, `.github/pinact.yaml`, `.pinact.yml` or `.github/pinact.yml`.
 You can also specify the configuration file path by the environment variable `PINACT_CONFIG` or command line option `-c`.
 
@@ -203,6 +204,8 @@ ignore_actions:
   # > Invalid ref: 68bad40844440577b33778c9f29077a3388838e9. Expected ref of the form refs/tags/vX.Y.Z
   # https://github.com/slsa-framework/slsa-github-generator/issues/722
   - name: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml
+  - name: ^suzuki-shunsuke/
+    ref: main # optional
 ```
 
 ### `files[].pattern`
