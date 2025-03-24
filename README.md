@@ -217,6 +217,20 @@ The regular expression of target files. If files are passed via positional comma
 A regular expression to ignore actions and reusable workflows.
 Actions and reusable workflows matching the regular expression are ignored.
 
+### `ignore_actions[].ref`
+
+A regular expression to ignore actions and reusable workflows by ref.
+If not specified, any ref is ignored.
+
+> [!WARNING]
+> Ignoring actions without specifying a ref can be dangerous in certain scenarios:
+>
+> 1. If an attacker gains access to push to any branch in the repository (even non-protected branches), they could create a malicious branch with the same action name
+> 2. For organization-internal actions, ignoring without ref restriction means trusting that ALL branches of the repository are secure
+> 3. Even with organization-internal repositories, compromised credentials of a contributor could lead to backdoors in non-protected branches
+>
+> For better security, consider limiting ignored actions to specific refs (like `main` or specific version tags) that have proper review processes and branch protection rules in place.
+
 ### JSON Schema
 
 - [pinact.json](json-schema/pinact.json)
