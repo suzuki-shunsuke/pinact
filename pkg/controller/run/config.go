@@ -18,36 +18,24 @@ type Config struct {
 }
 
 type File struct {
-	Pattern       string `json:"pattern" jsonschema:"description=A regular expression of target files. If files are passed via positional command line arguments, this is ignored"`
-	PatternFormat string `json:"pattern_format" jsonschema:"enum=fixed_string,enum=glob,enum=regexp"`
-	patternRegexp *regexp.Regexp
+	Pattern string `json:"pattern" jsonschema:"description=A regular expression of target files. If files are passed via positional command line arguments, this is ignored"`
 }
+
+const (
+	formatFixedString = "fixed_string"
+	formatGlob        = "glob"
+	formatRegexp      = "regexp"
+)
 
 func (f *File) Init() error {
 	if f.Pattern == "" {
 		return errors.New("pattern is required")
 	}
-	if f.PatternFormat == "" {
-		return errors.New("pattern_format is required")
+	_, err := path.Match(f.Pattern, "a")
+	if err != nil {
+		return fmt.Errorf("parse pattern as a glob: %w", err)
 	}
-	switch f.PatternFormat {
-	case "fixed_string":
-		return nil
-	case "glob":
-		if _, err := path.Match(f.Pattern, "a"); err != nil {
-			return fmt.Errorf("parse pattern as a glob: %w", err)
-		}
-		return nil
-	case "regexp":
-		r, err := regexp.Compile(f.Pattern)
-		if err != nil {
-			return fmt.Errorf("compile name as a regular expression: %w", err)
-		}
-		f.patternRegexp = r
-		return nil
-	default:
-		return errors.New("pattern_format must be fixed_string, glob, or regexp")
-	}
+	return nil
 }
 
 type IgnoreAction struct {
@@ -59,50 +47,71 @@ type IgnoreAction struct {
 	refRegexp  *regexp.Regexp
 }
 
-func (ia *IgnoreAction) Init() error {
+func initFormat(value, format string) (*regexp.Regexp, error) {
+	switch format {
+	case formatFixedString:
+		return nil, nil //nolint:nilnil
+	case formatGlob:
+		if _, err := path.Match(value, "a"); err != nil {
+			return nil, fmt.Errorf("parse as a glob: %w", err)
+		}
+		return nil, nil //nolint:nilnil
+	case formatRegexp:
+		r, err := regexp.Compile(value)
+		if err != nil {
+			return nil, fmt.Errorf("compile as a regular expression: %w", err)
+		}
+		return r, nil
+	default:
+		return nil, errors.New("name_format must be fixed_string, glob, or regexp")
+	}
+}
+
+func (ia *IgnoreAction) initName() error {
 	if ia.Name == "" {
 		return errors.New("name is required")
 	}
 	if ia.NameFormat == "" {
 		return errors.New("name_format is required")
 	}
-	switch ia.NameFormat {
-	case "fixed_string", "glob":
-	case "regexp":
-		r, err := regexp.Compile(ia.Name)
-		if err != nil {
-			return fmt.Errorf("compile name as a regular expression: %w", err)
-		}
-		ia.nameRegexp = r
-	default:
-		return errors.New("name_format must be fixed_string, glob, or regexp")
+	var err error
+	ia.nameRegexp, err = initFormat(ia.Name, ia.NameFormat)
+	return err
+}
+
+func (ia *IgnoreAction) initRef() error {
+	if ia.Ref == "" {
+		return nil
 	}
-	if ia.Ref != "" {
-		if ia.RefFormat == "" {
-			return errors.New("ref_format is required if ref is specified")
-		}
-		switch ia.RefFormat {
-		case "fixed_string", "glob":
-		case "regexp":
-			r, err := regexp.Compile(ia.Ref)
-			if err != nil {
-				return fmt.Errorf("compile ref as a regular expression: %w", err)
-			}
-			ia.refRegexp = r
-		default:
-			return errors.New("ref_format must be fixed_string, glob, or regexp")
-		}
+	if ia.RefFormat == "" {
+		return errors.New("ref_format is required if ref is specified")
+	}
+	var err error
+	ia.refRegexp, err = initFormat(ia.Ref, ia.RefFormat)
+	return err
+}
+
+func (ia *IgnoreAction) Init() error {
+	if err := ia.initName(); err != nil {
+		return err
+	}
+	if err := ia.initRef(); err != nil {
+		return err
 	}
 	return nil
 }
 
 func match(value, name, format string, r *regexp.Regexp) (bool, error) {
 	switch format {
-	case "fixed_string":
+	case formatFixedString:
 		return value == name, nil
-	case "glob":
-		return path.Match(value, name)
-	case "regexp":
+	case formatGlob:
+		f, err := path.Match(value, name)
+		if err != nil {
+			return false, fmt.Errorf("match as a glob: %w", err)
+		}
+		return f, nil
+	case formatRegexp:
 		return r.MatchString(value), nil
 	default:
 		return false, errors.New("unexpected format: " + format)
