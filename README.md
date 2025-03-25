@@ -205,7 +205,7 @@ ignore_actions:
   # https://github.com/slsa-framework/slsa-github-generator/issues/722
   - name: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml
   - name: ^suzuki-shunsuke/
-    ref: main # optional
+    ref: ^main$ # optional
 ```
 
 ### `files[].pattern`
@@ -232,7 +232,7 @@ If not specified, any ref is ignored.
 > 2. For organization-internal actions, ignoring without ref restriction means trusting that ALL branches of the repository are secure
 > 3. Even with organization-internal repositories, compromised credentials of a contributor could lead to backdoors in non-protected branches
 >
-> For better security, consider limiting ignored actions to specific refs (like `main` or specific version tags) that have proper review processes and branch protection rules in place.
+> For better security, consider limiting ignored actions to specific refs (like `^main$` or specific version tags) that have proper review processes and branch protection rules in place.
 
 ### JSON Schema
 
