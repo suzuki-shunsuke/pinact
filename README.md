@@ -196,33 +196,50 @@ e.g.
 
 ```yaml
 files:
-  - pattern: "^\\.github/workflows/.*\\.ya?ml$"
-  - pattern: "^(.*/)?action\\.ya?ml$"
+  - pattern: .github/workflows/*.yml
+  - pattern: .github/workflows/*.yaml
+  - pattern: .github/actions/*/action.yml
+  - pattern: .github/actions/*/action.yaml
 
 ignore_actions:
   # slsa-framework/slsa-github-generator doesn't support pinning version
   # > Invalid ref: 68bad40844440577b33778c9f29077a3388838e9. Expected ref of the form refs/tags/vX.Y.Z
   # https://github.com/slsa-framework/slsa-github-generator/issues/722
   - name: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml
+    name_format: fixed_string
+    ref: "v\\d+\.\\d+\.\\d+"
+    ref_format: regexp
+  - name: actions/*
+    name_format: glob
   - name: ^suzuki-shunsuke/
-    ref: ^main$ # optional
+    name_format: regexp
+    ref: main
+    ref_format: fixed_string
 ```
 
 ### `files[].pattern`
 
-The regular expression of target files. If files are passed via positional command line arguments, the configuration is ignored.
+A glob pattern of target files. If files are passed via positional command line arguments, the configuration is ignored.
 
 ### `ignore_actions[].name`
 
 > [!TIP]
 > As of pinact v1.3.0, regular expressions are supported. [#798](https://github.com/suzuki-shunsuke/pinact/pull/798)
 
-A regular expression to ignore actions and reusable workflows.
-Actions and reusable workflows matching the regular expression are ignored.
+> [!TIP]
+> As of pinact v3.0.0, a fixed string, a glob pattern, and a regular expression are supported. [#848](https://github.com/suzuki-shunsuke/pinact/pull/848)
+
+This is required. A pattern of ignored actions and reusable workflows.
+
+### `ignore_actions[].name_format`
+
+This is required. A format of `name`.
+This must be `fixed_string`, `glob`, or `regexp`.
 
 ### `ignore_actions[].ref`
 
-A regular expression to ignore actions and reusable workflows by ref.
+This is optional.
+A pattern of ignored action versions.
 If not specified, any ref is ignored.
 
 > [!WARNING]
@@ -233,6 +250,12 @@ If not specified, any ref is ignored.
 > 3. Even with organization-internal repositories, compromised credentials of a contributor could lead to backdoors in non-protected branches
 >
 > For better security, consider limiting ignored actions to specific refs (like `^main$` or specific version tags) that have proper review processes and branch protection rules in place.
+
+### `ignore_actions[].ref_format`
+
+This is required if `ref` is specified.
+A format of `ref`.
+This must be `fixed_string`, `glob`, or `regexp`.
 
 ### JSON Schema
 
