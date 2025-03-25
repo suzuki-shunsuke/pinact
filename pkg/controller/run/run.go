@@ -10,6 +10,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/logrus-error/logerr"
+	"github.com/suzuki-shunsuke/pinact/pkg/config"
 )
 
 type ParamRun struct {
@@ -51,6 +52,20 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry) error {
 	if failed {
 		return ErrNotPinned
 	}
+	return nil
+}
+
+func (c *Controller) readConfig() error {
+	p, err := c.cfgFinder.Find(c.param.ConfigFilePath)
+	if err != nil {
+		return fmt.Errorf("find a configurationfile: %w", err)
+	}
+	c.param.ConfigFilePath = p
+	cfg := &config.Config{}
+	if err := c.cfgReader.Read(cfg, c.param.ConfigFilePath); err != nil {
+		return fmt.Errorf("read a config file: %w", err)
+	}
+	c.cfg = cfg
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/afero"
+	"github.com/suzuki-shunsuke/pinact/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/pkg/github"
 	"github.com/suzuki-shunsuke/pinact/pkg/log"
@@ -53,12 +54,13 @@ func (r *Runner) runAction(c *cli.Context) error {
 	}
 
 	gh := github.New(c.Context)
+	fs := afero.NewOsFs()
 	ctrl := run.New(&run.RepositoriesServiceImpl{
 		Tags:                map[string]*run.ListTagsResult{},
 		Releases:            map[string]*run.ListReleasesResult{},
 		Commits:             map[string]*run.GetCommitSHA1Result{},
 		RepositoriesService: gh.Repositories,
-	}, afero.NewOsFs(), &run.ParamRun{
+	}, fs, config.NewFinder(fs), config.NewReader(fs), &run.ParamRun{
 		WorkflowFilePaths: c.Args().Slice(),
 		ConfigFilePath:    c.String("config"),
 		PWD:               pwd,

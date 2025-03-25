@@ -1,23 +1,23 @@
-package run_test
+package config_test
 
 import (
 	"testing"
 
-	"github.com/suzuki-shunsuke/pinact/pkg/controller/run"
+	"github.com/suzuki-shunsuke/pinact/pkg/config"
 )
 
 func TestIgnoreAction_Match(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	data := []struct {
 		name         string
-		ignoreAction *run.IgnoreAction
+		ignoreAction *config.IgnoreAction
 		actionName   string
 		actionRef    string
 		expected     bool
 	}{
 		{
 			name: "match by name only",
-			ignoreAction: &run.IgnoreAction{
+			ignoreAction: &config.IgnoreAction{
 				Name:       "actions/checkout",
 				NameFormat: "fixed_string",
 			},
@@ -27,7 +27,7 @@ func TestIgnoreAction_Match(t *testing.T) { //nolint:funlen
 		},
 		{
 			name: "match by name and ref",
-			ignoreAction: &run.IgnoreAction{
+			ignoreAction: &config.IgnoreAction{
 				Name:       "actions/checkout",
 				NameFormat: "fixed_string",
 				Ref:        "main",
@@ -39,7 +39,7 @@ func TestIgnoreAction_Match(t *testing.T) { //nolint:funlen
 		},
 		{
 			name: "match by name but not by ref",
-			ignoreAction: &run.IgnoreAction{
+			ignoreAction: &config.IgnoreAction{
 				Name:       "actions/checkout",
 				NameFormat: "fixed_string",
 				Ref:        "main",
@@ -51,7 +51,7 @@ func TestIgnoreAction_Match(t *testing.T) { //nolint:funlen
 		},
 		{
 			name: "match by regex name",
-			ignoreAction: &run.IgnoreAction{
+			ignoreAction: &config.IgnoreAction{
 				Name:       "^actions/.*",
 				NameFormat: "regexp",
 			},
@@ -61,7 +61,7 @@ func TestIgnoreAction_Match(t *testing.T) { //nolint:funlen
 		},
 		{
 			name: "match by regex ref",
-			ignoreAction: &run.IgnoreAction{
+			ignoreAction: &config.IgnoreAction{
 				Name:       "actions/checkout",
 				NameFormat: "fixed_string",
 				Ref:        "^v\\d+\\.\\d+\\.\\d+$",
@@ -73,7 +73,7 @@ func TestIgnoreAction_Match(t *testing.T) { //nolint:funlen
 		},
 		{
 			name: "match by regex ref but not match",
-			ignoreAction: &run.IgnoreAction{
+			ignoreAction: &config.IgnoreAction{
 				Name:       "actions/checkout",
 				NameFormat: "fixed_string",
 				Ref:        "^v\\d+\\.\\d+\\.\\d+$",
@@ -85,7 +85,7 @@ func TestIgnoreAction_Match(t *testing.T) { //nolint:funlen
 		},
 		{
 			name: "not match by name",
-			ignoreAction: &run.IgnoreAction{
+			ignoreAction: &config.IgnoreAction{
 				Name:       "actions/checkout",
 				NameFormat: "fixed_string",
 			},

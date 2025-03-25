@@ -1,4 +1,4 @@
-package run
+package config
 
 import (
 	"errors"
@@ -11,6 +11,7 @@ import (
 )
 
 type Config struct {
+	Version       int             `json:"version,omitempty" jsonschema:"enum=2,enum=3"`
 	Files         []*File         `json:"files,omitempty" jsonschema:"description=Target files. If files are passed via positional command line arguments, this is ignored"`
 	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores"`
 	IsVerify      bool            `json:"-" yaml:"-"`
@@ -18,7 +19,7 @@ type Config struct {
 }
 
 type File struct {
-	Pattern string `json:"pattern" jsonschema:"description=A regular expression of target files. If files are passed via positional command line arguments, this is ignored"`
+	Pattern string `json:"pattern" jsonschema:"description=A glob pattern of target files."`
 }
 
 const (
@@ -39,8 +40,8 @@ func (f *File) Init() error {
 }
 
 type IgnoreAction struct {
-	Name       string `json:"name" jsonschema:"description=A regular expression to ignore actions and reusable workflows"`
-	Ref        string `json:"ref,omitempty" jsonschema:"description=A regular expression to ignore actions and reusable workflows by ref. If not specified, any ref is ignored"`
+	Name       string `json:"name"`
+	Ref        string `json:"ref,omitempty"`
 	NameFormat string `json:"name_format" yaml:"name_format" jsonschema:"enum=fixed_string,enum=glob,enum=regexp"`
 	RefFormat  string `json:"ref_format,omitempty" yaml:"ref_format" jsonschema:"enum=fixed_string,enum=glob,enum=regexp"`
 	nameRegexp *regexp.Regexp
@@ -154,21 +155,38 @@ func getConfigPath(fs afero.Fs) (string, error) {
 	return "", nil
 }
 
-func (c *Controller) readConfig() error {
-	cfg := &Config{}
-	configFilePath := c.param.ConfigFilePath
-	if configFilePath == "" {
-		p, err := getConfigPath(c.fs)
-		if err != nil {
-			return err
-		}
-		if p == "" {
-			return nil
-		}
-		configFilePath = p
-		c.param.ConfigFilePath = configFilePath
+type Finder struct {
+	fs afero.Fs
+}
+
+func NewFinder(fs afero.Fs) *Finder {
+	return &Finder{fs: fs}
+}
+
+func (f *Finder) Find(configFilePath string) (string, error) {
+	if configFilePath != "" {
+		return configFilePath, nil
 	}
-	f, err := c.fs.Open(configFilePath)
+	p, err := getConfigPath(f.fs)
+	if err != nil {
+		return "", err
+	}
+	return p, nil
+}
+
+type Reader struct {
+	fs afero.Fs
+}
+
+func NewReader(fs afero.Fs) *Reader {
+	return &Reader{fs: fs}
+}
+
+func (r *Reader) Read(cfg *Config, configFilePath string) error {
+	if configFilePath == "" {
+		return nil
+	}
+	f, err := r.fs.Open(configFilePath)
 	if err != nil {
 		return fmt.Errorf("open a configuration file: %w", err)
 	}
@@ -186,6 +204,5 @@ func (c *Controller) readConfig() error {
 			return fmt.Errorf("initialize ignore_action: %w", err)
 		}
 	}
-	c.cfg = cfg
 	return nil
 }

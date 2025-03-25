@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
+	"github.com/suzuki-shunsuke/pinact/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/pkg/github"
 	"github.com/suzuki-shunsuke/pinact/pkg/util"
 )
@@ -155,6 +156,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
+			fs := afero.NewMemMapFs()
 			ctrl := New(&RepositoriesServiceImpl{
 				Tags: map[string]*ListTagsResult{
 					"actions/checkout/0": {
@@ -195,8 +197,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
 					},
 				},
-			}, afero.NewMemMapFs(), &ParamRun{})
-			ctrl.cfg = &Config{}
+			}, fs, config.NewFinder(fs), config.NewReader(fs), &ParamRun{})
 			line, err := ctrl.parseLine(ctx, logE, d.line)
 			if err != nil {
 				if d.isErr {
