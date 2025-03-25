@@ -41,8 +41,8 @@ func (f *File) Init() error {
 type IgnoreAction struct {
 	Name       string `json:"name" jsonschema:"description=A regular expression to ignore actions and reusable workflows"`
 	Ref        string `json:"ref,omitempty" jsonschema:"description=A regular expression to ignore actions and reusable workflows by ref. If not specified, any ref is ignored"`
-	NameFormat string `json:"name_format" jsonschema:"enum=fixed_string,enum=glob,enum=regexp"`
-	RefFormat  string `json:"ref_format,omitempty" jsonschema:"enum=fixed_string,enum=glob,enum=regexp"`
+	NameFormat string `json:"name_format" yaml:"name_format" jsonschema:"enum=fixed_string,enum=glob,enum=regexp"`
+	RefFormat  string `json:"ref_format,omitempty" yaml:"ref_format" jsonschema:"enum=fixed_string,enum=glob,enum=regexp"`
 	nameRegexp *regexp.Regexp
 	refRegexp  *regexp.Regexp
 }
