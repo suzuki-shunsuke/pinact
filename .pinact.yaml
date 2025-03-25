@@ -4,6 +4,7 @@ ignore_actions:
   - name: actions/setup-java
     name_format: fixed_string
     ref: v3
+    ref_format: fixed_string
   - name: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml
     name_format: fixed_string
   - name: "^peaceiris/"
