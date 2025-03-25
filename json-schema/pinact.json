@@ -28,12 +28,21 @@
         "pattern": {
           "type": "string",
           "description": "A regular expression of target files. If files are passed via positional command line arguments"
+        },
+        "pattern_format": {
+          "type": "string",
+          "enum": [
+            "fixed_string",
+            "glob",
+            "regexp"
+          ]
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "pattern"
+        "pattern",
+        "pattern_format"
       ]
     },
     "IgnoreAction": {
@@ -45,12 +54,29 @@
         "ref": {
           "type": "string",
           "description": "A regular expression to ignore actions and reusable workflows by ref. If not specified"
+        },
+        "name_format": {
+          "type": "string",
+          "enum": [
+            "fixed_string",
+            "glob",
+            "regexp"
+          ]
+        },
+        "ref_format": {
+          "type": "string",
+          "enum": [
+            "fixed_string",
+            "glob",
+            "regexp"
+          ]
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "name_format"
       ]
     }
   }
