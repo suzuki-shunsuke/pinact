@@ -28,21 +28,12 @@
         "pattern": {
           "type": "string",
           "description": "A regular expression of target files. If files are passed via positional command line arguments"
-        },
-        "pattern_format": {
-          "type": "string",
-          "enum": [
-            "fixed_string",
-            "glob",
-            "regexp"
-          ]
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "pattern",
-        "pattern_format"
+        "pattern"
       ]
     },
     "IgnoreAction": {
