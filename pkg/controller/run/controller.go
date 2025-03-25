@@ -10,15 +10,11 @@ import (
 type Controller struct {
 	repositoriesService RepositoriesService
 	fs                  afero.Fs
-	update              bool
 	cfg                 *Config
+	param               *ParamRun
 }
 
-type InputNew struct {
-	Update bool
-}
-
-func New(ctx context.Context, input *InputNew) *Controller {
+func New(ctx context.Context, param *ParamRun) *Controller {
 	gh := github.New(ctx)
 	return &Controller{
 		repositoriesService: &RepositoriesServiceImpl{
@@ -27,8 +23,8 @@ func New(ctx context.Context, input *InputNew) *Controller {
 			commits:             map[string]*GetCommitSHA1Result{},
 			RepositoriesService: gh.Repositories,
 		},
-		fs:     afero.NewOsFs(),
-		update: input.Update,
+		param: param,
+		fs:    afero.NewOsFs(),
 	}
 }
 

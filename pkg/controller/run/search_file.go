@@ -4,63 +4,65 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
-	"regexp"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 )
 
-func (c *Controller) searchFiles(logE *logrus.Entry, workflowFilePaths []string, pwd string) ([]string, error) {
-	if len(workflowFilePaths) != 0 {
-		return workflowFilePaths, nil
+func (c *Controller) searchFiles(logE *logrus.Entry) ([]string, error) {
+	if len(c.param.WorkflowFilePaths) != 0 {
+		return c.param.WorkflowFilePaths, nil
 	}
 	if len(c.cfg.Files) > 0 {
-		return c.searchFilesByConfig(logE, pwd)
+		return c.searchFilesByConfig(logE)
 	}
 	return listWorkflows()
 }
 
-func (c *Controller) searchFilesByConfig(logE *logrus.Entry, pwd string) ([]string, error) {
-	patterns := make([]*regexp.Regexp, 0, len(c.cfg.Files))
-	for _, file := range c.cfg.Files {
-		if file.Pattern == "" {
-			// ignore
-			continue
-		}
-		p, err := regexp.Compile(file.Pattern)
-		if err != nil {
-			return nil, fmt.Errorf("parse files[].pattern as a regular expression: %w", err)
-		}
-		patterns = append(patterns, p)
-	}
-
+func (c *Controller) searchFilesByConfig(logE *logrus.Entry) ([]string, error) {
 	files := []string{}
-	if err := fs.WalkDir(afero.NewIOFS(c.fs), pwd, func(p string, dirEntry fs.DirEntry, e error) error {
-		if e != nil {
-			return nil //nolint:nilerr
-		}
-		if dirEntry.IsDir() {
-			// ignore directory
-			return nil
-		}
-		filePath, err := filepath.Rel(pwd, p)
-		if err != nil {
-			logE.WithFields(logrus.Fields{
-				"pwd":  pwd,
-				"path": p,
-			}).WithError(err).Debug("get a relative path")
-			return nil
-		}
-		sp := filepath.ToSlash(filePath)
-		for _, pattern := range patterns {
-			if pattern.MatchString(sp) {
-				files = append(files, filePath)
-				break
+	for _, file := range c.cfg.Files {
+		switch file.PatternFormat {
+		case "fixed_string":
+			files = append(files, file.Pattern)
+			continue
+		case "glob":
+			matches, err := filepath.Glob(file.Pattern)
+			if err != nil {
+				return nil, fmt.Errorf("search target files: %w", err)
 			}
+			files = append(files, matches...)
+		case "regexp":
+			if err := fs.WalkDir(afero.NewIOFS(c.fs), c.param.PWD, func(p string, dirEntry fs.DirEntry, e error) error {
+				if e != nil {
+					return nil //nolint:nilerr
+				}
+				if dirEntry.IsDir() {
+					// ignore directory
+					return nil
+				}
+				filePath, err := filepath.Rel(c.param.PWD, p)
+				if err != nil {
+					logE.WithFields(logrus.Fields{
+						"pwd":  c.param.PWD,
+						"path": p,
+					}).WithError(err).Debug("get a relative path")
+					return nil
+				}
+				sp := filepath.ToSlash(filePath)
+				for _, file := range c.cfg.Files {
+					if file.patternRegexp.MatchString(sp) {
+						files = append(files, filePath)
+						break
+					}
+				}
+				return nil
+			}); err != nil {
+				return nil, fmt.Errorf("search target files: %w", err)
+			}
+		default:
+			return nil, fmt.Errorf("unexpected pattern format: %s", file.PatternFormat)
 		}
-		return nil
-	}); err != nil {
-		return nil, fmt.Errorf("search target files: %w", err)
 	}
 
 	return files, nil

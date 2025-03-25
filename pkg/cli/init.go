@@ -25,7 +25,7 @@ $ pinact init .github/pinact.yaml
 }
 
 func (r *Runner) initAction(c *cli.Context) error {
-	ctrl := run.New(c.Context, &run.InputNew{})
+	ctrl := run.New(c.Context, &run.ParamRun{})
 	log.SetLevel(c.String("log-level"), r.LogE)
 	configFilePath := c.Args().First()
 	if configFilePath == "" {

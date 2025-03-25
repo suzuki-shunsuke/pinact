@@ -1,7 +1,9 @@
 package run
 
 import (
+	"errors"
 	"fmt"
+	"path"
 	"regexp"
 
 	"github.com/spf13/afero"
@@ -16,46 +18,114 @@ type Config struct {
 }
 
 type File struct {
-	Pattern string `json:"pattern" jsonschema:"description=A regular expression of target files. If files are passed via positional command line arguments, this is ignored"`
+	Pattern       string `json:"pattern" jsonschema:"description=A regular expression of target files. If files are passed via positional command line arguments, this is ignored"`
+	PatternFormat string `json:"pattern_format" jsonschema:"enum=fixed_string,enum=glob,enum=regexp"`
+	patternRegexp *regexp.Regexp
+}
+
+func (f *File) Init() error {
+	if f.Pattern == "" {
+		return errors.New("pattern is required")
+	}
+	if f.PatternFormat == "" {
+		return errors.New("pattern_format is required")
+	}
+	switch f.PatternFormat {
+	case "fixed_string":
+		return nil
+	case "glob":
+		if _, err := path.Match(f.Pattern, "a"); err != nil {
+			return fmt.Errorf("parse pattern as a glob: %w", err)
+		}
+		return nil
+	case "regexp":
+		r, err := regexp.Compile(f.Pattern)
+		if err != nil {
+			return fmt.Errorf("compile name as a regular expression: %w", err)
+		}
+		f.patternRegexp = r
+		return nil
+	default:
+		return errors.New("pattern_format must be fixed_string, glob, or regexp")
+	}
 }
 
 type IgnoreAction struct {
-	Name      string `json:"name" jsonschema:"description=A regular expression to ignore actions and reusable workflows"`
-	Ref       string `json:"ref,omitempty" jsonschema:"description=A regular expression to ignore actions and reusable workflows by ref. If not specified, any ref is ignored"`
-	regexp    *regexp.Regexp
-	refRegexp *regexp.Regexp
+	Name       string `json:"name" jsonschema:"description=A regular expression to ignore actions and reusable workflows"`
+	Ref        string `json:"ref,omitempty" jsonschema:"description=A regular expression to ignore actions and reusable workflows by ref. If not specified, any ref is ignored"`
+	NameFormat string `json:"name_format" jsonschema:"enum=fixed_string,enum=glob,enum=regexp"`
+	RefFormat  string `json:"ref_format,omitempty" jsonschema:"enum=fixed_string,enum=glob,enum=regexp"`
+	nameRegexp *regexp.Regexp
+	refRegexp  *regexp.Regexp
 }
 
-func NewIgnoreAction(name, ref string) (*IgnoreAction, error) {
-	ia := &IgnoreAction{
-		Name: name,
-		Ref:  ref,
+func (ia *IgnoreAction) Init() error {
+	if ia.Name == "" {
+		return errors.New("name is required")
 	}
-
-	var err error
-	ia.regexp, err = regexp.Compile(name)
-	if err != nil {
-		return nil, fmt.Errorf("compile a regular expression: %w", err)
+	if ia.NameFormat == "" {
+		return errors.New("name_format is required")
 	}
-
-	if ref != "" {
-		ia.refRegexp, err = regexp.Compile(ref)
+	switch ia.NameFormat {
+	case "fixed_string", "glob":
+	case "regexp":
+		r, err := regexp.Compile(ia.Name)
 		if err != nil {
-			return nil, fmt.Errorf("compile a regular expression for ref: %w", err)
+			return fmt.Errorf("compile name as a regular expression: %w", err)
+		}
+		ia.nameRegexp = r
+	default:
+		return errors.New("name_format must be fixed_string, glob, or regexp")
+	}
+	if ia.Ref != "" {
+		if ia.RefFormat == "" {
+			return errors.New("ref_format is required if ref is specified")
+		}
+		switch ia.RefFormat {
+		case "fixed_string", "glob":
+		case "regexp":
+			r, err := regexp.Compile(ia.Ref)
+			if err != nil {
+				return fmt.Errorf("compile ref as a regular expression: %w", err)
+			}
+			ia.refRegexp = r
+		default:
+			return errors.New("ref_format must be fixed_string, glob, or regexp")
 		}
 	}
-
-	return ia, nil
+	return nil
 }
 
-func (ia *IgnoreAction) Match(name, ref string) bool {
-	if !ia.regexp.MatchString(name) {
-		return false
+func match(value, name, format string, r *regexp.Regexp) (bool, error) {
+	switch format {
+	case "fixed_string":
+		return value == name, nil
+	case "glob":
+		return path.Match(value, name)
+	case "regexp":
+		return r.MatchString(value), nil
+	default:
+		return false, errors.New("unexpected format: " + format)
 	}
-	if ia.Ref == "" {
-		return true
+}
+
+func (ia *IgnoreAction) Match(name, ref string) (bool, error) {
+	f, err := match(name, ia.Name, ia.NameFormat, ia.nameRegexp)
+	if err != nil {
+		return false, fmt.Errorf("match name: %w", err)
 	}
-	return ia.refRegexp.MatchString(ref)
+	if !f {
+		return false, nil
+	}
+
+	f, err = match(ref, ia.Ref, ia.RefFormat, ia.refRegexp)
+	if err != nil {
+		return false, fmt.Errorf("match ref: %w", err)
+	}
+	if !f {
+		return false, nil
+	}
+	return true, nil
 }
 
 func getConfigPath(fs afero.Fs) (string, error) {
@@ -71,16 +141,18 @@ func getConfigPath(fs afero.Fs) (string, error) {
 	return "", nil
 }
 
-func (c *Controller) readConfig(configFilePath string, cfg *Config) error {
-	var err error
+func (c *Controller) readConfig() error {
+	cfg := &Config{}
+	configFilePath := c.param.ConfigFilePath
 	if configFilePath == "" {
-		configFilePath, err = getConfigPath(c.fs)
+		p, err := getConfigPath(c.fs)
 		if err != nil {
 			return err
 		}
-		if configFilePath == "" {
+		if p == "" {
 			return nil
 		}
+		configFilePath = p
 	}
 	f, err := c.fs.Open(configFilePath)
 	if err != nil {
@@ -90,12 +162,16 @@ func (c *Controller) readConfig(configFilePath string, cfg *Config) error {
 	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
 		return fmt.Errorf("decode a configuration file as YAML: %w", err)
 	}
-	for i, ignoreAction := range cfg.IgnoreActions {
-		ia, err := NewIgnoreAction(ignoreAction.Name, ignoreAction.Ref)
-		if err != nil {
-			return fmt.Errorf("create ignore action %d: %w", i, err)
+	for _, file := range cfg.Files {
+		if err := file.Init(); err != nil {
+			return fmt.Errorf("initialize file: %w", err)
 		}
-		cfg.IgnoreActions[i] = ia
 	}
+	for _, ia := range cfg.IgnoreActions {
+		if err := ia.Init(); err != nil {
+			return fmt.Errorf("initialize ignore_action: %w", err)
+		}
+	}
+	c.cfg = cfg
 	return nil
 }

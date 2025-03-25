@@ -44,20 +44,18 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 }
 
 func (r *Runner) runAction(c *cli.Context) error {
-	ctrl := run.New(c.Context, &run.InputNew{
-		Update: c.Bool("update"),
-	})
 	log.SetLevel(c.String("log-level"), r.LogE)
 	pwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get the current directory: %w", err)
 	}
-	param := &run.ParamRun{
+	ctrl := run.New(c.Context, &run.ParamRun{
 		WorkflowFilePaths: c.Args().Slice(),
 		ConfigFilePath:    c.String("config"),
 		PWD:               pwd,
 		IsVerify:          c.Bool("verify"),
 		Check:             c.Bool("check"),
-	}
-	return ctrl.Run(c.Context, r.LogE, param) //nolint:wrapcheck
+		Update:            c.Bool("update"),
+	})
+	return ctrl.Run(c.Context, r.LogE) //nolint:wrapcheck
 }
