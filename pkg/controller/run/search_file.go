@@ -9,7 +9,7 @@ func (c *Controller) searchFiles() ([]string, error) {
 	if len(c.param.WorkflowFilePaths) != 0 {
 		return c.param.WorkflowFilePaths, nil
 	}
-	if len(c.cfg.Files) > 0 {
+	if c.cfg != nil && len(c.cfg.Files) > 0 {
 		return c.searchFilesByConfig()
 	}
 	return listWorkflows()

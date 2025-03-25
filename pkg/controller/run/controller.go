@@ -16,5 +16,6 @@ func New(repositoriesService RepositoriesService, fs afero.Fs, param *ParamRun) 
 		repositoriesService: repositoriesService,
 		param:               param,
 		fs:                  fs,
+		cfg:                 &Config{},
 	}
 }
