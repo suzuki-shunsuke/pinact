@@ -17,8 +17,9 @@ func (c *Controller) searchFiles() ([]string, error) {
 
 func (c *Controller) searchFilesByConfig() ([]string, error) {
 	files := []string{}
+	configFileDir := filepath.Dir(c.param.ConfigFilePath)
 	for _, file := range c.cfg.Files {
-		matches, err := filepath.Glob(file.Pattern)
+		matches, err := filepath.Glob(filepath.Join(configFileDir, file.Pattern))
 		if err != nil {
 			return nil, fmt.Errorf("search target files: %w", err)
 		}

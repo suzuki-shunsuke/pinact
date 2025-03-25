@@ -166,6 +166,7 @@ func (c *Controller) readConfig() error {
 			return nil
 		}
 		configFilePath = p
+		c.param.ConfigFilePath = configFilePath
 	}
 	f, err := c.fs.Open(configFilePath)
 	if err != nil {
