@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/pkg/controller/run"
+	"github.com/suzuki-shunsuke/pinact/pkg/github"
 	"github.com/suzuki-shunsuke/pinact/pkg/log"
 	"github.com/urfave/cli/v2"
 )
@@ -49,7 +51,14 @@ func (r *Runner) runAction(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("get the current directory: %w", err)
 	}
-	ctrl := run.New(c.Context, &run.ParamRun{
+
+	gh := github.New(c.Context)
+	ctrl := run.New(&run.RepositoriesServiceImpl{
+		Tags:                map[string]*run.ListTagsResult{},
+		Releases:            map[string]*run.ListReleasesResult{},
+		Commits:             map[string]*run.GetCommitSHA1Result{},
+		RepositoriesService: gh.Repositories,
+	}, afero.NewOsFs(), &run.ParamRun{
 		WorkflowFilePaths: c.Args().Slice(),
 		ConfigFilePath:    c.String("config"),
 		PWD:               pwd,

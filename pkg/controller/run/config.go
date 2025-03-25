@@ -127,6 +127,10 @@ func (ia *IgnoreAction) Match(name, ref string) (bool, error) {
 		return false, nil
 	}
 
+	if ia.Ref == "" {
+		return true, nil
+	}
+
 	f, err = match(ref, ia.Ref, ia.RefFormat, ia.refRegexp)
 	if err != nil {
 		return false, fmt.Errorf("match ref: %w", err)

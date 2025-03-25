@@ -155,8 +155,8 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			ctrl := NewController(&RepositoriesServiceImpl{
-				tags: map[string]*ListTagsResult{
+			ctrl := New(&RepositoriesServiceImpl{
+				Tags: map[string]*ListTagsResult{
 					"actions/checkout/0": {
 						Tags: []*github.RepositoryTag{
 							{
@@ -187,7 +187,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						Response: &github.Response{},
 					},
 				},
-				commits: map[string]*GetCommitSHA1Result{
+				Commits: map[string]*GetCommitSHA1Result{
 					"actions/checkout/v3": {
 						SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
 					},
@@ -195,7 +195,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
 					},
 				},
-			}, afero.NewMemMapFs())
+			}, afero.NewMemMapFs(), &ParamRun{})
 			ctrl.cfg = &Config{}
 			line, err := ctrl.parseLine(ctx, logE, d.line)
 			if err != nil {
