@@ -207,7 +207,7 @@ ignore_actions:
   # https://github.com/slsa-framework/slsa-github-generator/issues/722
   - name: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml
     name_format: fixed_string
-    ref: "v\\d+\.\\d+\.\\d+"
+    ref: "v\\d+\\.\\d+\\.\\d+"
     ref_format: regexp
   - name: actions/*
     name_format: glob
