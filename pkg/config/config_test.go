@@ -98,7 +98,7 @@ func TestIgnoreAction_Match(t *testing.T) { //nolint:funlen
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			if err := d.ignoreAction.Init(); err != nil {
+			if err := d.ignoreAction.Init(3); err != nil {
 				t.Fatalf("failed to initialize ignore action: %v", err)
 			}
 			got, err := d.ignoreAction.Match(d.actionName, d.actionRef)

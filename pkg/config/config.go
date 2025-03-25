@@ -19,7 +19,8 @@ type Config struct {
 }
 
 type File struct {
-	Pattern string `json:"pattern" jsonschema:"description=A glob pattern of target files."`
+	Pattern       string `json:"pattern"`
+	patternRegexp *regexp.Regexp
 }
 
 const (
@@ -28,22 +29,34 @@ const (
 	formatRegexp      = "regexp"
 )
 
-func (f *File) Init() error {
+func (f *File) Init(v int) error {
 	if f.Pattern == "" {
 		return errors.New("pattern is required")
 	}
-	_, err := path.Match(f.Pattern, "a")
-	if err != nil {
-		return fmt.Errorf("parse pattern as a glob: %w", err)
+	switch v {
+	case 0, 2:
+		r, err := regexp.Compile(f.Pattern)
+		if err != nil {
+			return fmt.Errorf("compile pattern as a regular expression: %w", err)
+		}
+		f.patternRegexp = r
+		return nil
+	case 3:
+		_, err := path.Match(f.Pattern, "a")
+		if err != nil {
+			return fmt.Errorf("parse pattern as a glob: %w", err)
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported version: %d", v)
 	}
-	return nil
 }
 
 type IgnoreAction struct {
 	Name       string `json:"name"`
 	Ref        string `json:"ref,omitempty"`
-	NameFormat string `json:"name_format" yaml:"name_format" jsonschema:"enum=fixed_string,enum=glob,enum=regexp"`
-	RefFormat  string `json:"ref_format,omitempty" yaml:"ref_format" jsonschema:"enum=fixed_string,enum=glob,enum=regexp"`
+	NameFormat string `json:"name_format,omitempty" yaml:"name_format" jsonschema:"enum=fixed_string,enum=regexp"`
+	RefFormat  string `json:"ref_format,omitempty" yaml:"ref_format" jsonschema:"enum=fixed_string,enum=regexp"`
 	nameRegexp *regexp.Regexp
 	refRegexp  *regexp.Regexp
 }
@@ -52,11 +65,6 @@ func initFormat(value, format string) (*regexp.Regexp, error) {
 	switch format {
 	case formatFixedString:
 		return nil, nil //nolint:nilnil
-	case formatGlob:
-		if _, err := path.Match(value, "a"); err != nil {
-			return nil, fmt.Errorf("parse as a glob: %w", err)
-		}
-		return nil, nil //nolint:nilnil
 	case formatRegexp:
 		r, err := regexp.Compile(value)
 		if err != nil {
@@ -64,39 +72,69 @@ func initFormat(value, format string) (*regexp.Regexp, error) {
 		}
 		return r, nil
 	default:
-		return nil, errors.New("name_format must be fixed_string, glob, or regexp")
+		return nil, errors.New("format must be fixed_string or regexp")
 	}
 }
 
-func (ia *IgnoreAction) initName() error {
+func (ia *IgnoreAction) initName(v int) error {
 	if ia.Name == "" {
 		return errors.New("name is required")
 	}
-	if ia.NameFormat == "" {
-		return errors.New("name_format is required")
+	switch v {
+	case 0, 2:
+		switch ia.NameFormat {
+		case "", formatRegexp:
+		default:
+			return errors.New("name_format must be empty or regexp at version 2")
+		}
+		ia.NameFormat = formatRegexp
+		var err error
+		ia.nameRegexp, err = initFormat(ia.Name, formatRegexp)
+		return err
+	case 3:
+		if ia.NameFormat == "" {
+			return errors.New("name_format is required")
+		}
+		var err error
+		ia.nameRegexp, err = initFormat(ia.Name, ia.NameFormat)
+		return err
+	default:
+		return fmt.Errorf("unsupported version: %d", v)
 	}
-	var err error
-	ia.nameRegexp, err = initFormat(ia.Name, ia.NameFormat)
-	return err
 }
 
-func (ia *IgnoreAction) initRef() error {
+func (ia *IgnoreAction) initRef(v int) error {
 	if ia.Ref == "" {
 		return nil
 	}
-	if ia.RefFormat == "" {
-		return errors.New("ref_format is required if ref is specified")
+	switch v {
+	case 0, 2:
+		switch ia.RefFormat {
+		case "", formatRegexp:
+		default:
+			return errors.New("ref_format must be empty or regexp at version 2")
+		}
+		ia.RefFormat = formatRegexp
+		var err error
+		ia.refRegexp, err = initFormat(ia.Ref, formatRegexp)
+		return err
+	case 3:
+		if ia.RefFormat == "" {
+			return errors.New("ref_format is required if ref is specified")
+		}
+		var err error
+		ia.refRegexp, err = initFormat(ia.Ref, ia.RefFormat)
+		return err
+	default:
+		return fmt.Errorf("unsupported version: %d", v)
 	}
-	var err error
-	ia.refRegexp, err = initFormat(ia.Ref, ia.RefFormat)
-	return err
 }
 
-func (ia *IgnoreAction) Init() error {
-	if err := ia.initName(); err != nil {
+func (ia *IgnoreAction) Init(v int) error {
+	if err := ia.initName(v); err != nil {
 		return err
 	}
-	if err := ia.initRef(); err != nil {
+	if err := ia.initRef(v); err != nil {
 		return err
 	}
 	return nil
@@ -195,12 +233,12 @@ func (r *Reader) Read(cfg *Config, configFilePath string) error {
 		return fmt.Errorf("decode a configuration file as YAML: %w", err)
 	}
 	for _, file := range cfg.Files {
-		if err := file.Init(); err != nil {
+		if err := file.Init(cfg.Version); err != nil {
 			return fmt.Errorf("initialize file: %w", err)
 		}
 	}
 	for _, ia := range cfg.IgnoreActions {
-		if err := ia.Init(); err != nil {
+		if err := ia.Init(cfg.Version); err != nil {
 			return fmt.Errorf("initialize ignore_action: %w", err)
 		}
 	}

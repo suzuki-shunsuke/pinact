@@ -26,7 +26,7 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry) error {
 	if err := c.readConfig(); err != nil {
 		return err
 	}
-	workflowFilePaths, err := c.searchFiles()
+	workflowFilePaths, err := c.searchFiles(logE)
 	if err != nil {
 		return fmt.Errorf("search target files: %w", err)
 	}
