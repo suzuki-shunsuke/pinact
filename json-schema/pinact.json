@@ -33,8 +33,7 @@
     "File": {
       "properties": {
         "pattern": {
-          "type": "string",
-          "description": "A glob pattern of target files."
+          "type": "string"
         }
       },
       "additionalProperties": false,
@@ -55,7 +54,6 @@
           "type": "string",
           "enum": [
             "fixed_string",
-            "glob",
             "regexp"
           ]
         },
@@ -63,7 +61,6 @@
           "type": "string",
           "enum": [
             "fixed_string",
-            "glob",
             "regexp"
           ]
         }
@@ -71,8 +68,7 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "name",
-        "name_format"
+        "name"
       ]
     }
   }
