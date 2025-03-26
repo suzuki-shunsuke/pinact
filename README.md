@@ -233,6 +233,7 @@ A list of target files.
 
 This is required.
 A glob pattern of target files.
+[Go's path/filepath#Glob](https://pkg.go.dev/path/filepath#Glob) is used.
 A relative path from pinact's configuration file.
 If files are passed via positional command line arguments, the configuration is ignored.
 
@@ -263,6 +264,8 @@ ignored_actions:
 > [!WARNING]
 > Regular expressions must match with action names exactly.
 > For instance, `name: actions/` doesn't match with `actions/checkout`
+
+Regarding regular expressions, [Go's regexp package is used.](https://pkg.go.dev/regexp)
 
 #### `ignore_actions[].ref`
 
