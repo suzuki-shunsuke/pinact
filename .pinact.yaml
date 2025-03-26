@@ -4,7 +4,7 @@ version: 3
 ignore_actions:
   - name: actions/setup-java
     ref: v3
-  - name: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml
+  - name: slsa-framework/slsa-github-generator/\.github/workflows/generator_generic_slsa3\.yml
     ref: .*
-  - name: "^peaceiris/"
+  - name: peaceiris/.*
     ref: .*
