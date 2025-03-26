@@ -34,14 +34,14 @@ func (f *File) Init(v int) error {
 		return errors.New("pattern is required")
 	}
 	switch v {
-	case 0, 2:
+	case 0, 2: //nolint:mnd
 		r, err := regexp.Compile(f.Pattern)
 		if err != nil {
 			return fmt.Errorf("compile pattern as a regular expression: %w", err)
 		}
 		f.patternRegexp = r
 		return nil
-	case 3:
+	case 3: //nolint:mnd
 		_, err := path.Match(f.Pattern, "a")
 		if err != nil {
 			return fmt.Errorf("parse pattern as a glob: %w", err)
@@ -81,7 +81,7 @@ func (ia *IgnoreAction) initName(v int) error {
 		return errors.New("name is required")
 	}
 	switch v {
-	case 0, 2:
+	case 0, 2: //nolint:mnd
 		switch ia.NameFormat {
 		case "", formatRegexp:
 		default:
@@ -91,7 +91,7 @@ func (ia *IgnoreAction) initName(v int) error {
 		var err error
 		ia.nameRegexp, err = initFormat(ia.Name, formatRegexp)
 		return err
-	case 3:
+	case 3: //nolint:mnd
 		if ia.NameFormat == "" {
 			return errors.New("name_format is required")
 		}
@@ -108,7 +108,7 @@ func (ia *IgnoreAction) initRef(v int) error {
 		return nil
 	}
 	switch v {
-	case 0, 2:
+	case 0, 2: //nolint:mnd
 		switch ia.RefFormat {
 		case "", formatRegexp:
 		default:
@@ -118,7 +118,7 @@ func (ia *IgnoreAction) initRef(v int) error {
 		var err error
 		ia.refRegexp, err = initFormat(ia.Ref, formatRegexp)
 		return err
-	case 3:
+	case 3: //nolint:mnd
 		if ia.RefFormat == "" {
 			return errors.New("ref_format is required if ref is specified")
 		}

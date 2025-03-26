@@ -60,9 +60,9 @@ func (c *Controller) edit(file, content string) error {
 
 func (c *Controller) migrate(logE *logrus.Entry, content []byte) (string, error) {
 	switch c.cfg.Version {
-	case 2:
+	case 2: //nolint:mnd
 		return c.migrateV2(logE, content)
-	case 3:
+	case 3: //nolint:mnd
 		return "", nil
 	case 0:
 		return c.migrateEmptyVersion(logE, content)

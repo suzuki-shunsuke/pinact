@@ -22,9 +22,9 @@ func (c *Controller) searchFiles(logE *logrus.Entry) ([]string, error) {
 
 func (c *Controller) searchFilesByConfig(logE *logrus.Entry) ([]string, error) {
 	switch c.cfg.Version {
-	case 0, 2:
+	case 0, 2: //nolint:mnd
 		return c.searchFilesByRegexp(logE)
-	case 3:
+	case 3: //nolint:mnd
 		return c.searchFilesByGlob()
 	default:
 		return nil, fmt.Errorf("unsupported version %d", c.cfg.Version)

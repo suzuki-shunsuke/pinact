@@ -10,8 +10,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const falseStr = "false"
-
 func parseConfigAST(_ *logrus.Entry, content []byte) (string, error) {
 	file, err := parser.ParseBytes(content, parser.ParseComments)
 	if err != nil {
@@ -102,7 +100,7 @@ func migrateVersion(body *ast.MappingNode) error {
 	versionNode := findNodeByKey(body.Values, "version")
 	if versionNode == nil {
 		node, err := yaml.ValueToNode(map[string]any{
-			"version": 3,
+			"version": 3, //nolint:mnd
 		})
 		if err != nil {
 			return fmt.Errorf("convert version to node: %w", err)

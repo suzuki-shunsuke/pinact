@@ -10,15 +10,10 @@ type Controller struct {
 	cfg       *config.Config
 	param     *Param
 	cfgFinder ConfigFinder
-	cfgReader ConfigReader
 }
 
 type ConfigFinder interface {
 	Find(configFilePath string) (string, error)
-}
-
-type ConfigReader interface {
-	Read(cfg *config.Config, configFilePath string) error
 }
 
 type Param struct {
