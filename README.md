@@ -209,8 +209,6 @@ ignore_actions:
     name_format: fixed_string
     ref: "v\\d+\\.\\d+\\.\\d+"
     ref_format: regexp
-  - name: actions/*
-    name_format: glob
   - name: ^suzuki-shunsuke/
     name_format: regexp
     ref: main
