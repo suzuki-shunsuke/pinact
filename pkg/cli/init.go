@@ -5,9 +5,9 @@ import (
 	"os"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/pkg/controller/run"
-	"github.com/suzuki-shunsuke/pinact/pkg/github"
-	"github.com/suzuki-shunsuke/pinact/pkg/log"
+	"github.com/suzuki-shunsuke/pinact/v2/pkg/controller/run"
+	"github.com/suzuki-shunsuke/pinact/v2/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v2/pkg/log"
 	"github.com/urfave/cli/v2"
 )
 

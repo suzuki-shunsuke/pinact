@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/suzuki-shunsuke/gen-go-jsonschema/jsonschema"
-	"github.com/suzuki-shunsuke/pinact/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v2/pkg/config"
 )
 
 func main() {

@@ -3,7 +3,7 @@ package config_test
 import (
 	"testing"
 
-	"github.com/suzuki-shunsuke/pinact/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v2/pkg/config"
 )
 
 func TestIgnoreAction_Match(t *testing.T) { //nolint:funlen
