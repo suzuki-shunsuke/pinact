@@ -73,7 +73,7 @@ func (ia *IgnoreAction) initRef(v int) error {
 		if ia.Ref == "" {
 			return nil
 		}
-		r, err := regexp.Compile(ia.Name)
+		r, err := regexp.Compile(ia.Ref)
 		if err != nil {
 			return fmt.Errorf("compile ref as a regular expression: %w", err)
 		}
@@ -83,7 +83,7 @@ func (ia *IgnoreAction) initRef(v int) error {
 		if ia.Ref == "" {
 			return errors.New("ref is required")
 		}
-		r, err := regexp.Compile(ia.Name)
+		r, err := regexp.Compile(ia.Ref)
 		if err != nil {
 			return fmt.Errorf("compile ref as a regular expression: %w", err)
 		}
@@ -121,9 +121,9 @@ func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
 		if ia.Ref == "" {
 			return true, nil
 		}
-		return ia.nameRegexp.MatchString(ref), nil
+		return ia.refRegexp.MatchString(ref), nil
 	case 3: //nolint:mnd
-		return ia.nameRegexp.FindString(ref) == ref, nil
+		return ia.refRegexp.FindString(ref) == ref, nil
 	default:
 		return false, errUnsupportedConfigVersion
 	}
