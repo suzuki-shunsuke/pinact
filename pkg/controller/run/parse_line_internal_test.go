@@ -7,9 +7,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/pkg/config"
-	"github.com/suzuki-shunsuke/pinact/pkg/github"
-	"github.com/suzuki-shunsuke/pinact/pkg/util"
+	"github.com/suzuki-shunsuke/pinact/v2/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v2/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v2/pkg/util"
 )
 
 func Test_parseAction(t *testing.T) { //nolint:funlen

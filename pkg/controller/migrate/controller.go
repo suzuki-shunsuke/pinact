@@ -2,7 +2,7 @@ package migrate
 
 import (
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v2/pkg/config"
 )
 
 type Controller struct {

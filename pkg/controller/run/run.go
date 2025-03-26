@@ -10,7 +10,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/logrus-error/logerr"
-	"github.com/suzuki-shunsuke/pinact/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v2/pkg/config"
 )
 
 type ParamRun struct {

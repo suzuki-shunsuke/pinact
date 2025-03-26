@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/suzuki-shunsuke/pinact/pkg/config/config",
+  "$id": "https://github.com/suzuki-shunsuke/pinact/v2/pkg/config/config",
   "$ref": "#/$defs/Config",
   "$defs": {
     "Config": {
