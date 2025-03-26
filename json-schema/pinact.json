@@ -49,20 +49,6 @@
         },
         "ref": {
           "type": "string"
-        },
-        "name_format": {
-          "type": "string",
-          "enum": [
-            "fixed_string",
-            "regexp"
-          ]
-        },
-        "ref_format": {
-          "type": "string",
-          "enum": [
-            "fixed_string",
-            "regexp"
-          ]
         }
       },
       "additionalProperties": false,
