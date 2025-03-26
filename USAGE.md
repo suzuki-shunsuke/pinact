@@ -11,12 +11,13 @@ USAGE:
    pinact [global options] command [command options]
 
 VERSION:
-   2.1.0 (406b297ed9b408820a37e848e4eb6b8827d090f9)
+   2.2.0 (9d184987d1943721c30e3aa2566c75ce048e5c58)
 
 COMMANDS:
    init     Create .pinact.yaml if it doesn't exist
    run      Pin GitHub Actions versions
    version  Show version
+   migrate  Migrate .pinact.yaml
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
@@ -90,6 +91,26 @@ NAME:
 
 USAGE:
    pinact version [command options]
+
+OPTIONS:
+   --help, -h  show help
+```
+
+## pinact migrate
+
+```console
+$ pinact migrate --help
+NAME:
+   pinact migrate - Migrate .pinact.yaml
+
+USAGE:
+   pinact migrate [command options]
+
+DESCRIPTION:
+   Migrate the version of .pinact.yaml
+
+   $ pinact migrate
+
 
 OPTIONS:
    --help, -h  show help
