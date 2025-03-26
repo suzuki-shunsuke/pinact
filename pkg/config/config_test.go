@@ -6,7 +6,7 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/config"
 )
 
-func TestIgnoreAction_Match(t *testing.T) { //nolint:funlen
+func TestIgnoreAction_Match(t *testing.T) {
 	t.Parallel()
 	data := []struct {
 		name          string
