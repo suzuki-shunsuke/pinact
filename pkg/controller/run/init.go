@@ -16,16 +16,12 @@ version: 3
 #   - pattern: */action.yaml
 
 ignore_actions:
-# - name: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml
-#   name_format: fixed_string
-# - name: ^actions/.*
-#   name_format: regexp
+# - name: slsa-framework/slsa-github-generator/\.github/workflows/generator_generic_slsa3\.yml
+#   ref: v\d+\.\d+\.\d+
+# - name: actions/.*
 #   ref: main
-#   ref_format: fixed_string
-# - name: ^suzuki-shunsuke/.*
-#   name_format: regexp
-#   ref: ^release-.*
-#   ref_format: regexp
+# - name: suzuki-shunsuke/.*
+#   ref: release-.*
 `
 	filePermission os.FileMode = 0o644
 )
