@@ -1,7 +1,12 @@
 package cli
 
 import (
+	"fmt"
+	"os"
+
+	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/pkg/controller/run"
+	"github.com/suzuki-shunsuke/pinact/pkg/github"
 	"github.com/suzuki-shunsuke/pinact/pkg/log"
 	"github.com/urfave/cli/v2"
 )
@@ -25,7 +30,25 @@ $ pinact init .github/pinact.yaml
 }
 
 func (r *Runner) initAction(c *cli.Context) error {
-	ctrl := run.New(c.Context, &run.InputNew{})
+	pwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get the current directory: %w", err)
+	}
+	gh := github.New(c.Context)
+	ctrl := run.New(&run.RepositoriesServiceImpl{
+		Tags:                map[string]*run.ListTagsResult{},
+		Releases:            map[string]*run.ListReleasesResult{},
+		Commits:             map[string]*run.GetCommitSHA1Result{},
+		RepositoriesService: gh.Repositories,
+	}, afero.NewOsFs(), nil, nil, &run.ParamRun{
+		WorkflowFilePaths: c.Args().Slice(),
+		ConfigFilePath:    c.String("config"),
+		PWD:               pwd,
+		IsVerify:          c.Bool("verify"),
+		Check:             c.Bool("check"),
+		Update:            c.Bool("update"),
+	})
+
 	log.SetLevel(c.String("log-level"), r.LogE)
 	configFilePath := c.Args().First()
 	if configFilePath == "" {

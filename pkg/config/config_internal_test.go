@@ -1,4 +1,4 @@
-package run
+package config
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/afero"
 )
 
-func TestController_getConfigPath(t *testing.T) {
+func Test_getConfigPath(t *testing.T) {
 	t.Parallel()
 	data := []struct {
 		name  string

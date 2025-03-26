@@ -10,6 +10,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/logrus-error/logerr"
+	"github.com/suzuki-shunsuke/pinact/pkg/config"
 )
 
 type ParamRun struct {
@@ -21,15 +22,11 @@ type ParamRun struct {
 	Check             bool
 }
 
-func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRun) error {
-	cfg := &Config{}
-	if err := c.readConfig(param.ConfigFilePath, cfg); err != nil {
+func (c *Controller) Run(ctx context.Context, logE *logrus.Entry) error {
+	if err := c.readConfig(); err != nil {
 		return err
 	}
-	cfg.IsVerify = param.IsVerify
-	cfg.Check = param.Check
-	c.cfg = cfg
-	workflowFilePaths, err := c.searchFiles(logE, param.WorkflowFilePaths, param.PWD)
+	workflowFilePaths, err := c.searchFiles(logE)
 	if err != nil {
 		return fmt.Errorf("search target files: %w", err)
 	}
@@ -37,8 +34,8 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 	failed := false
 	for _, workflowFilePath := range workflowFilePaths {
 		logE := logE.WithField("workflow_file", workflowFilePath)
-		if err := c.runWorkflow(ctx, logE, workflowFilePath, cfg); err != nil {
-			if param.Check {
+		if err := c.runWorkflow(ctx, logE, workflowFilePath); err != nil {
+			if c.param.Check {
 				failed = true
 				if !errors.Is(err, ErrNotPinned) {
 					logerr.WithError(logE, err).Error("check a workflow")
@@ -58,9 +55,23 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry, param *ParamRu
 	return nil
 }
 
+func (c *Controller) readConfig() error {
+	p, err := c.cfgFinder.Find(c.param.ConfigFilePath)
+	if err != nil {
+		return fmt.Errorf("find a configurationfile: %w", err)
+	}
+	c.param.ConfigFilePath = p
+	cfg := &config.Config{}
+	if err := c.cfgReader.Read(cfg, c.param.ConfigFilePath); err != nil {
+		return fmt.Errorf("read a config file: %w", err)
+	}
+	c.cfg = cfg
+	return nil
+}
+
 var ErrNotPinned = errors.New("actions aren't pinned")
 
-func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string, cfg *Config) error { //nolint:cyclop
+func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string) error { //nolint:cyclop
 	lines, err := c.readWorkflow(workflowFilePath)
 	if err != nil {
 		return err
@@ -80,7 +91,7 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		changed = true
 		lines[i] = l
 	}
-	if cfg.Check && failed {
+	if c.cfg.Check && failed {
 		return ErrNotPinned
 	}
 	if !changed {

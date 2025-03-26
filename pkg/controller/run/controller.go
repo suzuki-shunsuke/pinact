@@ -1,40 +1,34 @@
 package run
 
 import (
-	"context"
-
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/pkg/config"
 )
 
 type Controller struct {
 	repositoriesService RepositoriesService
 	fs                  afero.Fs
-	update              bool
-	cfg                 *Config
+	cfg                 *config.Config
+	param               *ParamRun
+	cfgFinder           ConfigFinder
+	cfgReader           ConfigReader
 }
 
-type InputNew struct {
-	Update bool
+type ConfigFinder interface {
+	Find(configFilePath string) (string, error)
 }
 
-func New(ctx context.Context, input *InputNew) *Controller {
-	gh := github.New(ctx)
+type ConfigReader interface {
+	Read(cfg *config.Config, configFilePath string) error
+}
+
+func New(repositoriesService RepositoriesService, fs afero.Fs, cfgFinder ConfigFinder, cfgReader ConfigReader, param *ParamRun) *Controller {
 	return &Controller{
-		repositoriesService: &RepositoriesServiceImpl{
-			tags:                map[string]*ListTagsResult{},
-			releases:            map[string]*ListReleasesResult{},
-			commits:             map[string]*GetCommitSHA1Result{},
-			RepositoriesService: gh.Repositories,
-		},
-		fs:     afero.NewOsFs(),
-		update: input.Update,
-	}
-}
-
-func NewController(repoService RepositoriesService, fs afero.Fs) *Controller {
-	return &Controller{
-		repositoriesService: repoService,
+		repositoriesService: repositoriesService,
+		param:               param,
 		fs:                  fs,
+		cfgFinder:           cfgFinder,
+		cfgReader:           cfgReader,
+		cfg:                 &config.Config{},
 	}
 }

@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/afero"
+	"github.com/suzuki-shunsuke/pinact/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/pkg/controller/run"
+	"github.com/suzuki-shunsuke/pinact/pkg/github"
 	"github.com/suzuki-shunsuke/pinact/pkg/log"
 	"github.com/urfave/cli/v2"
 )
@@ -44,20 +47,26 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 }
 
 func (r *Runner) runAction(c *cli.Context) error {
-	ctrl := run.New(c.Context, &run.InputNew{
-		Update: c.Bool("update"),
-	})
 	log.SetLevel(c.String("log-level"), r.LogE)
 	pwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get the current directory: %w", err)
 	}
-	param := &run.ParamRun{
+
+	gh := github.New(c.Context)
+	fs := afero.NewOsFs()
+	ctrl := run.New(&run.RepositoriesServiceImpl{
+		Tags:                map[string]*run.ListTagsResult{},
+		Releases:            map[string]*run.ListReleasesResult{},
+		Commits:             map[string]*run.GetCommitSHA1Result{},
+		RepositoriesService: gh.Repositories,
+	}, fs, config.NewFinder(fs), config.NewReader(fs), &run.ParamRun{
 		WorkflowFilePaths: c.Args().Slice(),
 		ConfigFilePath:    c.String("config"),
 		PWD:               pwd,
 		IsVerify:          c.Bool("verify"),
 		Check:             c.Bool("check"),
-	}
-	return ctrl.Run(c.Context, r.LogE, param) //nolint:wrapcheck
+		Update:            c.Bool("update"),
+	})
+	return ctrl.Run(c.Context, r.LogE) //nolint:wrapcheck
 }

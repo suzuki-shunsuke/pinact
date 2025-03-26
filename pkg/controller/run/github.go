@@ -18,12 +18,12 @@ type RepositoriesService interface {
 
 func (r *RepositoriesServiceImpl) GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%s", owner, repo, ref)
-	a, ok := r.commits[key]
+	a, ok := r.Commits[key]
 	if ok {
 		return a.SHA, a.Response, a.err
 	}
 	sha, resp, err := r.RepositoriesService.GetCommitSHA1(ctx, owner, repo, ref, lastSHA)
-	r.commits[key] = &GetCommitSHA1Result{
+	r.Commits[key] = &GetCommitSHA1Result{
 		SHA:      sha,
 		Response: resp,
 		err:      err,
@@ -45,9 +45,9 @@ type ListReleasesResult struct {
 
 type RepositoriesServiceImpl struct {
 	RepositoriesService RepositoriesService
-	tags                map[string]*ListTagsResult
-	commits             map[string]*GetCommitSHA1Result
-	releases            map[string]*ListReleasesResult
+	Tags                map[string]*ListTagsResult
+	Commits             map[string]*GetCommitSHA1Result
+	Releases            map[string]*ListReleasesResult
 }
 
 type GetCommitSHA1Result struct {
@@ -58,12 +58,12 @@ type GetCommitSHA1Result struct {
 
 func (r *RepositoriesServiceImpl) ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%v", owner, repo, opts.Page)
-	a, ok := r.tags[key]
+	a, ok := r.Tags[key]
 	if ok {
 		return a.Tags, a.Response, a.err
 	}
 	tags, resp, err := r.RepositoriesService.ListTags(ctx, owner, repo, opts)
-	r.tags[key] = &ListTagsResult{
+	r.Tags[key] = &ListTagsResult{
 		Tags:     tags,
 		Response: resp,
 		err:      err,
@@ -73,12 +73,12 @@ func (r *RepositoriesServiceImpl) ListTags(ctx context.Context, owner string, re
 
 func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%v", owner, repo, opts.Page)
-	a, ok := r.releases[key]
+	a, ok := r.Releases[key]
 	if ok {
 		return a.Releases, a.Response, a.err
 	}
 	releases, resp, err := r.RepositoriesService.ListReleases(ctx, owner, repo, opts)
-	r.releases[key] = &ListReleasesResult{
+	r.Releases[key] = &ListReleasesResult{
 		Releases: releases,
 		Response: resp,
 		err:      err,

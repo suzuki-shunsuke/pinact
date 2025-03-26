@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/suzuki-shunsuke/pinact/pkg/cli/migrate"
 	"github.com/suzuki-shunsuke/urfave-cli-help-all/helpall"
 	"github.com/urfave/cli/v2"
 )
@@ -54,6 +55,7 @@ func (r *Runner) Run(ctx context.Context, args ...string) error {
 			r.newInitCommand(),
 			r.newRunCommand(),
 			r.newVersionCommand(),
+			migrate.New(r.LogE),
 			helpall.New(nil),
 		},
 	}

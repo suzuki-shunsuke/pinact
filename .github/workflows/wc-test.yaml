@@ -37,6 +37,13 @@ jobs:
           GITHUB_TOKEN: ${{github.token}}
       - run: diff -r testdata/actions testdata/actions.after
 
+      - run: pinact migrate
+        working-directory: testdata/migrate
+        env:
+          GITHUB_TOKEN: ${{github.token}}
+      - run: diff .pinact.yaml pinact.yaml.after
+        working-directory: testdata/migrate
+
       - run: pinact run -u
         env:
           GITHUB_TOKEN: ${{github.token}}

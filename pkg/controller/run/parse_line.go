@@ -89,7 +89,12 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 	logE = logE.WithField("action", action.Name+"@"+action.Version)
 
 	for _, ignoreAction := range c.cfg.IgnoreActions {
-		if ignoreAction.Match(action.Name, action.Version) {
+		f, err := ignoreAction.Match(action.Name, action.Version, c.cfg.Version)
+		if err != nil {
+			logerr.WithError(logE, err).Warn("match the action")
+			continue
+		}
+		if f {
 			logE.Debug("ignore the action")
 			return "", nil
 		}
@@ -136,7 +141,7 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, act
 		return "", ErrCantPinned
 	}
 	// @xxx
-	if c.update {
+	if c.param.Update {
 		// get the latest version
 		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
 		if err != nil {
@@ -172,7 +177,7 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, act
 
 func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) {
 	// @xxx # v3.0.0
-	if c.update {
+	if c.param.Update {
 		// get the latest version
 		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
 		if err != nil {
@@ -207,7 +212,7 @@ func (c *Controller) parseShortSemverTagLine(ctx context.Context, logE *logrus.E
 	if FullCommitSHA != getVersionType(action.Version) {
 		return "", ErrCantPinned
 	}
-	if c.update {
+	if c.param.Update {
 		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)

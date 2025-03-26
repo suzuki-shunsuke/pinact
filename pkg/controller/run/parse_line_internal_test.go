@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
+	"github.com/suzuki-shunsuke/pinact/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/pkg/github"
 	"github.com/suzuki-shunsuke/pinact/pkg/util"
 )
@@ -155,8 +156,9 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			ctrl := NewController(&RepositoriesServiceImpl{
-				tags: map[string]*ListTagsResult{
+			fs := afero.NewMemMapFs()
+			ctrl := New(&RepositoriesServiceImpl{
+				Tags: map[string]*ListTagsResult{
 					"actions/checkout/0": {
 						Tags: []*github.RepositoryTag{
 							{
@@ -187,7 +189,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						Response: &github.Response{},
 					},
 				},
-				commits: map[string]*GetCommitSHA1Result{
+				Commits: map[string]*GetCommitSHA1Result{
 					"actions/checkout/v3": {
 						SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
 					},
@@ -195,8 +197,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
 					},
 				},
-			}, afero.NewMemMapFs())
-			ctrl.cfg = &Config{}
+			}, fs, config.NewFinder(fs), config.NewReader(fs), &ParamRun{})
 			line, err := ctrl.parseLine(ctx, logE, d.line)
 			if err != nil {
 				if d.isErr {

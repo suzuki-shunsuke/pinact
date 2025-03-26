@@ -190,49 +190,95 @@ A configuration file is optional.
 pinact supports a configuration file `.pinact.yaml`, `.github/pinact.yaml`, `.pinact.yml` or `.github/pinact.yml`.
 You can also specify the configuration file path by the environment variable `PINACT_CONFIG` or command line option `-c`.
 
+As of pinact v2.2.0, pinact configuration file has a schema version.
+
+```yaml
+version: 3
+```
+
+In general, you should use the latest schema version.
+
+### Schema v3 (latest)
+
+pinact v2.2.0 or later supports this version.
+
 .pinact.yaml
 
 e.g.
 
 ```yaml
+version: 3
 files:
-  - pattern: "^\\.github/workflows/.*\\.ya?ml$"
-  - pattern: "^(.*/)?action\\.ya?ml$"
+  - pattern: .github/workflows/*.yml
+  - pattern: .github/workflows/*.yaml
+  - pattern: .github/actions/*/action.yml
+  - pattern: .github/actions/*/action.yaml
 
 ignore_actions:
   # slsa-framework/slsa-github-generator doesn't support pinning version
   # > Invalid ref: 68bad40844440577b33778c9f29077a3388838e9. Expected ref of the form refs/tags/vX.Y.Z
   # https://github.com/slsa-framework/slsa-github-generator/issues/722
   - name: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml
-  - name: ^suzuki-shunsuke/
-    ref: ^main$ # optional
+    ref: "v\\d+\\.\\d+\\.\\d+"
+  - name: suzuki-shunsuke/.*
+    ref: main
 ```
 
-### `files[].pattern`
+#### `files`
 
-The regular expression of target files. If files are passed via positional command line arguments, the configuration is ignored.
+This is optional.
+A list of target files.
 
-### `ignore_actions[].name`
+#### `files[].pattern`
 
-> [!TIP]
-> As of pinact v1.3.0, regular expressions are supported. [#798](https://github.com/suzuki-shunsuke/pinact/pull/798)
+This is required.
+A glob pattern of target files.
+[Go's path/filepath#Glob](https://pkg.go.dev/path/filepath#Glob) is used.
+A relative path from pinact's configuration file.
+If files are passed via positional command line arguments, the configuration is ignored.
 
-A regular expression to ignore actions and reusable workflows.
-Actions and reusable workflows matching the regular expression are ignored.
+e.g.
 
-### `ignore_actions[].ref`
+```yaml
+files:
+  - pattern: .github/workflows/*.yml
+  - pattern: .github/workflows/*.yaml
+  - pattern: README.md
+```
 
-A regular expression to ignore actions and reusable workflows by ref.
-If not specified, any ref is ignored.
+#### `ignore_actions`
+
+This is optional. A list of ignored actions and reusable workflows.
+
+#### `ignore_actions[].name`
+
+This is required.
+A regular expression of ignored actions and reusable workflows.
+
+```yaml
+ignored_actions:
+  - name: actions/.*
+    ref: main
+```
 
 > [!WARNING]
-> Ignoring actions without specifying a ref can be dangerous in certain scenarios:
->
-> 1. If an attacker gains access to push to any branch in the repository (even non-protected branches), they could create a malicious branch with the same action name
-> 2. For organization-internal actions, ignoring without ref restriction means trusting that ALL branches of the repository are secure
-> 3. Even with organization-internal repositories, compromised credentials of a contributor could lead to backdoors in non-protected branches
->
-> For better security, consider limiting ignored actions to specific refs (like `^main$` or specific version tags) that have proper review processes and branch protection rules in place.
+> Regular expressions must match with action names exactly.
+> For instance, `name: actions/` doesn't match with `actions/checkout`
+
+Regarding regular expressions, [Go's regexp package is used.](https://pkg.go.dev/regexp)
+
+#### `ignore_actions[].ref`
+
+This is required.
+A regular expression of ignored action versions (branch, tag, or commit hash).
+
+> [!WARNING]
+> Regular expressions must match with action names exactly.
+> For instance, `ref: main` doesn't match with `malicious-main`
+
+### Old Schemas
+
+Please see [here](docs/old_schema.md).
 
 ### JSON Schema
 

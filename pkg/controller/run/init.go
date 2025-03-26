@@ -10,13 +10,18 @@ import (
 const (
 	templateConfig = `# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/refs/heads/main/json-schema/pinact.json
 # pinact - https://github.com/suzuki-shunsuke/pinact
-files:
-  - pattern: "^\\.github/workflows/.*\\.ya?ml$"
-  - pattern: "^(.*/)?action\\.ya?ml$"
+version: 3
+# files:
+#   - pattern: action.yaml
+#   - pattern: */action.yaml
 
 ignore_actions:
-# - name: actions/checkout
-# - name: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml
+# - name: slsa-framework/slsa-github-generator/\.github/workflows/generator_generic_slsa3\.yml
+#   ref: v\d+\.\d+\.\d+
+# - name: actions/.*
+#   ref: main
+# - name: suzuki-shunsuke/.*
+#   ref: release-.*
 `
 	filePermission os.FileMode = 0o644
 )

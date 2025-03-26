@@ -10,18 +10,43 @@ import (
 	"github.com/spf13/afero"
 )
 
-func (c *Controller) searchFiles(logE *logrus.Entry, workflowFilePaths []string, pwd string) ([]string, error) {
-	if len(workflowFilePaths) != 0 {
-		return workflowFilePaths, nil
+func (c *Controller) searchFiles(logE *logrus.Entry) ([]string, error) {
+	if len(c.param.WorkflowFilePaths) != 0 {
+		return c.param.WorkflowFilePaths, nil
 	}
-	if len(c.cfg.Files) > 0 {
-		return c.searchFilesByConfig(logE, pwd)
+	if c.cfg != nil && len(c.cfg.Files) > 0 {
+		return c.searchFilesByConfig(logE)
 	}
 	return listWorkflows()
 }
 
-func (c *Controller) searchFilesByConfig(logE *logrus.Entry, pwd string) ([]string, error) {
+func (c *Controller) searchFilesByConfig(logE *logrus.Entry) ([]string, error) {
+	switch c.cfg.Version {
+	case 0, 2: //nolint:mnd
+		return c.searchFilesByRegexp(logE)
+	case 3: //nolint:mnd
+		return c.searchFilesByGlob()
+	default:
+		return nil, fmt.Errorf("unsupported version %d", c.cfg.Version)
+	}
+}
+
+func (c *Controller) searchFilesByGlob() ([]string, error) {
+	files := []string{}
+	configFileDir := filepath.Dir(c.param.ConfigFilePath)
+	for _, file := range c.cfg.Files {
+		matches, err := filepath.Glob(filepath.Join(configFileDir, file.Pattern))
+		if err != nil {
+			return nil, fmt.Errorf("search target files: %w", err)
+		}
+		files = append(files, matches...)
+	}
+	return files, nil
+}
+
+func (c *Controller) searchFilesByRegexp(logE *logrus.Entry) ([]string, error) {
 	patterns := make([]*regexp.Regexp, 0, len(c.cfg.Files))
+	configFileDir := filepath.Dir(c.param.ConfigFilePath)
 	for _, file := range c.cfg.Files {
 		if file.Pattern == "" {
 			// ignore
@@ -35,7 +60,7 @@ func (c *Controller) searchFilesByConfig(logE *logrus.Entry, pwd string) ([]stri
 	}
 
 	files := []string{}
-	if err := fs.WalkDir(afero.NewIOFS(c.fs), pwd, func(p string, dirEntry fs.DirEntry, e error) error {
+	if err := fs.WalkDir(afero.NewIOFS(c.fs), configFileDir, func(p string, dirEntry fs.DirEntry, e error) error {
 		if e != nil {
 			return nil //nolint:nilerr
 		}
@@ -43,11 +68,11 @@ func (c *Controller) searchFilesByConfig(logE *logrus.Entry, pwd string) ([]stri
 			// ignore directory
 			return nil
 		}
-		filePath, err := filepath.Rel(pwd, p)
+		filePath, err := filepath.Rel(configFileDir, p)
 		if err != nil {
 			logE.WithFields(logrus.Fields{
-				"pwd":  pwd,
-				"path": p,
+				"config_file_dir": configFileDir,
+				"path":            p,
 			}).WithError(err).Debug("get a relative path")
 			return nil
 		}
