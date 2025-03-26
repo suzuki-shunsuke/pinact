@@ -9,89 +9,86 @@ import (
 func TestIgnoreAction_Match(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	data := []struct {
-		name         string
-		ignoreAction *config.IgnoreAction
-		actionName   string
-		actionRef    string
-		expected     bool
+		name          string
+		ignoreAction  *config.IgnoreAction
+		actionName    string
+		actionRef     string
+		configVersion int
+		expected      bool
 	}{
 		{
 			name: "match by name only",
 			ignoreAction: &config.IgnoreAction{
-				Name:       "actions/checkout",
-				NameFormat: "fixed_string",
+				Name: "actions/checkout",
 			},
-			actionName: "actions/checkout",
-			actionRef:  "main",
-			expected:   true,
+			actionName:    "actions/checkout",
+			actionRef:     "main",
+			expected:      true,
+			configVersion: 2,
 		},
 		{
 			name: "match by name and ref",
 			ignoreAction: &config.IgnoreAction{
-				Name:       "actions/checkout",
-				NameFormat: "fixed_string",
-				Ref:        "main",
-				RefFormat:  "fixed_string",
+				Name: "actions/checkout",
+				Ref:  "main",
 			},
-			actionName: "actions/checkout",
-			actionRef:  "main",
-			expected:   true,
+			actionName:    "actions/checkout",
+			actionRef:     "main",
+			expected:      true,
+			configVersion: 2,
 		},
 		{
 			name: "match by name but not by ref",
 			ignoreAction: &config.IgnoreAction{
-				Name:       "actions/checkout",
-				NameFormat: "fixed_string",
-				Ref:        "main",
-				RefFormat:  "fixed_string",
+				Name: "actions/checkout",
+				Ref:  "main",
 			},
-			actionName: "actions/checkout",
-			actionRef:  "develop",
-			expected:   false,
+			actionName:    "actions/checkout",
+			actionRef:     "develop",
+			expected:      false,
+			configVersion: 2,
 		},
 		{
 			name: "match by regex name",
 			ignoreAction: &config.IgnoreAction{
-				Name:       "^actions/.*",
-				NameFormat: "regexp",
+				Name: "^actions/.*",
 			},
-			actionName: "actions/checkout",
-			actionRef:  "main",
-			expected:   true,
+			actionName:    "actions/checkout",
+			actionRef:     "main",
+			expected:      true,
+			configVersion: 2,
 		},
 		{
 			name: "match by regex ref",
 			ignoreAction: &config.IgnoreAction{
-				Name:       "actions/checkout",
-				NameFormat: "fixed_string",
-				Ref:        "^v\\d+\\.\\d+\\.\\d+$",
-				RefFormat:  "regexp",
+				Name: "actions/checkout",
+				Ref:  "^v\\d+\\.\\d+\\.\\d+$",
 			},
-			actionName: "actions/checkout",
-			actionRef:  "v3.5.2",
-			expected:   true,
+			actionName:    "actions/checkout",
+			actionRef:     "v3.5.2",
+			expected:      true,
+			configVersion: 2,
 		},
 		{
 			name: "match by regex ref but not match",
 			ignoreAction: &config.IgnoreAction{
-				Name:       "actions/checkout",
-				NameFormat: "fixed_string",
-				Ref:        "^v\\d+\\.\\d+\\.\\d+$",
-				RefFormat:  "regexp",
+				Name: "actions/checkout",
+				Ref:  "^v\\d+\\.\\d+\\.\\d+$",
 			},
-			actionName: "actions/checkout",
-			actionRef:  "main",
-			expected:   false,
+			actionName:    "actions/checkout",
+			actionRef:     "main",
+			expected:      false,
+			configVersion: 2,
 		},
 		{
 			name: "not match by name",
 			ignoreAction: &config.IgnoreAction{
-				Name:       "actions/checkout",
-				NameFormat: "fixed_string",
+				Name: "actions/checkout",
 			},
-			actionName: "actions/setup-go",
-			actionRef:  "main",
-			expected:   false,
+			actionName:    "actions/setup-go",
+			actionRef:     "main",
+			expected:      false,
+			configVersion: 2,
 		},
 	}
 
@@ -101,7 +98,7 @@ func TestIgnoreAction_Match(t *testing.T) { //nolint:funlen
 			if err := d.ignoreAction.Init(3); err != nil {
 				t.Fatalf("failed to initialize ignore action: %v", err)
 			}
-			got, err := d.ignoreAction.Match(d.actionName, d.actionRef)
+			got, err := d.ignoreAction.Match(d.actionName, d.actionRef, d.configVersion)
 			if err != nil {
 				t.Fatalf("failed to match: %v", err)
 			}

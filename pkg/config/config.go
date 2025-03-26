@@ -23,11 +23,7 @@ type File struct {
 	patternRegexp *regexp.Regexp
 }
 
-const (
-	formatFixedString = "fixed_string"
-	formatGlob        = "glob"
-	formatRegexp      = "regexp"
-)
+var errUnsupportedConfigVersion = errors.New("pinact doesn't suuport this configuration format version. Maybe you need to update pinact")
 
 func (f *File) Init(v int) error {
 	if f.Pattern == "" {
@@ -48,90 +44,58 @@ func (f *File) Init(v int) error {
 		}
 		return nil
 	default:
-		return fmt.Errorf("unsupported version: %d", v)
+		return errUnsupportedConfigVersion
 	}
 }
 
 type IgnoreAction struct {
 	Name       string `json:"name"`
 	Ref        string `json:"ref,omitempty"`
-	NameFormat string `json:"name_format,omitempty" yaml:"name_format" jsonschema:"enum=fixed_string,enum=regexp"`
-	RefFormat  string `json:"ref_format,omitempty" yaml:"ref_format" jsonschema:"enum=fixed_string,enum=regexp"`
 	nameRegexp *regexp.Regexp
 	refRegexp  *regexp.Regexp
 }
 
-func initFormat(value, format string) (*regexp.Regexp, error) {
-	switch format {
-	case formatFixedString:
-		return nil, nil //nolint:nilnil
-	case formatRegexp:
-		r, err := regexp.Compile(value)
-		if err != nil {
-			return nil, fmt.Errorf("compile as a regular expression: %w", err)
-		}
-		return r, nil
-	default:
-		return nil, errors.New("format must be fixed_string or regexp")
-	}
-}
-
-func (ia *IgnoreAction) initName(v int) error {
+func (ia *IgnoreAction) initName() error {
 	if ia.Name == "" {
 		return errors.New("name is required")
 	}
-	switch v {
-	case 0, 2: //nolint:mnd
-		switch ia.NameFormat {
-		case "", formatRegexp:
-		default:
-			return errors.New("name_format must be empty or regexp at version 2")
-		}
-		ia.NameFormat = formatRegexp
-		var err error
-		ia.nameRegexp, err = initFormat(ia.Name, formatRegexp)
-		return err
-	case 3: //nolint:mnd
-		if ia.NameFormat == "" {
-			return errors.New("name_format is required")
-		}
-		var err error
-		ia.nameRegexp, err = initFormat(ia.Name, ia.NameFormat)
-		return err
-	default:
-		return fmt.Errorf("unsupported version: %d", v)
+	r, err := regexp.Compile(ia.Name)
+	if err != nil {
+		return fmt.Errorf("compile name as a regular expression: %w", err)
 	}
+	ia.nameRegexp = r
+	return nil
 }
 
 func (ia *IgnoreAction) initRef(v int) error {
-	if ia.Ref == "" {
-		return nil
-	}
 	switch v {
 	case 0, 2: //nolint:mnd
-		switch ia.RefFormat {
-		case "", formatRegexp:
-		default:
-			return errors.New("ref_format must be empty or regexp at version 2")
+		if ia.Ref == "" {
+			return nil
 		}
-		ia.RefFormat = formatRegexp
-		var err error
-		ia.refRegexp, err = initFormat(ia.Ref, formatRegexp)
-		return err
+		r, err := regexp.Compile(ia.Name)
+		if err != nil {
+			return fmt.Errorf("compile ref as a regular expression: %w", err)
+		}
+		ia.refRegexp = r
+		return nil
 	case 3: //nolint:mnd
-		if ia.RefFormat == "" {
-			return errors.New("ref_format is required if ref is specified")
+		if ia.Ref == "" {
+			return errors.New("ref is required")
 		}
-		var err error
-		ia.refRegexp, err = initFormat(ia.Ref, ia.RefFormat)
-		return err
+		r, err := regexp.Compile(ia.Name)
+		if err != nil {
+			return fmt.Errorf("compile ref as a regular expression: %w", err)
+		}
+		ia.refRegexp = r
+		return nil
 	default:
-		return fmt.Errorf("unsupported version: %d", v)
+		return errUnsupportedConfigVersion
 	}
 }
 
 func (ia *IgnoreAction) Init(v int) error {
-	if err := ia.initName(v); err != nil {
+	if err := ia.initName(); err != nil {
 		return err
 	}
 	if err := ia.initRef(v); err != nil {
@@ -140,44 +104,44 @@ func (ia *IgnoreAction) Init(v int) error {
 	return nil
 }
 
-func match(value, name, format string, r *regexp.Regexp) (bool, error) {
-	switch format {
-	case formatFixedString:
-		return value == name, nil
-	case formatGlob:
-		f, err := path.Match(value, name)
-		if err != nil {
-			return false, fmt.Errorf("match as a glob: %w", err)
-		}
-		return f, nil
-	case formatRegexp:
-		return r.MatchString(value), nil
+func (ia *IgnoreAction) matchName(name string, version int) (bool, error) {
+	switch version {
+	case 0, 2: //nolint:mnd
+		return ia.nameRegexp.MatchString(name), nil
+	case 3: //nolint:mnd
+		return ia.nameRegexp.FindString(name) == name, nil
 	default:
-		return false, errors.New("unexpected format: " + format)
+		return false, errUnsupportedConfigVersion
 	}
 }
 
-func (ia *IgnoreAction) Match(name, ref string) (bool, error) {
-	f, err := match(name, ia.Name, ia.NameFormat, ia.nameRegexp)
+func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
+	switch version {
+	case 0, 2: //nolint:mnd
+		if ia.Ref == "" {
+			return true, nil
+		}
+		return ia.nameRegexp.MatchString(ref), nil
+	case 3: //nolint:mnd
+		return ia.nameRegexp.FindString(ref) == ref, nil
+	default:
+		return false, errUnsupportedConfigVersion
+	}
+}
+
+func (ia *IgnoreAction) Match(name, ref string, version int) (bool, error) {
+	f, err := ia.matchName(name, version)
 	if err != nil {
 		return false, fmt.Errorf("match name: %w", err)
 	}
 	if !f {
 		return false, nil
 	}
-
-	if ia.Ref == "" {
-		return true, nil
-	}
-
-	f, err = match(ref, ia.Ref, ia.RefFormat, ia.refRegexp)
+	b, err := ia.matchRef(ref, version)
 	if err != nil {
 		return false, fmt.Errorf("match ref: %w", err)
 	}
-	if !f {
-		return false, nil
-	}
-	return true, nil
+	return b, nil
 }
 
 func getConfigPath(fs afero.Fs) (string, error) {
