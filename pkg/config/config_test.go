@@ -90,6 +90,39 @@ func TestIgnoreAction_Match(t *testing.T) { //nolint:funlen
 			expected:      false,
 			configVersion: 2,
 		},
+		{
+			name: "match by name and ref (v3)",
+			ignoreAction: &config.IgnoreAction{
+				Name: "actions/checkout",
+				Ref:  "main",
+			},
+			actionName:    "actions/checkout",
+			actionRef:     "main",
+			expected:      true,
+			configVersion: 3,
+		},
+		{
+			name: "not match (v3)",
+			ignoreAction: &config.IgnoreAction{
+				Name: "actions/checkout",
+				Ref:  "main",
+			},
+			actionName:    "actions/checkout",
+			actionRef:     "main-malicous",
+			expected:      false,
+			configVersion: 3,
+		},
+		{
+			name: "not match name (v3)",
+			ignoreAction: &config.IgnoreAction{
+				Name: "actions/",
+				Ref:  "main",
+			},
+			actionName:    "actions/checkout",
+			actionRef:     "main",
+			expected:      false,
+			configVersion: 3,
+		},
 	}
 
 	for _, d := range data {
