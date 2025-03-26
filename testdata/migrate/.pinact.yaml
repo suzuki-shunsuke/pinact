@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../json-schema/pinact.json
+# pinact - https://github.com/suzuki-shunsuke/pinact
+ignore_actions:
+  - name: actions/setup-java
+  - name: slsa-framework/slsa-github-generator/\.github/workflows/generator_generic_slsa3\.yml
+  - name: peaceiris/.*

@@ -40,9 +40,7 @@ func parseDocAST(doc *ast.DocumentNode) error {
 func migrateIgnoreActions(body *ast.MappingNode) error {
 	// ignore_actions:
 	//   - name:
-	//     name_format:
 	//     ref:
-	//     ref_format:
 	ignoreActionsNode := findNodeByKey(body.Values, "ignore_actions")
 	if ignoreActionsNode == nil {
 		return nil
@@ -56,40 +54,27 @@ func migrateIgnoreActions(body *ast.MappingNode) error {
 		}
 		return nil
 	default:
-		return errors.New("version must be an array")
+		return errors.New("ignore_actions must be an array")
 	}
 }
 
 func migrateIgnoreAction(body ast.Node) error {
 	// name:
-	// name_format:
 	// ref:
-	// ref_format:
 	m, ok := body.(*ast.MappingNode)
 	if !ok {
 		return errors.New("ignore_action must be a mapping node")
 	}
 
-	value := map[string]any{}
-
-	nameFormatNode := findNodeByKey(m.Values, "name_format")
-	if nameFormatNode == nil {
-		value["name_format"] = "regexp"
-	}
-
 	if refNode := findNodeByKey(m.Values, "ref"); refNode != nil {
-		refFormatNode := findNodeByKey(m.Values, "ref_format")
-		if refFormatNode == nil {
-			value["ref_format"] = "regexp"
-		}
-	}
-
-	if len(value) == 0 {
 		return nil
 	}
-	node, err := yaml.ValueToNode(value)
+
+	node, err := yaml.ValueToNode(map[string]any{
+		"ref": ".*",
+	})
 	if err != nil {
-		return fmt.Errorf("convert name_format to node: %w", err)
+		return fmt.Errorf("convert ref to node: %w", err)
 	}
 	m.Merge(node.(*ast.MappingNode)) //nolint:forcetypeassert
 	return nil
