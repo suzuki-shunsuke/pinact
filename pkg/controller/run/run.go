@@ -91,7 +91,7 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		changed = true
 		lines[i] = l
 	}
-	if c.cfg.Check && failed {
+	if c.param.Check && failed {
 		return ErrNotPinned
 	}
 	if !changed {
