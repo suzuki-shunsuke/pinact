@@ -100,7 +100,7 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 		}
 	}
 
-	if c.cfg.Check {
+	if c.param.Check {
 		if fullCommitSHAPattern.MatchString(action.Version) {
 			return "", nil
 		}
@@ -192,7 +192,7 @@ func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry,
 		}
 	}
 	// verify commit hash
-	if !c.cfg.IsVerify {
+	if !c.param.IsVerify {
 		return "", nil
 	}
 	// @xxx # v3.0.0
