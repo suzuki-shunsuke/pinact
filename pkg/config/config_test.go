@@ -34,7 +34,7 @@ func TestIgnoreAction_Match(t *testing.T) {
 				Ref:  "main",
 			},
 			actionName:    "actions/checkout",
-			actionRef:     "main-malicous",
+			actionRef:     "main-malicious",
 			expected:      false,
 			configVersion: 3,
 		},

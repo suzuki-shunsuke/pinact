@@ -6,7 +6,9 @@ import (
 	"path"
 	"regexp"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
+	"github.com/suzuki-shunsuke/logrus-error/logerr"
 	"gopkg.in/yaml.v3"
 )
 
@@ -21,21 +23,27 @@ type File struct {
 }
 
 var (
-	errUnsupportedConfigVersion = errors.New("pinact doesn't suuport this configuration format version. Maybe you need to update pinact")
-	errAbandonedConfigVersion   = errors.New("this version was abandoned. Pleaes update the scheme version")
+	errUnsupportedConfigVersion = errors.New("pinact doesn't support this configuration format version. Maybe you need to update pinact")
+	errAbandonedConfigVersion   = errors.New("this version was abandoned. Please update the schema version")
 	errEmptyConfigVersion       = errors.New("schema version is required")
 )
 
 func validateSchemaVersion(v int) error {
 	switch v {
 	case 0:
-		return errEmptyConfigVersion
+		return logerr.WithFields(errEmptyConfigVersion, logrus.Fields{ //nolint:wrapcheck
+			"docs": "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/002.md",
+		})
 	case 2: //nolint:mnd
-		return errAbandonedConfigVersion
+		return logerr.WithFields(errAbandonedConfigVersion, logrus.Fields{ //nolint:wrapcheck
+			"docs": "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/003.md",
+		})
 	case 3: //nolint:mnd
 		return nil
 	default:
-		return errUnsupportedConfigVersion
+		return logerr.WithFields(errUnsupportedConfigVersion, logrus.Fields{ //nolint:wrapcheck
+			"docs": "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/004.md",
+		})
 	}
 }
 
