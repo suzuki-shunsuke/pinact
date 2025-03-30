@@ -1,5 +1,8 @@
 # Schema v2
 
+> [!WARNING]
+> pinact v3 or later doesn't support this schema version.
+
 ```yaml
 version: 2
 ```

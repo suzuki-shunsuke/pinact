@@ -17,33 +17,40 @@ type Config struct {
 }
 
 type File struct {
-	Pattern       string `json:"pattern"`
-	patternRegexp *regexp.Regexp
+	Pattern string `json:"pattern"`
 }
 
-var errUnsupportedConfigVersion = errors.New("pinact doesn't suuport this configuration format version. Maybe you need to update pinact")
+var (
+	errUnsupportedConfigVersion = errors.New("pinact doesn't suuport this configuration format version. Maybe you need to update pinact")
+	errAbandonedConfigVersion   = errors.New("this version was abandoned. Pleaes update the scheme version")
+	errEmptyConfigVersion       = errors.New("schema version is required")
+)
+
+func validateSchemaVersion(v int) error {
+	switch v {
+	case 0:
+		return errEmptyConfigVersion
+	case 2: //nolint:mnd
+		return errAbandonedConfigVersion
+	case 3: //nolint:mnd
+		return nil
+	default:
+		return errUnsupportedConfigVersion
+	}
+}
 
 func (f *File) Init(v int) error {
 	if f.Pattern == "" {
 		return errors.New("pattern is required")
 	}
-	switch v {
-	case 0, 2: //nolint:mnd
-		r, err := regexp.Compile(f.Pattern)
-		if err != nil {
-			return fmt.Errorf("compile pattern as a regular expression: %w", err)
-		}
-		f.patternRegexp = r
-		return nil
-	case 3: //nolint:mnd
-		_, err := path.Match(f.Pattern, "a")
-		if err != nil {
-			return fmt.Errorf("parse pattern as a glob: %w", err)
-		}
-		return nil
-	default:
-		return errUnsupportedConfigVersion
+	if err := validateSchemaVersion(v); err != nil {
+		return err
 	}
+	_, err := path.Match(f.Pattern, "a")
+	if err != nil {
+		return fmt.Errorf("parse pattern as a glob: %w", err)
+	}
+	return nil
 }
 
 type IgnoreAction struct {
@@ -66,30 +73,18 @@ func (ia *IgnoreAction) initName() error {
 }
 
 func (ia *IgnoreAction) initRef(v int) error {
-	switch v {
-	case 0, 2: //nolint:mnd
-		if ia.Ref == "" {
-			return nil
-		}
-		r, err := regexp.Compile(ia.Ref)
-		if err != nil {
-			return fmt.Errorf("compile ref as a regular expression: %w", err)
-		}
-		ia.refRegexp = r
-		return nil
-	case 3: //nolint:mnd
-		if ia.Ref == "" {
-			return errors.New("ref is required")
-		}
-		r, err := regexp.Compile(ia.Ref)
-		if err != nil {
-			return fmt.Errorf("compile ref as a regular expression: %w", err)
-		}
-		ia.refRegexp = r
-		return nil
-	default:
-		return errUnsupportedConfigVersion
+	if err := validateSchemaVersion(v); err != nil {
+		return err
 	}
+	if ia.Ref == "" {
+		return errors.New("ref is required")
+	}
+	r, err := regexp.Compile(ia.Ref)
+	if err != nil {
+		return fmt.Errorf("compile ref as a regular expression: %w", err)
+	}
+	ia.refRegexp = r
+	return nil
 }
 
 func (ia *IgnoreAction) Init(v int) error {
@@ -103,28 +98,17 @@ func (ia *IgnoreAction) Init(v int) error {
 }
 
 func (ia *IgnoreAction) matchName(name string, version int) (bool, error) {
-	switch version {
-	case 0, 2: //nolint:mnd
-		return ia.nameRegexp.MatchString(name), nil
-	case 3: //nolint:mnd
-		return ia.nameRegexp.FindString(name) == name, nil
-	default:
-		return false, errUnsupportedConfigVersion
+	if err := validateSchemaVersion(version); err != nil {
+		return false, err
 	}
+	return ia.nameRegexp.FindString(name) == name, nil
 }
 
 func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
-	switch version {
-	case 0, 2: //nolint:mnd
-		if ia.Ref == "" {
-			return true, nil
-		}
-		return ia.refRegexp.MatchString(ref), nil
-	case 3: //nolint:mnd
-		return ia.refRegexp.FindString(ref) == ref, nil
-	default:
-		return false, errUnsupportedConfigVersion
+	if err := validateSchemaVersion(version); err != nil {
+		return false, err
 	}
+	return ia.refRegexp.FindString(ref) == ref, nil
 }
 
 func (ia *IgnoreAction) Match(name, ref string, version int) (bool, error) {
@@ -193,6 +177,9 @@ func (r *Reader) Read(cfg *Config, configFilePath string) error {
 	defer f.Close()
 	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
 		return fmt.Errorf("decode a configuration file as YAML: %w", err)
+	}
+	if err := validateSchemaVersion(cfg.Version); err != nil {
+		return err
 	}
 	for _, file := range cfg.Files {
 		if err := file.Init(cfg.Version); err != nil {
