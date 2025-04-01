@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func (r *Runner) newVersionCommand() *cli.Command {

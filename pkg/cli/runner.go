@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/cli/migrate"
 	"github.com/suzuki-shunsuke/urfave-cli-help-all/helpall"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 type Runner struct {

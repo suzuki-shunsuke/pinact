@@ -8,7 +8,7 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/github"
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/log"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func (r *Runner) newInitCommand() *cli.Command {

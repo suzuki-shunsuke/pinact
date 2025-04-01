@@ -6,7 +6,7 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/controller/migrate"
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/log"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 type Runner struct {
