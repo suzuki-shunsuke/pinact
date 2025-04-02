@@ -1,12 +1,14 @@
 package migrate
 
 import (
+	"context"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/controller/migrate"
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/log"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 type Runner struct {
@@ -32,7 +34,7 @@ $ pinact migrate
 	}
 }
 
-func (r *Runner) action(c *cli.Context) error {
+func (r *Runner) action(_ context.Context, c *cli.Command) error {
 	log.SetLevel(c.String("log-level"), r.LogE)
 	fs := afero.NewOsFs()
 	ctrl := migrate.New(fs, config.NewFinder(fs), &migrate.Param{
