@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -9,7 +10,7 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/github"
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/log"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func (r *Runner) newRunCommand() *cli.Command {
@@ -46,14 +47,14 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 	}
 }
 
-func (r *Runner) runAction(c *cli.Context) error {
+func (r *Runner) runAction(ctx context.Context, c *cli.Command) error {
 	log.SetLevel(c.String("log-level"), r.LogE)
 	pwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get the current directory: %w", err)
 	}
 
-	gh := github.New(c.Context)
+	gh := github.New(ctx)
 	fs := afero.NewOsFs()
 	ctrl := run.New(&run.RepositoriesServiceImpl{
 		Tags:                map[string]*run.ListTagsResult{},
@@ -68,5 +69,5 @@ func (r *Runner) runAction(c *cli.Context) error {
 		Check:             c.Bool("check"),
 		Update:            c.Bool("update"),
 	})
-	return ctrl.Run(c.Context, r.LogE) //nolint:wrapcheck
+	return ctrl.Run(ctx, r.LogE) //nolint:wrapcheck
 }

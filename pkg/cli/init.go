@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/github"
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/log"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func (r *Runner) newInitCommand() *cli.Command {
@@ -29,12 +30,12 @@ $ pinact init .github/pinact.yaml
 	}
 }
 
-func (r *Runner) initAction(c *cli.Context) error {
+func (r *Runner) initAction(ctx context.Context, c *cli.Command) error {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get the current directory: %w", err)
 	}
-	gh := github.New(c.Context)
+	gh := github.New(ctx)
 	ctrl := run.New(&run.RepositoriesServiceImpl{
 		Tags:                map[string]*run.ListTagsResult{},
 		Releases:            map[string]*run.ListReleasesResult{},
