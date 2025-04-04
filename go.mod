@@ -1,4 +1,4 @@
-module github.com/suzuki-shunsuke/pinact/v2
+module github.com/suzuki-shunsuke/pinact/v3
 
 go 1.24.2
 

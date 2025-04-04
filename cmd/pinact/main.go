@@ -9,9 +9,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/logrus-error/logerr"
-	"github.com/suzuki-shunsuke/pinact/v2/pkg/cli"
-	"github.com/suzuki-shunsuke/pinact/v2/pkg/controller/run"
-	"github.com/suzuki-shunsuke/pinact/v2/pkg/log"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/log"
 )
 
 var (

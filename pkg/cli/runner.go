@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/sirupsen/logrus"
-	"github.com/suzuki-shunsuke/pinact/v2/pkg/cli/migrate"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/migrate"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/helpall"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/vcmd"
 	"github.com/urfave/cli/v3"

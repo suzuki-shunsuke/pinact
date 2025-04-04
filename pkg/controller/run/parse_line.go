@@ -9,7 +9,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/logrus-error/logerr"
-	"github.com/suzuki-shunsuke/pinact/v2/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 )
 
 var (
