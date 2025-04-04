@@ -1,6 +1,6 @@
 module github.com/suzuki-shunsuke/pinact/v2
 
-go 1.23.4
+go 1.24.2
 
 require (
 	github.com/goccy/go-yaml v1.17.1
@@ -12,7 +12,7 @@ require (
 	github.com/spf13/afero v1.14.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/logrus-error v0.1.4
-	github.com/suzuki-shunsuke/urfave-cli-v3-help-all v0.1.0
+	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.0.1
 	github.com/urfave/cli/v3 v3.1.1
 	golang.org/x/oauth2 v0.28.0
 	gopkg.in/yaml.v3 v3.0.1
