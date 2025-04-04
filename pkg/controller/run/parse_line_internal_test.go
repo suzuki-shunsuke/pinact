@@ -1,7 +1,6 @@
 package run
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -151,7 +150,6 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			exp:  `  "uses": 'actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5' # v2.7.0`,
 		},
 	}
-	ctx := context.Background()
 	logE := logrus.NewEntry(logrus.New())
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
@@ -198,7 +196,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 					},
 				},
 			}, fs, config.NewFinder(fs), config.NewReader(fs), &ParamRun{})
-			line, err := ctrl.parseLine(ctx, logE, d.line)
+			line, err := ctrl.parseLine(t.Context(), logE, d.line)
 			if err != nil {
 				if d.isErr {
 					return
