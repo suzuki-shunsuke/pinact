@@ -6,7 +6,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/pinact/v2/pkg/cli/migrate"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-help-all/helpall"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/helpall"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/vcmd"
 	"github.com/urfave/cli/v3"
 )
 
@@ -48,8 +49,12 @@ func (r *Runner) Run(ctx context.Context, args ...string) error {
 		Commands: []*cli.Command{
 			r.newInitCommand(),
 			r.newRunCommand(),
-			r.newVersionCommand(),
 			migrate.New(r.LogE),
+			vcmd.New(&vcmd.Command{
+				Name:    "pinact",
+				Version: r.LDFlags.Version,
+				SHA:     r.LDFlags.Commit,
+			}),
 		},
 	}, nil)
 
