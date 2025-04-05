@@ -8,23 +8,23 @@ NAME:
    pinact - Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact
 
 USAGE:
-   pinact [global options] command [command options]
+   pinact [global options] [command [command options]]
 
 VERSION:
-   3.0.1 (3bf741dfad2992d8a804ac182fcbf7884c600a94)
+   3.0.2 (d80381f0cee54ffc7fc628a7fd494a7dbcb97db2)
 
 COMMANDS:
    init     Create .pinact.yaml if it doesn't exist
    run      Pin GitHub Actions versions
-   version  Show version
    migrate  Migrate .pinact.yaml
+   version  Show version
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --log-level value         log level [$PINACT_LOG_LEVEL]
-   --config value, -c value  configuration file path [$PINACT_CONFIG]
-   --help, -h                show help
-   --version, -v             print the version
+   --log-level string          log level [$PINACT_LOG_LEVEL]
+   --config string, -c string  configuration file path [$PINACT_CONFIG]
+   --help, -h                  show help
+   --version, -v               print the version
 ```
 
 ## pinact init
@@ -35,7 +35,7 @@ NAME:
    pinact init - Create .pinact.yaml if it doesn't exist
 
 USAGE:
-   pinact init [command options]
+   pinact init
 
 DESCRIPTION:
    Create .pinact.yaml if it doesn't exist
@@ -61,7 +61,7 @@ NAME:
    pinact run - Pin GitHub Actions versions
 
 USAGE:
-   pinact run [command options]
+   pinact run
 
 DESCRIPTION:
    If no argument is passed, pinact searches GitHub Actions workflow files from .github/workflows.
@@ -82,20 +82,6 @@ OPTIONS:
    --help, -h    show help
 ```
 
-## pinact version
-
-```console
-$ pinact version --help
-NAME:
-   pinact version - Show version
-
-USAGE:
-   pinact version [command options]
-
-OPTIONS:
-   --help, -h  show help
-```
-
 ## pinact migrate
 
 ```console
@@ -104,7 +90,7 @@ NAME:
    pinact migrate - Migrate .pinact.yaml
 
 USAGE:
-   pinact migrate [command options]
+   pinact migrate
 
 DESCRIPTION:
    Migrate the version of .pinact.yaml
@@ -113,5 +99,20 @@ DESCRIPTION:
 
 
 OPTIONS:
+   --help, -h  show help
+```
+
+## pinact version
+
+```console
+$ pinact version --help
+NAME:
+   pinact version - Show version
+
+USAGE:
+   pinact version
+
+OPTIONS:
+   --json, -j  Output version in JSON format (default: false)
    --help, -h  show help
 ```
