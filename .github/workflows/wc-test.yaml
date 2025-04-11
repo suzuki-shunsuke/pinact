@@ -25,7 +25,10 @@ jobs:
         env:
           AQUA_GITHUB_TOKEN: ${{github.token}}
       - run: go test -v ./... -race -covermode=atomic
-      - run: go install ./cmd/pinact
+      - run: |
+          go install \
+            -ldflags "-X main.version=v1.0.0 -X main.commit=$GITHUB_SHA -X main.date=$(date +"%Y-%m-%dT%H:%M:%SZ%:z" | tr -d '+')" \
+            ./cmd/pinact
       - run: pinact -v
 
       - run: |
