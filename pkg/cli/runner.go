@@ -26,10 +26,10 @@ type LDFlags struct {
 }
 
 func (r *Runner) Run(ctx context.Context, args ...string) error {
-	cmd := helpall.With(&cli.Command{
+	cmd := helpall.With(vcmd.With(&cli.Command{
 		Name:    "pinact",
 		Usage:   "Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact",
-		Version: r.LDFlags.Version + " (" + r.LDFlags.Commit + ")",
+		Version: r.LDFlags.Version,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "log-level",
@@ -50,13 +50,8 @@ func (r *Runner) Run(ctx context.Context, args ...string) error {
 			r.newInitCommand(),
 			r.newRunCommand(),
 			migrate.New(r.LogE),
-			vcmd.New(&vcmd.Command{
-				Name:    "pinact",
-				Version: r.LDFlags.Version,
-				SHA:     r.LDFlags.Commit,
-			}),
 		},
-	}, nil)
+	}, r.LDFlags.Commit), nil)
 
 	return cmd.Run(ctx, args) //nolint:wrapcheck
 }
