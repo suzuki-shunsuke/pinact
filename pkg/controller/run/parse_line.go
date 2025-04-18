@@ -196,6 +196,9 @@ func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry,
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
+		if action.VersionComment == lv {
+			return "", nil
+		}
 		if !compareVersion(action.VersionComment, lv) {
 			logE.WithFields(logrus.Fields{
 				"current_version": action.VersionComment,
