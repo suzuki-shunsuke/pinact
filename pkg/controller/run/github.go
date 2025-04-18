@@ -107,7 +107,7 @@ func compare(latestSemver *version.Version, latestVersion, tag string) (*version
 	}
 	if latestSemver != nil {
 		if v.GreaterThan(latestSemver) {
-			return latestSemver, "", nil
+			return v, "", nil
 		}
 		return latestSemver, "", nil
 	}
