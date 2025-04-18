@@ -190,7 +190,7 @@ func compareVersion(currentVersion, newVersion string) bool {
 
 func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) {
 	// @xxx # v3.0.0
-	if c.param.Update {
+	if c.param.Update { //nolint:nestif
 		// get the latest version
 		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
 		if err != nil {
