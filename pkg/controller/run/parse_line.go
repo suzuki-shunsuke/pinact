@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/go-version"
 	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/logrus-error/logerr"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
@@ -175,6 +176,18 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, act
 	return patchLine(action, sha, longVersion), nil
 }
 
+func compareVersion(currentVersion, newVersion string) bool {
+	cv, err := version.NewVersion(currentVersion)
+	if err != nil {
+		return newVersion > currentVersion
+	}
+	nv, err := version.NewVersion(newVersion)
+	if err != nil {
+		return newVersion > currentVersion
+	}
+	return nv.GreaterThan(cv)
+}
+
 func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) {
 	// @xxx # v3.0.0
 	if c.param.Update {
@@ -182,6 +195,13 @@ func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry,
 		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
+		}
+		if !compareVersion(action.VersionComment, lv) {
+			logE.WithFields(logrus.Fields{
+				"current_version": action.VersionComment,
+				"new_version":     lv,
+			}).Warn("skip updating because the current version is newer than the new version")
+			return "", nil
 		}
 		if action.VersionComment != lv {
 			sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
