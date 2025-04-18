@@ -68,6 +68,31 @@ type IgnoreAction struct {
 	refRegexp  *regexp.Regexp
 }
 
+func (ia *IgnoreAction) Init(v int) error {
+	if err := ia.initName(); err != nil {
+		return err
+	}
+	if err := ia.initRef(v); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ia *IgnoreAction) Match(name, ref string, version int) (bool, error) {
+	f, err := ia.matchName(name, version)
+	if err != nil {
+		return false, fmt.Errorf("match name: %w", err)
+	}
+	if !f {
+		return false, nil
+	}
+	b, err := ia.matchRef(ref, version)
+	if err != nil {
+		return false, fmt.Errorf("match ref: %w", err)
+	}
+	return b, nil
+}
+
 func (ia *IgnoreAction) initName() error {
 	if ia.Name == "" {
 		return errors.New("name is required")
@@ -95,16 +120,6 @@ func (ia *IgnoreAction) initRef(v int) error {
 	return nil
 }
 
-func (ia *IgnoreAction) Init(v int) error {
-	if err := ia.initName(); err != nil {
-		return err
-	}
-	if err := ia.initRef(v); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (ia *IgnoreAction) matchName(name string, version int) (bool, error) {
 	if err := validateSchemaVersion(version); err != nil {
 		return false, err
@@ -117,21 +132,6 @@ func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
 		return false, err
 	}
 	return ia.refRegexp.FindString(ref) == ref, nil
-}
-
-func (ia *IgnoreAction) Match(name, ref string, version int) (bool, error) {
-	f, err := ia.matchName(name, version)
-	if err != nil {
-		return false, fmt.Errorf("match name: %w", err)
-	}
-	if !f {
-		return false, nil
-	}
-	b, err := ia.matchRef(ref, version)
-	if err != nil {
-		return false, fmt.Errorf("match ref: %w", err)
-	}
-	return b, nil
 }
 
 func getConfigPath(fs afero.Fs) (string, error) {
