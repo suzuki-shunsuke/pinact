@@ -2,34 +2,19 @@ package cli
 
 import (
 	"context"
-	"io"
 
 	"github.com/sirupsen/logrus"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/initcmd"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/migrate"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/helpall"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/vcmd"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/run"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
 
-type Runner struct {
-	Stdin   io.Reader
-	Stdout  io.Writer
-	Stderr  io.Writer
-	LDFlags *LDFlags
-	LogE    *logrus.Entry
-}
-
-type LDFlags struct {
-	Version string
-	Commit  string
-	Date    string
-}
-
-func (r *Runner) Run(ctx context.Context, args ...string) error {
-	cmd := helpall.With(vcmd.With(&cli.Command{
-		Name:    "pinact",
-		Usage:   "Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact",
-		Version: r.LDFlags.Version,
+func Run(ctx context.Context, logE *logrus.Entry, ldFlags *urfave.LDFlags, args ...string) error {
+	return urfave.Command(logE, ldFlags, &cli.Command{ //nolint:wrapcheck
+		Name:  "pinact",
+		Usage: "Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "log-level",
@@ -45,13 +30,10 @@ func (r *Runner) Run(ctx context.Context, args ...string) error {
 				Sources: cli.EnvVars("PINACT_CONFIG"),
 			},
 		},
-		EnableShellCompletion: true,
 		Commands: []*cli.Command{
-			r.newInitCommand(),
-			r.newRunCommand(),
-			migrate.New(r.LogE),
+			initcmd.New(logE),
+			run.New(logE),
+			migrate.New(logE),
 		},
-	}, r.LDFlags.Commit), nil)
-
-	return cmd.Run(ctx, args) //nolint:wrapcheck
+	}).Run(ctx, args)
 }

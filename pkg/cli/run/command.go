@@ -1,10 +1,11 @@
-package cli
+package run
 
 import (
 	"context"
 	"fmt"
 	"os"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
@@ -13,7 +14,18 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-func (r *Runner) newRunCommand() *cli.Command {
+func New(logE *logrus.Entry) *cli.Command {
+	r := &runner{
+		logE: logE,
+	}
+	return r.Command()
+}
+
+type runner struct {
+	logE *logrus.Entry
+}
+
+func (r *runner) Command() *cli.Command {
 	return &cli.Command{
 		Name:  "run",
 		Usage: "Pin GitHub Actions versions",
@@ -27,7 +39,7 @@ e.g.
 
 $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 `,
-		Action: r.runAction,
+		Action: r.action,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "verify",
@@ -47,8 +59,8 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 	}
 }
 
-func (r *Runner) runAction(ctx context.Context, c *cli.Command) error {
-	log.SetLevel(c.String("log-level"), r.LogE)
+func (r *runner) action(ctx context.Context, c *cli.Command) error {
+	log.SetLevel(c.String("log-level"), r.logE)
 	pwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get the current directory: %w", err)
@@ -69,5 +81,5 @@ func (r *Runner) runAction(ctx context.Context, c *cli.Command) error {
 		Check:             c.Bool("check"),
 		Update:            c.Bool("update"),
 	})
-	return ctrl.Run(ctx, r.LogE) //nolint:wrapcheck
+	return ctrl.Run(ctx, r.logE) //nolint:wrapcheck
 }
