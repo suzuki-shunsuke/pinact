@@ -12,7 +12,7 @@ import (
 )
 
 func Run(ctx context.Context, logE *logrus.Entry, ldFlags *urfave.LDFlags, args ...string) error {
-	return urfave.Command(logE, ldFlags, &cli.Command{
+	return urfave.Command(logE, ldFlags, &cli.Command{ //nolint:wrapcheck
 		Name:  "pinact",
 		Usage: "Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact",
 		Flags: []cli.Flag{
@@ -35,5 +35,5 @@ func Run(ctx context.Context, logE *logrus.Entry, ldFlags *urfave.LDFlags, args 
 			run.New(logE),
 			migrate.New(logE),
 		},
-	}).Run(ctx, args) //nolint:wrapcheck
+	}).Run(ctx, args)
 }
