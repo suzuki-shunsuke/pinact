@@ -11,18 +11,18 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-type Runner struct {
-	LogE *logrus.Entry
+type runner struct {
+	logE *logrus.Entry
 }
 
 func New(logE *logrus.Entry) *cli.Command {
-	r := Runner{
-		LogE: logE,
+	r := runner{
+		logE: logE,
 	}
-	return r.newCommand()
+	return r.Command()
 }
 
-func (r *Runner) newCommand() *cli.Command {
+func (r *runner) Command() *cli.Command {
 	return &cli.Command{
 		Name:  "migrate",
 		Usage: "Migrate .pinact.yaml",
@@ -34,12 +34,12 @@ $ pinact migrate
 	}
 }
 
-func (r *Runner) action(_ context.Context, c *cli.Command) error {
-	log.SetLevel(c.String("log-level"), r.LogE)
+func (r *runner) action(_ context.Context, c *cli.Command) error {
+	log.SetLevel(c.String("log-level"), r.logE)
 	fs := afero.NewOsFs()
 	ctrl := migrate.New(fs, config.NewFinder(fs), &migrate.Param{
 		ConfigFilePath: c.String("config"),
 	})
 
-	return ctrl.Migrate(r.LogE) //nolint:wrapcheck
+	return ctrl.Migrate(r.logE) //nolint:wrapcheck
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/log"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 )
 
 var (
@@ -35,18 +36,11 @@ func main() {
 }
 
 func core(logE *logrus.Entry) error {
-	runner := cli.Runner{
-		Stdin:  os.Stdin,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-		LDFlags: &cli.LDFlags{
-			Version: version,
-			Commit:  commit,
-			Date:    date,
-		},
-		LogE: logE,
-	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return runner.Run(ctx, os.Args...) //nolint:wrapcheck
+	return cli.Run(ctx, logE, &urfave.LDFlags{ //nolint:wrapcheck
+		Version: version,
+		Commit:  commit,
+		Date:    date,
+	}, os.Args...)
 }

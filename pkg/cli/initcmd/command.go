@@ -1,10 +1,11 @@
-package cli
+package initcmd
 
 import (
 	"context"
 	"fmt"
 	"os"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
@@ -12,7 +13,18 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-func (r *Runner) newInitCommand() *cli.Command {
+func New(logE *logrus.Entry) *cli.Command {
+	r := &runner{
+		logE: logE,
+	}
+	return r.Command()
+}
+
+type runner struct {
+	logE *logrus.Entry
+}
+
+func (r *runner) Command() *cli.Command {
 	return &cli.Command{
 		Name:  "init",
 		Usage: "Create .pinact.yaml if it doesn't exist",
@@ -26,11 +38,11 @@ e.g.
 
 $ pinact init .github/pinact.yaml
 `,
-		Action: r.initAction,
+		Action: r.action,
 	}
 }
 
-func (r *Runner) initAction(ctx context.Context, c *cli.Command) error {
+func (r *runner) action(ctx context.Context, c *cli.Command) error {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get the current directory: %w", err)
@@ -50,7 +62,7 @@ func (r *Runner) initAction(ctx context.Context, c *cli.Command) error {
 		Update:            c.Bool("update"),
 	})
 
-	log.SetLevel(c.String("log-level"), r.LogE)
+	log.SetLevel(c.String("log-level"), r.logE)
 	configFilePath := c.Args().First()
 	if configFilePath == "" {
 		configFilePath = c.String("config")
