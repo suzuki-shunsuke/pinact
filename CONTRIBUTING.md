@@ -11,7 +11,7 @@ We use [aqua](https://aquaproj.github.io/) as a CLI version manager and [cmdx](h
 [How to install aqua](https://aquaproj.github.io/docs/install)
 
 ```sh
-aqua i # Install development tools incliding cmdx
+aqua i # Install development tools including cmdx
 ```
 
 Show tasks:
@@ -41,4 +41,4 @@ In addition to Go's unit tests, we run integration tests in CI.
 - [workflow](https://github.com/suzuki-shunsuke/pinact/blob/b60761b24a99aa946c45623c2ef2e1e673c257cf/.github/workflows/wc-test.yaml#L34-L67)
 
 If you change pinact's behaviour, please add tests.
-Tests also make what you change clear.
+Tests also make how the behaviour is changed clear.
