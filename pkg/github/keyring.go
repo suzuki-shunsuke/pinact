@@ -34,6 +34,13 @@ func (tm *TokenManager) SetToken(token string) error {
 	return nil
 }
 
+func (tm *TokenManager) RemoveToken() error {
+	if err := keyring.Delete(keyService, keyName); err != nil {
+		return fmt.Errorf("delete a GitHub Access token from keyring: %w", err)
+	}
+	return nil
+}
+
 type KeyringTokenSource struct {
 	token *oauth2.Token
 	logE  *logrus.Entry

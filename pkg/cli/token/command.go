@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/sirupsen/logrus"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/rmtoken"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/settoken"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 	"github.com/urfave/cli/v3"
@@ -39,6 +40,13 @@ func (r *runner) Command() *cli.Command {
 					},
 				},
 			},
+			{
+				Name:        "remove",
+				Aliases:     []string{"rm"},
+				Usage:       "Remove GitHub Access token",
+				Description: `Remove GitHub Access token from keyring.`,
+				Action:      r.remove,
+			},
 		},
 	}
 }
@@ -51,4 +59,10 @@ func (r *runner) action(_ context.Context, c *cli.Command) error {
 		Stdin:   os.Stdin,
 	}, term, tokenManager)
 	return ctrl.Set(r.logE) //nolint:wrapcheck
+}
+
+func (r *runner) remove(_ context.Context, _ *cli.Command) error {
+	tokenManager := github.NewTokenManager()
+	ctrl := rmtoken.New(&rmtoken.Param{}, tokenManager)
+	return ctrl.Remove() //nolint:wrapcheck
 }
