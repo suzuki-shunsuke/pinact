@@ -37,14 +37,14 @@ func (c *Controller) get(logE *logrus.Entry) ([]byte, error) {
 	return text, nil
 }
 
+type PasswordReader struct {
+	stdout io.Writer
+}
+
 func NewPasswordReader(stdout io.Writer) *PasswordReader {
 	return &PasswordReader{
 		stdout: stdout,
 	}
-}
-
-type PasswordReader struct {
-	stdout io.Writer
 }
 
 func (p *PasswordReader) ReadPassword() ([]byte, error) {
@@ -53,5 +53,8 @@ func (p *PasswordReader) ReadPassword() ([]byte, error) {
 	// https://pkg.go.dev/syscall?GOOS=windows#pkg-variables
 	b, err := term.ReadPassword(int(syscall.Stdin)) //nolint:unconvert
 	fmt.Fprintln(p.stdout, "")
-	return b, err
+	if err != nil {
+		return nil, fmt.Errorf("read a GitHub access token from terminal: %w", err)
+	}
+	return b, nil
 }
