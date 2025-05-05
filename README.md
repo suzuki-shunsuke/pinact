@@ -109,6 +109,12 @@ export PINACT_KEYRING_ENABLED=true
 
 Note that if the environment variable `GITHUB_TOKEN` is set, this feature gets disabled.
 
+You can remove a GitHub Access token from keyring by `pinact token rm` command:
+
+```sh
+pinact token rm
+```
+
 ## How to use
 
 Please run `pinact run` on a Git repository root directory, then target files are fixed.
