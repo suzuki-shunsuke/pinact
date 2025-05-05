@@ -1,9 +1,11 @@
 package github
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/sirupsen/logrus"
+	"github.com/suzuki-shunsuke/logrus-error/logerr"
 	"github.com/zalando/go-keyring"
 	"golang.org/x/oauth2"
 )
@@ -34,8 +36,12 @@ func (tm *TokenManager) SetToken(token string) error {
 	return nil
 }
 
-func (tm *TokenManager) RemoveToken() error {
+func (tm *TokenManager) RemoveToken(logE *logrus.Entry) error {
 	if err := keyring.Delete(keyService, keyName); err != nil {
+		if errors.Is(err, keyring.ErrNotFound) {
+			logerr.WithError(logE, err).Warn("remove a GitHub Access token from keyring")
+			return nil
+		}
 		return fmt.Errorf("delete a GitHub Access token from keyring: %w", err)
 	}
 	return nil

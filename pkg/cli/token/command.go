@@ -64,5 +64,5 @@ func (r *runner) action(_ context.Context, c *cli.Command) error {
 func (r *runner) remove(_ context.Context, _ *cli.Command) error {
 	tokenManager := github.NewTokenManager()
 	ctrl := rmtoken.New(&rmtoken.Param{}, tokenManager)
-	return ctrl.Remove() //nolint:wrapcheck
+	return ctrl.Remove(r.logE) //nolint:wrapcheck
 }

@@ -1,5 +1,7 @@
 package rmtoken
 
+import "github.com/sirupsen/logrus"
+
 type Controller struct {
 	param        *Param
 	tokenManager TokenManager
@@ -15,5 +17,5 @@ func New(param *Param, tokenManager TokenManager) *Controller {
 type Param struct{}
 
 type TokenManager interface {
-	RemoveToken() error
+	RemoveToken(logE *logrus.Entry) error
 }
