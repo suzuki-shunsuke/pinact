@@ -82,6 +82,30 @@ pinact calls GitHub REST API to get commit hashes and tags.
 You can pass GitHub Access token via environment variable `GITHUB_TOKEN`.
 If no GitHub Access token is passed, pinact calls GitHub REST API without access token.
 
+### Manage GitHub Access token using Keyring
+
+pinact >= v3.1.0
+
+You can manage a GitHub Access token using secret store such as [Windows Credential Manager](https://support.microsoft.com/en-us/windows/accessing-credential-manager-1b5c916a-6a16-889f-8581-fc16e8165ac0), [macOS Keychain](https://en.wikipedia.org/wiki/Keychain_(software)), and [GNOME Keyring](https://wiki.gnome.org/Projects/GnomeKeyring).
+
+1. Configure a GitHub Access token by `pinact token set` command:
+
+```sh
+pinact token set # Interactive
+```
+
+or
+
+```sh
+echo "<github access token>" | pinact tokn set -stdin
+```
+
+2. Enable the feature by setting the environment variable `PINACT_KEYRING_ENABLED`:
+
+```sh
+export PINACT_KEYRING_ENABLED=true
+```
+
 ## How to use
 
 Please run `pinact run` on a Git repository root directory, then target files are fixed.
