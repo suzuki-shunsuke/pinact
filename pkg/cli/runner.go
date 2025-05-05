@@ -7,6 +7,7 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/initcmd"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/migrate"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/run"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/token"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
@@ -34,6 +35,7 @@ func Run(ctx context.Context, logE *logrus.Entry, ldFlags *urfave.LDFlags, args 
 			initcmd.New(logE),
 			run.New(logE),
 			migrate.New(logE),
+			token.New(logE),
 		},
 	}).Run(ctx, args)
 }

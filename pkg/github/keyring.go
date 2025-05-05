@@ -3,6 +3,7 @@ package github
 import (
 	"fmt"
 
+	"github.com/sirupsen/logrus"
 	"github.com/zalando/go-keyring"
 	"golang.org/x/oauth2"
 )
@@ -35,20 +36,25 @@ func (tm *TokenManager) SetToken(token string) error {
 
 type KeyringTokenSource struct {
 	token *oauth2.Token
+	logE  *logrus.Entry
 }
 
-func NewKeyringTokenSource() *KeyringTokenSource {
-	return &KeyringTokenSource{}
+func NewKeyringTokenSource(logE *logrus.Entry) *KeyringTokenSource {
+	return &KeyringTokenSource{
+		logE: logE,
+	}
 }
 
 func (ks *KeyringTokenSource) Token() (*oauth2.Token, error) {
 	if ks.token != nil {
 		return ks.token, nil
 	}
+	ks.logE.Debug("getting a GitHub Access toke from keyring")
 	s, err := keyring.Get(keyService, keyName)
 	if err != nil {
 		return nil, fmt.Errorf("get a GitHub Access token from keyring: %w", err)
 	}
+	ks.logE.Debug("got a GitHub Access toke from keyring")
 	ks.token = &oauth2.Token{
 		AccessToken: s,
 	}

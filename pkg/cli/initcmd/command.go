@@ -47,7 +47,7 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("get the current directory: %w", err)
 	}
-	gh := github.New(ctx)
+	gh := github.New(ctx, r.logE)
 	ctrl := run.New(&run.RepositoriesServiceImpl{
 		Tags:                map[string]*run.ListTagsResult{},
 		Releases:            map[string]*run.ListReleasesResult{},

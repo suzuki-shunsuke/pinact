@@ -19,7 +19,6 @@ func New(param *Param, term Terminal, tokenManager TokenManager) *Controller {
 type Param struct {
 	IsStdin bool
 	Stdin   io.Reader
-	// Stdout  io.Writer
 }
 
 type Terminal interface {
