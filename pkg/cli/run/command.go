@@ -66,7 +66,7 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 		return fmt.Errorf("get the current directory: %w", err)
 	}
 
-	gh := github.New(ctx)
+	gh := github.New(ctx, r.logE)
 	fs := afero.NewOsFs()
 	ctrl := run.New(&run.RepositoriesServiceImpl{
 		Tags:                map[string]*run.ListTagsResult{},
