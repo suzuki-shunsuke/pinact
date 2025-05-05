@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/zalando/go-keyring"
+	"golang.org/x/oauth2"
 )
 
 const (
@@ -30,4 +31,26 @@ func (tm *TokenManager) SetToken(token string) error {
 		return fmt.Errorf("set a GitHub Access token in keyring: %w", err)
 	}
 	return nil
+}
+
+type KeyringTokenSource struct {
+	token *oauth2.Token
+}
+
+func NewKeyringTokenSource() *KeyringTokenSource {
+	return &KeyringTokenSource{}
+}
+
+func (ks *KeyringTokenSource) Token() (*oauth2.Token, error) {
+	if ks.token != nil {
+		return ks.token, nil
+	}
+	s, err := keyring.Get(keyService, keyName)
+	if err != nil {
+		return nil, fmt.Errorf("get a GitHub Access token from keyring: %w", err)
+	}
+	ks.token = &oauth2.Token{
+		AccessToken: s,
+	}
+	return ks.token, nil
 }
