@@ -90,11 +90,12 @@ You can manage a GitHub Access token using secret store such as [Windows Credent
 
 1. Configure a GitHub Access token by `pinact token set` command:
 
-```sh
-pinact token set # Interactive
+```console
+$ pinact token set
+Enter a GitHub access token: # Input GitHub Access token
 ```
 
-or
+or you can also pass a GitHub Access token via standard input:
 
 ```sh
 echo "<github access token>" | pinact tokn set -stdin
@@ -105,6 +106,8 @@ echo "<github access token>" | pinact tokn set -stdin
 ```sh
 export PINACT_KEYRING_ENABLED=true
 ```
+
+Note that if the environment variable `GITHUB_TOKEN` is set, this feature gets disabled.
 
 ## How to use
 
