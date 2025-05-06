@@ -11,14 +11,16 @@ USAGE:
    pinact [global options] [command [command options]]
 
 VERSION:
-   3.0.5
+   3.1.0
 
 COMMANDS:
-   init     Create .pinact.yaml if it doesn't exist
-   run      Pin GitHub Actions versions
-   migrate  Migrate .pinact.yaml
-   version  Show version
-   help, h  Shows a list of commands or help for one command
+   init        Create .pinact.yaml if it doesn't exist
+   run         Pin GitHub Actions versions
+   migrate     Migrate .pinact.yaml
+   token       Manage GitHub Access token
+   version     Show version
+   help, h     Shows a list of commands or help for one command
+   completion  Output shell completion script for bash, zsh, fish, or Powershell
 
 GLOBAL OPTIONS:
    --log-level string          log level [$PINACT_LOG_LEVEL]
@@ -102,6 +104,62 @@ OPTIONS:
    --help, -h  show help
 ```
 
+## pinact token
+
+```console
+$ pinact token --help
+NAME:
+   pinact token - Manage GitHub Access token
+
+USAGE:
+   pinact token [command [command options]] 
+
+DESCRIPTION:
+   Manage GitHub Access token by keyring.
+
+COMMANDS:
+   set         Set GitHub Access token
+   remove, rm  Remove GitHub Access token
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### token set
+
+```console
+$ token set --help
+NAME:
+   pinact token set - Set GitHub Access token
+
+USAGE:
+   pinact token set
+
+DESCRIPTION:
+   Set GitHub Access token to keyring.
+
+OPTIONS:
+   --stdin     Read GitHub Access token from stdin (default: false)
+   --help, -h  show help
+```
+
+### token remove
+
+```console
+$ token remove --help
+NAME:
+   pinact token remove - Remove GitHub Access token
+
+USAGE:
+   pinact token remove
+
+DESCRIPTION:
+   Remove GitHub Access token from keyring.
+
+OPTIONS:
+   --help, -h  show help
+```
+
 ## pinact version
 
 ```console
@@ -114,5 +172,36 @@ USAGE:
 
 OPTIONS:
    --json, -j  Output version in JSON format (default: false)
+   --help, -h  show help
+```
+
+## pinact completion
+
+```console
+$ pinact completion --help
+NAME:
+   pinact completion - Output shell completion script for bash, zsh, fish, or Powershell
+
+USAGE:
+   pinact completion
+
+DESCRIPTION:
+   Output shell completion script for bash, zsh, fish, or Powershell.
+   Source the output to enable completion.
+
+   # .bashrc
+   source <(pinact completion bash)
+
+   # .zshrc
+   source <(pinact completion zsh)
+
+   # fish
+   pinact completion fish > ~/.config/fish/completions/pinact.fish
+
+   # Powershell
+   Output the script to path/to/autocomplete/pinact.ps1 an run it.
+
+
+OPTIONS:
    --help, -h  show help
 ```
