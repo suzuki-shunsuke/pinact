@@ -79,7 +79,12 @@ If you use linters such as [ghalint](https://github.com/suzuki-shunsuke/ghalint)
 ## GitHub Access token
 
 pinact calls GitHub REST API to get commit hashes and tags.
-You can pass GitHub Access token via environment variable `GITHUB_TOKEN`.
+You can pass a GitHub access token by several ways:
+
+1. Environment variable `GITHUB_TOKEN`
+1. Secret manager such as [Windows Credential Manager](https://support.microsoft.com/en-us/windows/accessing-credential-manager-1b5c916a-6a16-889f-8581-fc16e8165ac0), [macOS Keychain](https://en.wikipedia.org/wiki/Keychain_(software)), and [GNOME Keyring](https://wiki.gnome.org/Projects/GnomeKeyring)
+1. 1Password
+
 If no GitHub Access token is passed, pinact calls GitHub REST API without access token.
 
 ### Manage GitHub Access token using Keyring
@@ -113,6 +118,18 @@ You can remove a GitHub Access token from keyring by `pinact token rm` command:
 
 ```sh
 pinact token rm
+```
+
+### Manage GitHub access token using 1Password
+
+pinact >= v3.1.0
+
+1. Register a GitHub access token into 1Password
+1. Configure environment variables [PINACT_1PASSWORD_GITHUB_TOKEN_SECRET_REFERENCE](https://developer.1password.com/docs/cli/secret-reference-syntax) and `PINACT_1PASSWORD_SERVICE_ACCOUNT_TOKEN`
+
+```sh
+export PINACT_1PASSWORD_GITHUB_TOKEN_SECRET_REFERENCE=op://<vault-name>/<item-name>/[section-name/]<field-name>
+export PINACT_1PASSWORD_SERVICE_ACCOUNT_TOKEN=<1password service account token>
 ```
 
 ## How to use
