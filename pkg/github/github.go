@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-github/v71/github"
 	"github.com/sirupsen/logrus"
+	"github.com/suzuki-shunsuke/logrus-error/logerr"
 	"golang.org/x/oauth2"
 )
 
@@ -37,6 +38,13 @@ func getHTTPClientForGitHub(ctx context.Context, logE *logrus.Entry, token strin
 	if token == "" {
 		if checkKeyringEnabled() {
 			return oauth2.NewClient(ctx, NewKeyringTokenSource(logE))
+		}
+		ts, err := new1PasswordTokenSource(ctx, logE)
+		if err != nil {
+			logerr.WithError(logE, err).Warn("create a 1Password token source")
+		}
+		if ts != nil {
+			return oauth2.NewClient(ctx, ts)
 		}
 		return http.DefaultClient
 	}
