@@ -16,7 +16,7 @@ require (
 	github.com/urfave/cli/v3 v3.3.2
 	github.com/zalando/go-keyring v0.2.6
 	golang.org/x/oauth2 v0.30.0
-	golang.org/x/term v0.31.0
+	golang.org/x/term v0.32.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -31,6 +31,6 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
-	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 )
