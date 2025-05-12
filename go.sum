@@ -49,8 +49,8 @@ github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0 h1:g7askc+nskCkKRWTVOdsAT8nM
 github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0/go.mod h1:yFO7h5wwFejxi6jbtazqmk7b/JSBxHcit8DGwb1bhg0=
 github.com/suzuki-shunsuke/logrus-error v0.1.4 h1:nWo98uba1fANHdZ9Y5pJ2RKs/PpVjrLzRp5m+mRb9KE=
 github.com/suzuki-shunsuke/logrus-error v0.1.4/go.mod h1:WsVvvw6SKSt08/fB2qbnsKIMJA4K1MYCUprqsBJbMiM=
-github.com/suzuki-shunsuke/urfave-cli-v3-util v0.0.4 h1:cwI1g8vDJZnH/A8Pfc4Vkuc6MIcO4eulf1qiFHYbLB4=
-github.com/suzuki-shunsuke/urfave-cli-v3-util v0.0.4/go.mod h1:XzvaaJ7L21jH7CqwZj4FlYCRJYqiEUHMqiFp54je7/M=
+github.com/suzuki-shunsuke/urfave-cli-v3-util v0.0.5 h1:ETCRtbqi2D0NTwGHBPTc1IRIa8mFPLt936J2FA1iy10=
+github.com/suzuki-shunsuke/urfave-cli-v3-util v0.0.5/go.mod h1:XzvaaJ7L21jH7CqwZj4FlYCRJYqiEUHMqiFp54je7/M=
 github.com/urfave/cli/v3 v3.3.2 h1:BYFVnhhZ8RqT38DxEYVFPPmGFTEf7tJwySTXsVRrS/o=
 github.com/urfave/cli/v3 v3.3.2/go.mod h1:FJSKtM/9AiiTOJL4fJ6TbMUkxBXn7GO9guZqoZtpYpo=
 github.com/wk8/go-ordered-map/v2 v2.1.8 h1:5h/BUHu93oj4gIdvHHHGsScSTMijfx5PeYkE/fJgbpc=
