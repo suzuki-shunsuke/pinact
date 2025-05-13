@@ -98,7 +98,7 @@ Enter a GitHub access token: # Input GitHub Access token
 or you can also pass a GitHub Access token via standard input:
 
 ```sh
-echo "<github access token>" | pinact tokn set -stdin
+echo "<github access token>" | pinact token set -stdin
 ```
 
 2. Enable the feature by setting the environment variable `PINACT_KEYRING_ENABLED`:
