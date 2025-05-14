@@ -1,0 +1,24 @@
+---
+- id: pinact
+  name: Validate versions of Actions and reusable workflows
+  description: Validate versions of GitHub Actions and reusable workflows
+  entry: pinact run --check
+  language: golang
+  types: [yaml]
+  files: ^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$
+
+- id: pinact-fix
+  name: Pin versions of Actions and reusable workflows
+  description: Pin versions of GitHub Actions and reusable workflows
+  entry: pinact run
+  language: golang
+  types: [yaml]
+  files: ^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$
+
+- id: pinact-update
+  name: Pin and update versions of Actions and reusable workflows
+  description: Pin and update versions of GitHub Actions and reusable workflows
+  entry: pinact run --update
+  language: golang
+  types: [yaml]
+  files: ^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$
