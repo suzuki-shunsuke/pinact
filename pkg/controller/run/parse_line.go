@@ -14,10 +14,9 @@ import (
 )
 
 var (
-	usesPattern          = regexp.MustCompile(`^( *(?:- )?['"]?uses['"]? *: +)(['"]?)(.*?)@([^ '"]+)['"]?(?:( +# +(?:tag=)?)(v?\d+[^ ]*)(.*))?`)
+	usesPattern          = regexp.MustCompile(`^( *(?:- )?['"]?uses['"]? *: +)(['"]?)(.*?)@([^ '"]+)['"]?(?:( +# +(?:tag=)?)(v?\d+(\.\d+){0,2}[^ ]*)(.*))?`)
 	fullCommitSHAPattern = regexp.MustCompile(`\b[0-9a-f]{40}\b`)
-	semverPattern        = regexp.MustCompile(`^v?\d+\.\d+\.\d+[^ ]*$`)
-	shortTagPattern      = regexp.MustCompile(`^v?\d+(\.\d+)?$`)
+	versionTagPattern    = regexp.MustCompile(`^v?\d+(\.\d+){0,2}[^ ]*$`)
 )
 
 type Action struct {
@@ -35,8 +34,7 @@ type Action struct {
 type VersionType int
 
 const (
-	Semver VersionType = iota
-	Shortsemver
+	VersionTag VersionType = iota
 	FullCommitSHA
 	Empty
 	Other
@@ -49,11 +47,8 @@ func getVersionType(v string) VersionType {
 	if fullCommitSHAPattern.MatchString(v) {
 		return FullCommitSHA
 	}
-	if semverPattern.MatchString(v) {
-		return Semver
-	}
-	if shortTagPattern.MatchString(v) {
-		return Shortsemver
+	if versionTagPattern.MatchString(v) {
+		return VersionTag
 	}
 	return Other
 }
@@ -63,6 +58,7 @@ func parseAction(line string) *Action {
 	if matches == nil {
 		return nil
 	}
+
 	return &Action{
 		Uses:                    matches[1], // " - uses: "
 		Quote:                   matches[2], // empty, ', "
@@ -76,7 +72,8 @@ func parseAction(line string) *Action {
 
 var ErrCantPinned = errors.New("action can't be pinned")
 
-func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string) (s string, e error) { //nolint:cyclop
+//nolint:cyclop
+func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string) (s string, e error) {
 	defer func() {
 		e = logerr.WithFields(e, logE.Data)
 	}()
@@ -116,14 +113,12 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 	switch getVersionType(action.VersionComment) {
 	case Empty:
 		return c.parseNoTagLine(ctx, logE, action)
-	case Semver:
-		// @xxx # v3.0.0
-		return c.parseSemverTagLine(ctx, logE, action)
-	case Shortsemver:
+	case VersionTag:
 		// @xxx # v3
+		// @xxx # v3.0.0
 		// @<full commit hash> # v3
 		logE = logE.WithField("version_annotation", action.VersionComment)
-		return c.parseShortSemverTagLine(ctx, logE, action)
+		return c.parseTagLine(ctx, logE, action)
 	default:
 		if getVersionType(action.Version) == FullCommitSHA {
 			return "", nil
@@ -132,10 +127,11 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 	}
 }
 
-func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) { //nolint:cyclop
+//nolint:cyclop
+func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) {
 	typ := getVersionType(action.Version)
 	switch typ {
-	case Shortsemver, Semver:
+	case VersionTag:
 	case FullCommitSHA:
 		return "", nil
 	default:
@@ -162,18 +158,19 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, act
 	if err != nil {
 		return "", fmt.Errorf("get a reference: %w", err)
 	}
-	longVersion := action.Version
-	if typ == Shortsemver {
-		v, err := c.getLongVersionFromSHA(ctx, action, sha)
+
+	version := action.Version
+	if typ == VersionTag {
+		v, err := c.getTagFromSHA(ctx, action, sha)
 		if err != nil {
 			return "", err
 		}
 		if v != "" {
-			longVersion = v
+			version = v
 		}
 	}
-	// @yyy # longVersion
-	return patchLine(action, sha, longVersion), nil
+
+	return patchLine(action, sha, version), nil
 }
 
 func compareVersion(currentVersion, newVersion string) bool {
@@ -188,9 +185,9 @@ func compareVersion(currentVersion, newVersion string) bool {
 	return nv.GreaterThan(cv)
 }
 
-func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) {
-	// @xxx # v3.0.0
-	if c.param.Update { //nolint:nestif
+//nolint:cyclop,nestif
+func (c *Controller) parseTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) {
+	if c.param.Update {
 		// get the latest version
 		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
 		if err != nil {
@@ -214,48 +211,52 @@ func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry,
 			return patchLine(action, sha, lv), nil
 		}
 	}
-	// verify commit hash
-	if !c.param.IsVerify {
-		return "", nil
-	}
-	// @xxx # v3.0.0
-	// @<full commit hash> # v3.0.0
-	if FullCommitSHA != getVersionType(action.Version) {
-		return "", nil
-	}
-	if err := c.verify(ctx, action); err != nil {
-		return "", fmt.Errorf("verify the version annotation: %w", err)
-	}
-	return "", nil
-}
 
-func (c *Controller) parseShortSemverTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) {
-	// @xxx # v3
-	// @<full commit hash> # v3
+	// ensure the commit sha is valid
 	if FullCommitSHA != getVersionType(action.Version) {
 		return "", ErrCantPinned
 	}
-	if c.param.Update {
-		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName)
+
+	// versionParts is a slice of strings, each containing a group of
+	// consecutive numbers in the version comment, for example:
+	//     3.0.0   => []string{"3","0","0"}
+	//     1.23.44 => []string{"1","23","44"}
+	versionParts := regexp.MustCompile(`\d+`).FindAllString(action.VersionComment, -1)
+
+	// the number of parts that comprise a semantic version (MAJOR.MINOR.PATCH)
+	// ... this exists to avoid the error generated by go-mnd when using the int
+	// directly in the comparison below
+	semanticVersionParts := 3
+
+	// if we have a "short version" (e.g. not a complete `1.2.3` semver), check
+	// for a tag that matches the commit hash. note that this could be the same
+	// tag that's specified.
+	//
+	// using != supports validation against version tags like:
+	// - v1 (1 part)
+	// - v1.2 (2 parts)
+	// - v1.2.3.4 (4 parts)
+	if len(versionParts) != semanticVersionParts {
+		tag, err := c.getTagFromSHA(ctx, action, action.Version)
 		if err != nil {
-			return "", fmt.Errorf("get the latest version: %w", err)
+			return "", err
 		}
-		sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
-		if err != nil {
-			return "", fmt.Errorf("get the latest version: %w", err)
+		if tag == "" {
+			logE.Warn("unable to find a tag with the specified SHA")
+			tag = action.VersionComment
 		}
-		return patchLine(action, sha, lv), nil
+		return patchLine(action, action.Version, tag), nil
 	}
-	// replace Shortsemer to Semver
-	longVersion, err := c.getLongVersionFromSHA(ctx, action, action.Version)
-	if err != nil {
-		return "", err
-	}
-	if longVersion == "" {
-		logE.Warn("a long tag whose SHA is same as SHA of the version annotation isn't found")
+
+	if !c.param.IsVerify {
 		return "", nil
 	}
-	return patchLine(action, action.Version, longVersion), nil
+
+	if err := c.verify(ctx, action); err != nil {
+		return "", fmt.Errorf("verify the version annotation: %w", err)
+	}
+
+	return "", nil
 }
 
 func patchLine(action *Action, version, tag string) string {
@@ -266,11 +267,11 @@ func patchLine(action *Action, version, tag string) string {
 	return action.Uses + action.Quote + action.Name + "@" + version + action.Quote + sep + tag + action.Suffix
 }
 
-func (c *Controller) getLongVersionFromSHA(ctx context.Context, action *Action, sha string) (string, error) {
+func (c *Controller) getTagFromSHA(ctx context.Context, action *Action, sha string) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 100, //nolint:mnd
 	}
-	// Get long tag from commit hash
+
 	for range 10 {
 		tags, resp, err := c.repositoriesService.ListTags(ctx, action.RepoOwner, action.RepoName, opts)
 		if err != nil {

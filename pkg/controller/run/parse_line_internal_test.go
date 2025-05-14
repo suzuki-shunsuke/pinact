@@ -135,6 +135,16 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			exp:  "  uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0",
 		},
 		{
+			name: "mixed v1",
+			line: "  uses: mixed-tags/foo-action@v1",
+			exp:  "  uses: mixed-tags/foo-action@f3128156ad18877fd068ebe75b2dca3ff85077b4 # v1.2.3",
+		},
+		{
+			name: "mixed v2",
+			line: "  uses: mixed-tags/foo-action@v2",
+			exp:  "  uses: mixed-tags/foo-action@a02c5346fcf0693696326351d206d7b1f5c6126d # v2",
+		},
+		{
 			name: "single quote",
 			line: `  - "uses": 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # v3`,
 			exp:  `  - "uses": 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # v3.5.2`,
@@ -186,6 +196,29 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						},
 						Response: &github.Response{},
 					},
+					"mixed-tags/foo-action/0": {
+						Tags: []*github.RepositoryTag{
+							{
+								Name: util.StrP("v1"),
+								Commit: &github.Commit{
+									SHA: util.StrP("f3128156ad18877fd068ebe75b2dca3ff85077b4"),
+								},
+							},
+							{
+								Name: util.StrP("v1.2.3"),
+								Commit: &github.Commit{
+									SHA: util.StrP("f3128156ad18877fd068ebe75b2dca3ff85077b4"),
+								},
+							},
+							{
+								Name: util.StrP("v2"),
+								Commit: &github.Commit{
+									SHA: util.StrP("a02c5346fcf0693696326351d206d7b1f5c6126d"),
+								},
+							},
+						},
+						Response: &github.Response{},
+					},
 				},
 				Commits: map[string]*GetCommitSHA1Result{
 					"actions/checkout/v3": {
@@ -193,6 +226,12 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 					},
 					"actions/checkout/v2": {
 						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
+					},
+					"mixed-tags/foo-action/v1": {
+						SHA: "f3128156ad18877fd068ebe75b2dca3ff85077b4",
+					},
+					"mixed-tags/foo-action/v2": {
+						SHA: "a02c5346fcf0693696326351d206d7b1f5c6126d",
 					},
 				},
 			}, fs, config.NewFinder(fs), config.NewReader(fs), &ParamRun{})
