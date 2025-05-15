@@ -2,8 +2,8 @@
   extends: [
     "github>suzuki-shunsuke/renovate-config#3.2.1",
     "github>suzuki-shunsuke/renovate-config:nolimit#3.2.1",
-    "github>aquaproj/aqua-renovate-config#2.7.5",
-    "github>aquaproj/aqua-renovate-config:file#2.7.5(aqua/imports/.*\\.ya?ml)",
+    "github>aquaproj/aqua-renovate-config#2.8.0",
+    "github>aquaproj/aqua-renovate-config:file#2.8.0(aqua/imports/.*\\.ya?ml)",
   ],
   ignorePaths: ["testdata/**"],
 }
