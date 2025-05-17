@@ -19,6 +19,8 @@ jobs:
       - 'uses': "actions/checkout@v3"
       - "uses": 'actions/checkout@v3'
       - uses: cardinalby/git-get-release-action@cf4593dd18e51a1ecfbfb1c68abac9910a8b1e0c # v1
+      - uses: DeterminateSystems/nix-installer-action@v17
+      - uses: DeterminateSystems/nix-installer-action@21a544727d0c62386e78b4befe52d19ad12692e3 # v17
   actionlint:
     uses: suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml@v0.5.0
     with:
