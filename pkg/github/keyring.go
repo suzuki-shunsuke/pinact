@@ -39,7 +39,7 @@ func (tm *TokenManager) SetToken(token string) error {
 func (tm *TokenManager) RemoveToken(logE *logrus.Entry) error {
 	if err := keyring.Delete(keyService, keyName); err != nil {
 		if errors.Is(err, keyring.ErrNotFound) {
-			logerr.WithError(logE, err).Warn("remove a GitHub Access token from keyring")
+			logerr.WithError(logE, err).Warn("tried to remove a GitHub Access token from keyring, but it was not found")
 			return nil
 		}
 		return fmt.Errorf("delete a GitHub Access token from keyring: %w", err)
