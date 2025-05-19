@@ -340,7 +340,7 @@ Or pinning version:
 # yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/v1.1.2/json-schema/pinact.json
 ```
 
-## Q. Why doesn't pinact pin versions?
+## Q. Why doesn't pinact pin some actions?
 
 In some cases pinact doesn't pin versions intentionally, which may confuse you.
 So we describe the reason here.

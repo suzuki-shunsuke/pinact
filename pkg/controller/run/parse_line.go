@@ -252,7 +252,7 @@ func (c *Controller) parseShortSemverTagLine(ctx context.Context, logE *logrus.E
 		return "", err
 	}
 	if longVersion == "" {
-		logE.Warn("a long tag whose SHA is same as SHA of the version annotation isn't found")
+		logE.Debug("a long tag whose SHA is same as SHA of the version annotation isn't found")
 		return "", nil
 	}
 	return patchLine(action, action.Version, longVersion), nil
