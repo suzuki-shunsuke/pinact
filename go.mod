@@ -3,7 +3,7 @@ module github.com/suzuki-shunsuke/pinact/v3
 go 1.24.2
 
 require (
-	github.com/goccy/go-yaml v1.17.1
+	github.com/goccy/go-yaml v1.18.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v72 v72.0.0
 	github.com/hashicorp/go-version v1.7.0
