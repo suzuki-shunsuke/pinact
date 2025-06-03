@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -142,15 +143,15 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, act
 		if c.param.PinBranch {
 			sha, resp, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Version, "")
 			if err != nil {
-				if resp != nil && resp.StatusCode == 404 {
+				if resp != nil && resp.StatusCode == http.StatusNotFound {
 					return "", fmt.Errorf("ref `%s` not found in repository %s/%s: %w", action.Version, action.RepoOwner, action.RepoName, err)
 				}
 				return "", fmt.Errorf("get commit SHA for branch %s: %w", action.Version, err)
 			}
 			return patchLine(action, sha, action.Version), nil
-		} else {
-			return "", ErrCantPinned
 		}
+
+		return "", ErrCantPinned
 	}
 	// @xxx
 	if c.param.Update {
