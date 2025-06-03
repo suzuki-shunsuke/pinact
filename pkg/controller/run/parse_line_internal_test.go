@@ -115,10 +115,10 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 func TestController_parseLine(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	data := []struct {
-		name  string
-		line  string
-		exp   string
-		isErr bool
+		name      string
+		line      string
+		exp       string
+		pinBranch bool
 	}{
 		{
 			name: "unrelated",
@@ -149,13 +149,19 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			line: `  "uses": 'actions/checkout@v2'`,
 			exp:  `  "uses": 'actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5' # v2.7.0`,
 		},
+		{
+			name:      "branch name with PinBranch=true",
+			line:      "  - uses: actions/checkout@main",
+			exp:       "  - uses: actions/checkout@1234567890abcdef1234567890abcdef12345678 # main",
+			pinBranch: true,
+		},
 	}
 	logE := logrus.NewEntry(logrus.New())
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(&RepositoriesServiceImpl{
+			repoService := &RepositoriesServiceImpl{
 				Tags: map[string]*ListTagsResult{
 					"actions/checkout/0": {
 						Tags: []*github.RepositoryTag{
@@ -194,13 +200,19 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 					"actions/checkout/v2": {
 						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
 					},
+					"actions/checkout/main": {
+						SHA: "1234567890abcdef1234567890abcdef12345678",
+					},
 				},
-			}, fs, config.NewFinder(fs), config.NewReader(fs), &ParamRun{})
+			}
+
+			param := &ParamRun{
+				PinBranch: d.pinBranch,
+			}
+
+			ctrl := New(repoService, fs, config.NewFinder(fs), config.NewReader(fs), param)
 			line, err := ctrl.parseLine(t.Context(), logE, d.line)
 			if err != nil {
-				if d.isErr {
-					return
-				}
 				t.Fatal(err)
 			}
 			if line != d.exp {

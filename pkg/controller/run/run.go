@@ -20,6 +20,7 @@ type ParamRun struct {
 	IsVerify          bool
 	Update            bool
 	Check             bool
+	PinBranch         bool
 }
 
 func (c *Controller) Run(ctx context.Context, logE *logrus.Entry) error {

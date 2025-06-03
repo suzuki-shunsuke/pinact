@@ -382,6 +382,9 @@ If a version isn't semver, pinact judges it may be a branch so pinact doesn't pi
 
 Please see also [#926](https://github.com/suzuki-shunsuke/pinact/issues/926).
 
+### Pin branch names
+If you want to pin branch-based versions (e.g., main) to their latest commit SHA, you can use the `--pin-branch` option.
+
 ## See also
 
 - [Renovate github-actions Manager - Additional Information](https://docs.renovatebot.com/modules/manager/github-actions/#additional-information)
