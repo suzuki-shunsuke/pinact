@@ -19,6 +19,7 @@ jobs:
       - 'uses': "actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744" # v3.6.0
       - "uses": 'actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744' # v3.6.0
       - uses: cardinalby/git-get-release-action@cf4593dd18e51a1ecfbfb1c68abac9910a8b1e0c # v1
+      - uses: actions/checkout@0b496e91ec7ae4428c3ed2eeb4c3a40df431f2cc # releases/v1
   actionlint:
     uses: suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml@b6a5f966d4504893b2aeb60cf2b0de8946e48504 # v0.5.0
     with:
