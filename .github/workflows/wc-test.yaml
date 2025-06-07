@@ -45,7 +45,7 @@ jobs:
             exit 1
           fi
 
-      - run: pinact run testdata/foo.yaml
+      - run: pinact run --pin-branch testdata/foo.yaml
         env:
           GITHUB_TOKEN: ${{github.token}}
       - run: diff testdata/foo.yaml testdata/foo.yaml.after

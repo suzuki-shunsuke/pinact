@@ -55,6 +55,10 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Aliases: []string{"u"},
 				Usage:   "Update actions to latest versions",
 			},
+			&cli.BoolFlag{
+				Name:  "pin-branch",
+				Usage: "Pin branch names to their latest commit SHA",
+			},
 		},
 	}
 }
@@ -80,6 +84,7 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 		IsVerify:          c.Bool("verify"),
 		Check:             c.Bool("check"),
 		Update:            c.Bool("update"),
+		PinBranch:         c.Bool("pin-branch"),
 	})
 	return ctrl.Run(ctx, r.logE) //nolint:wrapcheck
 }

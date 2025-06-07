@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -139,6 +140,17 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, act
 	case FullCommitSHA:
 		return "", nil
 	default:
+		if c.param.PinBranch {
+			sha, resp, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Version, "")
+			if err != nil {
+				if resp != nil && resp.StatusCode == http.StatusNotFound {
+					return "", fmt.Errorf("ref `%s` not found in repository %s/%s: %w", action.Version, action.RepoOwner, action.RepoName, err)
+				}
+				return "", fmt.Errorf("get commit SHA for branch %s: %w", action.Version, err)
+			}
+			return patchLine(action, sha, action.Version), nil
+		}
+
 		return "", ErrCantPinned
 	}
 	// @xxx
@@ -158,6 +170,9 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, act
 	// Get commit hash from tag
 	// https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#get-a-reference
 	// > The :ref in the URL must be formatted as heads/<branch name> for branches and tags/<tag name> for tags. If the :ref doesn't match an existing ref, a 404 is returned.
+	//
+	// Although the documentation states that the `:ref` must be prefixed with `tags/` or `heads/`,
+	// the GitHub API currently accepts unprefixed tags and branch names (e.g., /repos/OWNER/REPO/commits/main).
 	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Version, "")
 	if err != nil {
 		return "", fmt.Errorf("get a reference: %w", err)
