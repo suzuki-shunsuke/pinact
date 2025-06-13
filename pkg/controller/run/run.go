@@ -23,6 +23,18 @@ type ParamRun struct {
 	Check             bool
 	IsGitHubActions   bool
 	Stderr            io.Writer
+	Review            *Review
+}
+
+type Review struct {
+	RepoOwner   string
+	RepoName    string
+	PullRequest int
+	SHA         string
+}
+
+func (r *Review) Valid() bool {
+	return r != nil && r.RepoOwner != "" && r.RepoName != "" && r.PullRequest > 0
 }
 
 func (c *Controller) Run(ctx context.Context, logE *logrus.Entry) error {
@@ -77,7 +89,7 @@ var (
 	ErrActionNotPinned  = errors.New("action isn't pinned")
 )
 
-func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string) error { //nolint:cyclop
+func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string) error { //nolint:cyclop,gocognit
 	lines, err := c.readWorkflow(workflowFilePath)
 	if err != nil {
 		return err
@@ -86,12 +98,21 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 	failed := false
 	for i, line := range lines {
 		l, err := c.parseLine(ctx, logE, line)
-		if err != nil {
-			logerr.WithError(logE, err).Error("parse a line")
-			if c.param.IsGitHubActions {
-				fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact error::%s\n", workflowFilePath, i+1, err)
-			}
+		if err != nil { //nolint:nestif
 			failed = true
+			logerr.WithError(logE, err).Error("parse a line")
+			if c.param.Review != nil {
+				if err := c.review(ctx, workflowFilePath, c.param.Review.SHA, i+1, "", err); err != nil {
+					logerr.WithError(logE, err).Error("create a review comment")
+					if c.param.IsGitHubActions {
+						fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact error::%s\n", workflowFilePath, i+1, err)
+					}
+				}
+			} else {
+				if c.param.IsGitHubActions {
+					fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact error::%s\n", workflowFilePath, i+1, err)
+				}
+			}
 			continue
 		}
 		if l == "" || line == l {
@@ -99,6 +120,11 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		}
 		changed = true
 		lines[i] = l
+		if c.param.Review != nil {
+			if err := c.review(ctx, workflowFilePath, c.param.Review.SHA, i+1, l, nil); err != nil {
+				logerr.WithError(logE, err).Error("create a review comment")
+			}
+		}
 	}
 	if c.param.Check && failed {
 		return ErrActionsNotPinned

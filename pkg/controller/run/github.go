@@ -16,6 +16,10 @@ type RepositoriesService interface {
 	ListReleases(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error)
 }
 
+type PullRequestsService interface {
+	CreateComment(ctx context.Context, owner, repo string, number int, comment *github.PullRequestComment) (*github.PullRequestComment, *github.Response, error)
+}
+
 func (r *RepositoriesServiceImpl) GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%s", owner, repo, ref)
 	a, ok := r.Commits[key]
@@ -164,4 +168,24 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logE *logrus.
 		return latestSemver.Original(), nil
 	}
 	return latestVersion, nil
+}
+
+func (c *Controller) review(ctx context.Context, filePath string, sha string, line int, suggestion string, err error) error {
+	cmt := &github.PullRequestComment{
+		Body: github.Ptr(""),
+		Path: github.Ptr(filePath),
+		Line: github.Ptr(line),
+	}
+	if sha != "" {
+		cmt.CommitID = github.Ptr(sha)
+	}
+	const header = "<sub>reported by [pinact](https://github.com/suzuki-shunsuke/pinact)</sub>"
+	if suggestion != "" {
+		cmt.Body = github.Ptr(fmt.Sprintf("%s\n```suggestion\n%s\n```", header, suggestion))
+	}
+	if err != nil {
+		cmt.Body = github.Ptr(fmt.Sprintf("%s\n%s", header, err.Error()))
+	}
+	_, _, e := c.pullRequestsService.CreateComment(ctx, c.param.Review.RepoOwner, c.param.Review.RepoName, c.param.Review.PullRequest, cmt)
+	return fmt.Errorf("create a review comment: %w", e)
 }

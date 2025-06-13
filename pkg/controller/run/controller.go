@@ -7,6 +7,7 @@ import (
 
 type Controller struct {
 	repositoriesService RepositoriesService
+	pullRequestsService PullRequestsService
 	fs                  afero.Fs
 	cfg                 *config.Config
 	param               *ParamRun
@@ -22,9 +23,10 @@ type ConfigReader interface {
 	Read(cfg *config.Config, configFilePath string) error
 }
 
-func New(repositoriesService RepositoriesService, fs afero.Fs, cfgFinder ConfigFinder, cfgReader ConfigReader, param *ParamRun) *Controller {
+func New(repositoriesService RepositoriesService, pullRequestsService PullRequestsService, fs afero.Fs, cfgFinder ConfigFinder, cfgReader ConfigReader, param *ParamRun) *Controller {
 	return &Controller{
 		repositoriesService: repositoriesService,
+		pullRequestsService: pullRequestsService,
 		param:               param,
 		fs:                  fs,
 		cfgFinder:           cfgFinder,
