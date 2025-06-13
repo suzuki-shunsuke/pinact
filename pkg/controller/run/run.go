@@ -23,6 +23,8 @@ type ParamRun struct {
 	Check             bool
 	IsGitHubActions   bool
 	Fail              bool
+	Fix               bool
+	Diff              bool
 	Stderr            io.Writer
 	Review            *Review
 }

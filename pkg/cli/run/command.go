@@ -65,6 +65,14 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Name:  "fail",
 				Usage: "Fail if any action is not pinned",
 			},
+			&cli.BoolFlag{
+				Name:  "fix",
+				Usage: "Fix code. By default, this is true. If -check is true, this is false by default",
+			},
+			&cli.BoolFlag{
+				Name:  "diff",
+				Usage: "Output diff. By default, this is false",
+			},
 			&cli.StringFlag{
 				Name:    "repo-owner",
 				Usage:   "GitHub repository owner",
@@ -173,12 +181,7 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 			review = nil
 		}
 	}
-	ctrl := run.New(&run.RepositoriesServiceImpl{
-		Tags:                map[string]*run.ListTagsResult{},
-		Releases:            map[string]*run.ListReleasesResult{},
-		Commits:             map[string]*run.GetCommitSHA1Result{},
-		RepositoriesService: gh.Repositories,
-	}, gh.PullRequests, fs, config.NewFinder(fs), config.NewReader(fs), &run.ParamRun{
+	param := &run.ParamRun{
 		WorkflowFilePaths: c.Args().Slice(),
 		ConfigFilePath:    c.String("config"),
 		PWD:               pwd,
@@ -186,10 +189,23 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 		Check:             c.Bool("check"),
 		Update:            c.Bool("update"),
 		Fail:              c.Bool("fail"),
+		Diff:              c.Bool("diff"),
+		Fix:               true,
 		IsGitHubActions:   isGitHubActions,
 		Stderr:            os.Stderr,
 		Review:            review,
-	})
+	}
+	if c.IsSet("fix") {
+		param.Fix = c.Bool("fix")
+	} else if c.Bool("check") {
+		param.Fix = false
+	}
+	ctrl := run.New(&run.RepositoriesServiceImpl{
+		Tags:                map[string]*run.ListTagsResult{},
+		Releases:            map[string]*run.ListReleasesResult{},
+		Commits:             map[string]*run.GetCommitSHA1Result{},
+		RepositoriesService: gh.Repositories,
+	}, gh.PullRequests, fs, config.NewFinder(fs), config.NewReader(fs), param)
 	return ctrl.Run(ctx, r.logE) //nolint:wrapcheck
 }
 
@@ -203,6 +219,7 @@ func (r *runner) setReview(fs afero.Fs, review *run.Review) error {
 	}
 	var ev *Event
 	if review.PullRequest == 0 {
+		ev = &Event{}
 		if err := r.readEvent(fs, ev, eventPath); err != nil {
 			return err
 		}
@@ -212,6 +229,7 @@ func (r *runner) setReview(fs afero.Fs, review *run.Review) error {
 		return nil
 	}
 	if ev == nil {
+		ev = &Event{}
 		if err := r.readEvent(fs, ev, eventPath); err != nil {
 			return err
 		}
