@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -20,6 +21,8 @@ type ParamRun struct {
 	IsVerify          bool
 	Update            bool
 	Check             bool
+	IsGitHubActions   bool
+	Stderr            io.Writer
 }
 
 func (c *Controller) Run(ctx context.Context, logE *logrus.Entry) error {
@@ -82,6 +85,9 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		l, err := c.parseLine(ctx, logE, line)
 		if err != nil {
 			logerr.WithError(logE, err).Error("parse a line")
+			if c.param.IsGitHubActions {
+				fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact error::%s\n", workflowFilePath, i+1, err)
+			}
 			failed = true
 			continue
 		}
