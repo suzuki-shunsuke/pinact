@@ -40,20 +40,20 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry) error {
 		if err := c.runWorkflow(ctx, logE, workflowFilePath); err != nil {
 			if c.param.Check {
 				failed = true
-				if !errors.Is(err, ErrNotPinned) {
+				if !errors.Is(err, ErrsNotPinned) {
 					logerr.WithError(logE, err).Error("check a workflow")
 				}
 				continue
 			}
 			failed = true
-			if errors.Is(err, ErrNotPinned) {
+			if errors.Is(err, ErrsNotPinned) {
 				continue
 			}
 			logerr.WithError(logE, err).Error("update a workflow")
 		}
 	}
 	if failed {
-		return ErrNotPinned
+		return ErrsNotPinned
 	}
 	return nil
 }
@@ -72,7 +72,10 @@ func (c *Controller) readConfig() error {
 	return nil
 }
 
-var ErrNotPinned = errors.New("actions aren't pinned")
+var (
+	ErrsNotPinned = errors.New("action aren't pinned")
+	ErrNotPinned  = errors.New("action isn't pinned")
+)
 
 func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string) error { //nolint:cyclop
 	lines, err := c.readWorkflow(workflowFilePath)
@@ -98,11 +101,11 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		lines[i] = l
 	}
 	if c.param.Check && failed {
-		return ErrNotPinned
+		return ErrsNotPinned
 	}
 	if !changed {
 		if failed {
-			return ErrNotPinned
+			return ErrsNotPinned
 		}
 		return nil
 	}
@@ -115,7 +118,7 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		return fmt.Errorf("write a workflow file: %w", err)
 	}
 	if failed {
-		return ErrNotPinned
+		return ErrsNotPinned
 	}
 	return nil
 }
