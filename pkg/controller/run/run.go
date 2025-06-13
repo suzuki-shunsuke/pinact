@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -20,6 +21,8 @@ type ParamRun struct {
 	IsVerify          bool
 	Update            bool
 	Check             bool
+	IsGitHubActions   bool
+	Stderr            io.Writer
 }
 
 func (c *Controller) Run(ctx context.Context, logE *logrus.Entry) error {
@@ -37,20 +40,20 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry) error {
 		if err := c.runWorkflow(ctx, logE, workflowFilePath); err != nil {
 			if c.param.Check {
 				failed = true
-				if !errors.Is(err, ErrNotPinned) {
+				if !errors.Is(err, ErrActionsNotPinned) {
 					logerr.WithError(logE, err).Error("check a workflow")
 				}
 				continue
 			}
 			failed = true
-			if errors.Is(err, ErrNotPinned) {
+			if errors.Is(err, ErrActionsNotPinned) {
 				continue
 			}
 			logerr.WithError(logE, err).Error("update a workflow")
 		}
 	}
 	if failed {
-		return ErrNotPinned
+		return ErrActionsNotPinned
 	}
 	return nil
 }
@@ -69,7 +72,10 @@ func (c *Controller) readConfig() error {
 	return nil
 }
 
-var ErrNotPinned = errors.New("actions aren't pinned")
+var (
+	ErrActionsNotPinned = errors.New("action aren't pinned")
+	ErrActionNotPinned  = errors.New("action isn't pinned")
+)
 
 func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string) error { //nolint:cyclop
 	lines, err := c.readWorkflow(workflowFilePath)
@@ -82,6 +88,9 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		l, err := c.parseLine(ctx, logE, line)
 		if err != nil {
 			logerr.WithError(logE, err).Error("parse a line")
+			if c.param.IsGitHubActions {
+				fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact error::%s\n", workflowFilePath, i+1, err)
+			}
 			failed = true
 			continue
 		}
@@ -92,11 +101,11 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		lines[i] = l
 	}
 	if c.param.Check && failed {
-		return ErrNotPinned
+		return ErrActionsNotPinned
 	}
 	if !changed {
 		if failed {
-			return ErrNotPinned
+			return ErrActionsNotPinned
 		}
 		return nil
 	}
@@ -109,7 +118,7 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		return fmt.Errorf("write a workflow file: %w", err)
 	}
 	if failed {
-		return ErrNotPinned
+		return ErrActionsNotPinned
 	}
 	return nil
 }

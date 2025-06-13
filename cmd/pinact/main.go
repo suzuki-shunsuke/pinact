@@ -28,7 +28,7 @@ type HasExitCode interface {
 func main() {
 	logE := log.New(version)
 	if err := core(logE); err != nil {
-		if errors.Is(err, run.ErrNotPinned) {
+		if errors.Is(err, run.ErrActionsNotPinned) {
 			os.Exit(1)
 		}
 		logerr.WithError(logE, err).Fatal("pinact failed")

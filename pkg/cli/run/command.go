@@ -80,6 +80,8 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 		IsVerify:          c.Bool("verify"),
 		Check:             c.Bool("check"),
 		Update:            c.Bool("update"),
+		IsGitHubActions:   os.Getenv("GITHUB_ACTIONS") == "true",
+		Stderr:            os.Stderr,
 	})
 	return ctrl.Run(ctx, r.logE) //nolint:wrapcheck
 }
