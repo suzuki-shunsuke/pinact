@@ -105,7 +105,7 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 		if fullCommitSHAPattern.MatchString(action.Version) {
 			return "", nil
 		}
-		return "", ErrNotPinned
+		return "", ErrActionNotPinned
 	}
 
 	if f := c.parseActionName(action); !f {
