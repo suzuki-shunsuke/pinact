@@ -22,6 +22,7 @@ type ParamRun struct {
 	Update            bool
 	Check             bool
 	IsGitHubActions   bool
+	Fail              bool
 	Stderr            io.Writer
 	Review            *Review
 }
@@ -89,7 +90,7 @@ var (
 	ErrActionNotPinned  = errors.New("action isn't pinned")
 )
 
-func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string) error { //nolint:cyclop,gocognit
+func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string) error { //nolint:cyclop,gocognit,funlen
 	lines, err := c.readWorkflow(workflowFilePath)
 	if err != nil {
 		return err
@@ -97,6 +98,10 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 	changed := false
 	failed := false
 	for i, line := range lines {
+		logE := logE.WithFields(logrus.Fields{
+			"line_number": i + 1,
+			"line":        line,
+		})
 		l, err := c.parseLine(ctx, logE, line)
 		if err != nil { //nolint:nestif
 			failed = true
@@ -118,12 +123,27 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		if l == "" || line == l {
 			continue
 		}
+		logE = logE.WithField("new_line", l)
 		changed = true
 		lines[i] = l
 		if c.param.Review != nil {
 			if err := c.review(ctx, workflowFilePath, c.param.Review.SHA, i+1, l, nil); err != nil {
 				logerr.WithError(logE, err).Error("create a review comment")
 			}
+		}
+		if c.param.Fail {
+			fields := logE.Data
+			delete(fields, "line_number")
+			delete(fields, "new_line")
+			delete(fields, "line")
+			delete(fields, "workflow_file")
+			logE.Data = fields
+			logE.Errorf(`action isn't pinned
+%s:%d
+- %s
++ %s
+
+`, workflowFilePath, i+1, line, l)
 		}
 	}
 	if c.param.Check && failed {
@@ -143,7 +163,7 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 	if _, err := f.WriteString(strings.Join(lines, "\n") + "\n"); err != nil {
 		return fmt.Errorf("write a workflow file: %w", err)
 	}
-	if failed {
+	if failed || c.param.Fail {
 		return ErrActionsNotPinned
 	}
 	return nil

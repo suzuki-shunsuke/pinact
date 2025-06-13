@@ -83,7 +83,7 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 	action := parseAction(line)
 	if action == nil {
 		// Ignore a line if the line doesn't use an action.
-		logE.WithField("line", line).Debug("unmatch")
+		logE.Debug("unmatch")
 		return "", nil
 	}
 
@@ -109,7 +109,7 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 	}
 
 	if f := c.parseActionName(action); !f {
-		logE.WithField("line", line).Debug("ignore line")
+		logE.Debug("ignore line")
 		return "", nil
 	}
 

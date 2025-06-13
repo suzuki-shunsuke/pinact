@@ -179,7 +179,7 @@ func (c *Controller) review(ctx context.Context, filePath string, sha string, li
 	if sha != "" {
 		cmt.CommitID = github.Ptr(sha)
 	}
-	const header = "<sub>reported by [pinact](https://github.com/suzuki-shunsuke/pinact)</sub>"
+	const header = "Reviewed by [pinact](https://github.com/suzuki-shunsuke/pinact)"
 	if suggestion != "" {
 		cmt.Body = github.Ptr(fmt.Sprintf("%s\n```suggestion\n%s\n```", header, suggestion))
 	}
@@ -187,5 +187,8 @@ func (c *Controller) review(ctx context.Context, filePath string, sha string, li
 		cmt.Body = github.Ptr(fmt.Sprintf("%s\n%s", header, err.Error()))
 	}
 	_, _, e := c.pullRequestsService.CreateComment(ctx, c.param.Review.RepoOwner, c.param.Review.RepoName, c.param.Review.PullRequest, cmt)
-	return fmt.Errorf("create a review comment: %w", e)
+	if e != nil {
+		return fmt.Errorf("create a review comment: %w", e)
+	}
+	return nil
 }
