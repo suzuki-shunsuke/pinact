@@ -237,8 +237,8 @@ func (r *runner) setReview(fs afero.Fs, review *run.Review) error {
 		if err := r.readEvent(fs, ev, eventPath); err != nil {
 			return err
 		}
-		review.SHA = ev.SHA()
 	}
+	review.SHA = ev.SHA()
 	return nil
 }
 
