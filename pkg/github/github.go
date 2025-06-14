@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-github/v72/github"
 	"github.com/sirupsen/logrus"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/keyring/ghtoken"
 	"golang.org/x/oauth2"
 )
 
@@ -41,7 +42,7 @@ func checkKeyringEnabled() bool {
 func getHTTPClientForGitHub(ctx context.Context, logE *logrus.Entry, token string) *http.Client {
 	if token == "" {
 		if checkKeyringEnabled() {
-			return oauth2.NewClient(ctx, NewKeyringTokenSource(logE))
+			return oauth2.NewClient(ctx, ghtoken.NewTokenSource(logE, KeyService))
 		}
 		return http.DefaultClient
 	}
