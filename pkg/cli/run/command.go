@@ -63,7 +63,7 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 			},
 			&cli.BoolFlag{
 				Name:  "fix",
-				Usage: "Fix code. By default, this is true. If -check is true, this is false by default",
+				Usage: "Fix code. By default, this is true. If -check or -diff is true, this is false by default",
 			},
 			&cli.BoolFlag{
 				Name:  "diff",
@@ -192,7 +192,7 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 	}
 	if c.IsSet("fix") {
 		param.Fix = c.Bool("fix")
-	} else if c.Bool("check") {
+	} else if param.Check || param.Diff {
 		param.Fix = false
 	}
 	ctrl := run.New(&run.RepositoriesServiceImpl{

@@ -163,6 +163,9 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		}
 		return nil
 	}
+	if !c.param.Fix {
+		return nil
+	}
 	f, err := os.Create(workflowFilePath)
 	if err != nil {
 		return fmt.Errorf("create a workflow file: %w", err)
