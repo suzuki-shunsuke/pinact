@@ -171,7 +171,7 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logE *logrus.
 	return latestVersion, nil
 }
 
-func (c *Controller) review(ctx context.Context, filePath string, sha string, line int, suggestion string, err error) error {
+func (c *Controller) review(ctx context.Context, filePath string, sha string, line int, suggestion string, err error) (int, error) {
 	cmt := &github.PullRequestComment{
 		Body: github.Ptr(""),
 		Path: github.Ptr(filePath),
@@ -187,11 +187,15 @@ func (c *Controller) review(ctx context.Context, filePath string, sha string, li
 	case err != nil:
 		cmt.Body = github.Ptr(fmt.Sprintf("%s\n%s", header, err.Error()))
 	default:
-		return errors.New("either suggestion or error must be provided")
+		return 0, errors.New("either suggestion or error must be provided")
 	}
-	_, _, e := c.pullRequestsService.CreateComment(ctx, c.param.Review.RepoOwner, c.param.Review.RepoName, c.param.Review.PullRequest, cmt)
+	_, resp, e := c.pullRequestsService.CreateComment(ctx, c.param.Review.RepoOwner, c.param.Review.RepoName, c.param.Review.PullRequest, cmt)
+	code := 0
+	if resp != nil {
+		code = resp.StatusCode
+	}
 	if e != nil {
-		return fmt.Errorf("create a review comment: %w", e)
+		return code, fmt.Errorf("create a review comment: %w", e)
 	}
-	return nil
+	return code, nil
 }

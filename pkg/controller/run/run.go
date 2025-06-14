@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 
@@ -204,7 +205,15 @@ func (c *Controller) handleParseLineError(ctx context.Context, logE *logrus.Entr
 		return
 	}
 	// Create review
-	if err := c.review(ctx, line.File, c.param.Review.SHA, line.Number, "", gErr); err != nil {
+	if code, err := c.review(ctx, line.File, c.param.Review.SHA, line.Number, "", gErr); err != nil {
+		if code == http.StatusUnprocessableEntity {
+			logerr.WithError(logE, err).WithFields(c.param.Review.Fields()).Warn("create a review comment")
+			// Output GitHub Actions error
+			if c.param.IsGitHubActions {
+				fmt.Fprintf(c.param.Stderr, "::notice file=%s,line=%d,title=pinact error::%s\n", line.File, line.Number, gErr)
+			}
+			return
+		}
 		logerr.WithError(logE, err).WithFields(c.param.Review.Fields()).Error("create a review comment")
 		// Output GitHub Actions error
 		if c.param.IsGitHubActions {
@@ -213,12 +222,16 @@ func (c *Controller) handleParseLineError(ctx context.Context, logE *logrus.Entr
 	}
 }
 
-func (c *Controller) handleChangedLine(ctx context.Context, logE *logrus.Entry, line *Line, newLine string) {
+func (c *Controller) handleChangedLine(ctx context.Context, logE *logrus.Entry, line *Line, newLine string) { //nolint:cyclop
 	reviewed := false
 	if c.param.Review != nil {
 		// Create review
-		if err := c.review(ctx, line.File, c.param.Review.SHA, line.Number, newLine, nil); err != nil {
-			logerr.WithError(logE, err).WithFields(c.param.Review.Fields()).Error("create a review comment")
+		if code, err := c.review(ctx, line.File, c.param.Review.SHA, line.Number, newLine, nil); err != nil {
+			level := logrus.ErrorLevel
+			if code == http.StatusUnprocessableEntity {
+				level = logrus.WarnLevel
+			}
+			logerr.WithError(logE, err).WithFields(c.param.Review.Fields()).Log(level, "create a review comment")
 		} else {
 			reviewed = true
 		}
