@@ -2,6 +2,7 @@ package run
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/go-version"
@@ -14,6 +15,10 @@ type RepositoriesService interface {
 	ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error)
 	GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error)
 	ListReleases(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error)
+}
+
+type PullRequestsService interface {
+	CreateComment(ctx context.Context, owner, repo string, number int, comment *github.PullRequestComment) (*github.PullRequestComment, *github.Response, error)
 }
 
 func (r *RepositoriesServiceImpl) GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error) {
@@ -164,4 +169,33 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logE *logrus.
 		return latestSemver.Original(), nil
 	}
 	return latestVersion, nil
+}
+
+func (c *Controller) review(ctx context.Context, filePath string, sha string, line int, suggestion string, err error) (int, error) {
+	cmt := &github.PullRequestComment{
+		Body: github.Ptr(""),
+		Path: github.Ptr(filePath),
+		Line: github.Ptr(line),
+	}
+	if sha != "" {
+		cmt.CommitID = github.Ptr(sha)
+	}
+	const header = "Reviewed by [pinact](https://github.com/suzuki-shunsuke/pinact)"
+	switch {
+	case suggestion != "":
+		cmt.Body = github.Ptr(fmt.Sprintf("%s\n```suggestion\n%s\n```", header, suggestion))
+	case err != nil:
+		cmt.Body = github.Ptr(fmt.Sprintf("%s\n%s", header, err.Error()))
+	default:
+		return 0, errors.New("either suggestion or error must be provided")
+	}
+	_, resp, e := c.pullRequestsService.CreateComment(ctx, c.param.Review.RepoOwner, c.param.Review.RepoName, c.param.Review.PullRequest, cmt)
+	code := 0
+	if resp != nil {
+		code = resp.StatusCode
+	}
+	if e != nil {
+		return code, fmt.Errorf("create a review comment: %w", e)
+	}
+	return code, nil
 }

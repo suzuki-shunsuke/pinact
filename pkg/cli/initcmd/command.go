@@ -53,7 +53,7 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 		Releases:            map[string]*run.ListReleasesResult{},
 		Commits:             map[string]*run.GetCommitSHA1Result{},
 		RepositoriesService: gh.Repositories,
-	}, afero.NewOsFs(), nil, nil, &run.ParamRun{
+	}, gh.PullRequests, afero.NewOsFs(), nil, nil, &run.ParamRun{
 		WorkflowFilePaths: c.Args().Slice(),
 		ConfigFilePath:    c.String("config"),
 		PWD:               pwd,

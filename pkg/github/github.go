@@ -11,18 +11,23 @@ import (
 )
 
 type (
-	ListOptions       = github.ListOptions
-	Reference         = github.Reference
-	Response          = github.Response
-	RepositoryTag     = github.RepositoryTag
-	RepositoryRelease = github.RepositoryRelease
-	Client            = github.Client
-	GitObject         = github.GitObject
-	Commit            = github.Commit
+	ListOptions        = github.ListOptions
+	Reference          = github.Reference
+	Response           = github.Response
+	RepositoryTag      = github.RepositoryTag
+	RepositoryRelease  = github.RepositoryRelease
+	Client             = github.Client
+	GitObject          = github.GitObject
+	Commit             = github.Commit
+	PullRequestComment = github.PullRequestComment
 )
 
 func New(ctx context.Context, logE *logrus.Entry) *Client {
 	return github.NewClient(getHTTPClientForGitHub(ctx, logE, getGitHubToken()))
+}
+
+func Ptr[T any](v T) *T {
+	return github.Ptr(v)
 }
 
 func getGitHubToken() string {

@@ -3,7 +3,7 @@
 [Motivation](#motivation) | [Install](INSTALL.md) | [How to use](#how-to-use) | [GitHub Actions](https://github.com/suzuki-shunsuke/pinact-action) | [Configuration](#configuration) | [Contributing](CONTRIBUTING.md) | [LICENSE](LICENSE)
 
 pinact is a CLI to edit GitHub Workflow and Composite action files and pin versions of Actions and Reusable Workflows.
-pinact can also [update their versions](#update-actions) and [verify version annotations](docs/codes/001.md).
+pinact can also [update their versions](#update-actions), [verify version annotations](docs/codes/001.md), and [create reviews](#create-reviews).
 
 ```sh
 pinact run
@@ -38,6 +38,10 @@ index 84bd67a..5d92e44 100644
        aqua_version: v2.3.4
      permissions:
 ```
+
+Creating reviews:
+
+![review](https://github.com/user-attachments/assets/77e78d23-bd14-49ba-8097-751556fcf126)
 
 ## Motivation
 
@@ -164,6 +168,34 @@ pinact can fix example codes in documents too.
 pinact run README.md
 ```
 
+### Create reviews
+
+![review](https://github.com/user-attachments/assets/77e78d23-bd14-49ba-8097-751556fcf126)
+
+As of pinact v3.3.0, pinact can create reviews by GitHub API.
+A GitHub access token with `pull_requests:write` permission is required.
+
+```sh
+pinact run \
+  -review \
+  -repo-owner <repository owner> \
+  -repo-name <repository name> \
+  -pr <pull request number> \
+  -sha <commit SHA to be reviewed>
+```
+
+If pinact is run via GitHub Actions `pull_request` event, options are auto-completed.
+
+> [!WARNING]
+> GitHub can't create pull request reviews on files not changed by the pull request.
+> When pinact fails to create reviews, pinact outputs warning and creates [GitHub Actions error messages to log instead](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions#setting-an-error-message).
+> You can ignore the warning like this:
+> ```
+> WARN[0004] create a review comment                       error="create a review comment: POST https://api.github.com/repos/szksh-lab-2/test-github-action/pulls/317/comments: 422 Validation Failed [{Resource:PullRequestReviewComment Field:pull_request_review_thread.path Code:invalid Message:} {Resource:PullRequestReviewComment Field:pull_request_review_thread.diff_hunk Code:missing_field Message:}]" line="      - uses: suzuki-shunsuke/watch-star-action@feat/first-pr" line_number=14 pinact_version=3.3.0-5 program=pinact review_pr_number=317 review_repo_name=test-github-action review_repo_owner=szksh-lab-2 review_sha=92f0b04efdc10acb793e78bdd1f70958dd3fd9a3 workflow_file=.github/workflows/watch.yaml
+> ```
+
+![error-message-log](https://github.com/user-attachments/assets/0231dee4-4473-459b-8ea4-e4c6a1f417c8)
+
 ### Generate a configuration file `.pinact.yaml`
 
 A configuration file is optional.
@@ -207,9 +239,47 @@ $ echo $?
 1
 ```
 
+If `-check` is set, files aren't fixed and no diff is outputted.
+If you want to fix files, please use `-fix` option.
+
+```sh
+pinact run -check -fix
+```
+
+And if you want to output diff, please use `-diff` option.
+
+```sh
+pinact run -check -diff
+```
+
 ### Verify version annotations
 
 Please see [the document](docs/codes/001.md).
+
+### Output diff
+
+```console
+$ pinact run -diff
+INFO[0000] action isn't pinned
+.github/workflows/test.yaml:8
+-       - uses: actions/checkout@v4
++       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+  pinact_version=v3.0.0-local program=pinact
+```
+
+### -diff, -check, -fix options
+
+The behaviour of `pinact run` command is changed by command line options `-diff`, `-check`, and `-fix`.
+This is a table how the behaviour is changed by these options.
+
+options | Fix files | Exit with code 1 if actions aren't pinned | Output changes
+--- | --- | --- | ---
+No option | o | | |
+-check | | o | |
+-diff | | | o
+-check -diff | | o | o
+-check -fix | o | o | o
+-fix -diff | o | | o
 
 ## GitHub Actions
 
