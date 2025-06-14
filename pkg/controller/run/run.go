@@ -88,96 +88,136 @@ var (
 	ErrActionNotPinned  = errors.New("action isn't pinned")
 )
 
-func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string) error { //nolint:cyclop,gocognit,funlen
+type Line struct {
+	File   string
+	Number int
+	Line   string
+}
+
+func logLine(logE *logrus.Entry, level logrus.Level, msg string, line *Line, newLine string) {
+	logE = logE.Dup()
+	fields := logE.Data
+	delete(fields, "line_number")
+	delete(fields, "new_line")
+	delete(fields, "line")
+	delete(fields, "workflow_file")
+	var s string
+	if newLine == "" {
+		s = fmt.Sprintf(`%s
+%s:%d
+%s
+
+`, msg, line.File, line.Number, line.Line)
+	} else {
+		s = fmt.Sprintf(`%s
+%s:%d
+- %s
++ %s 
+
+`, msg, line.File, line.Number, line.Line, newLine)
+	}
+	logE.Log(level, s)
+}
+
+func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string) error { //nolint:cyclop
 	lines, err := c.readWorkflow(workflowFilePath)
 	if err != nil {
 		return err
 	}
 	changed := false
 	failed := false
-	for i, line := range lines {
+	for i, lineS := range lines {
+		line := &Line{
+			File:   workflowFilePath,
+			Number: i + 1,
+			Line:   lineS,
+		}
 		logE := logE.WithFields(logrus.Fields{
 			"line_number": i + 1,
-			"line":        line,
+			"line":        lineS,
 		})
-		l, err := c.parseLine(ctx, logE, line)
-		if err != nil { //nolint:nestif
+		l, err := c.parseLine(ctx, logE, lineS)
+		if err != nil {
 			failed = true
-			logerr.WithError(logE, err).Error("parse a line")
-			if c.param.Review != nil {
-				if err := c.review(ctx, workflowFilePath, c.param.Review.SHA, i+1, "", err); err != nil {
-					logerr.WithError(logE, err).Error("create a review comment")
-					if c.param.IsGitHubActions {
-						fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact error::%s\n", workflowFilePath, i+1, err)
-					}
-				}
-			} else {
-				if c.param.IsGitHubActions {
-					fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact error::%s\n", workflowFilePath, i+1, err)
-				}
-			}
+			c.handleParseLineError(ctx, logE, line, err)
 			continue
 		}
-		if l == "" || line == l {
+		if l == "" || lineS == l {
 			continue
 		}
 		logE = logE.WithField("new_line", l)
 		changed = true
 		if c.param.Check {
-			if !c.param.Diff {
-				logerr.WithError(logE, err).Error("parse a line")
-			}
 			failed = true
 		}
 		lines[i] = l
-		if c.param.Review != nil {
-			if err := c.review(ctx, workflowFilePath, c.param.Review.SHA, i+1, l, nil); err != nil {
-				logerr.WithError(logE, err).Error("create a review comment")
-			}
+		c.handleChangedLine(ctx, logE, line, l)
+	}
+	// Fix file
+	if changed && c.param.Fix {
+		f, err := os.Create(workflowFilePath)
+		if err != nil {
+			return fmt.Errorf("create a workflow file: %w", err)
 		}
-		if c.param.Diff {
-			fields := logE.Data
-			delete(fields, "line_number")
-			delete(fields, "new_line")
-			delete(fields, "line")
-			delete(fields, "workflow_file")
-			logE.Data = fields
-			level := logrus.InfoLevel
-			if c.param.Check {
-				level = logrus.ErrorLevel
-			}
-			logE.Logf(level, `action isn't pinned
-%s:%d
-- %s
-+ %s
-
-`, workflowFilePath, i+1, line, l)
+		defer f.Close()
+		if _, err := f.WriteString(strings.Join(lines, "\n") + "\n"); err != nil {
+			return fmt.Errorf("write a workflow file: %w", err)
 		}
 	}
-	if !c.param.Fix && failed {
-		return ErrActionsNotPinned
-	}
-	if !changed {
-		if failed {
-			return ErrActionsNotPinned
-		}
-		return nil
-	}
-	if !c.param.Fix {
-		return nil
-	}
-	f, err := os.Create(workflowFilePath)
-	if err != nil {
-		return fmt.Errorf("create a workflow file: %w", err)
-	}
-	defer f.Close()
-	if _, err := f.WriteString(strings.Join(lines, "\n") + "\n"); err != nil {
-		return fmt.Errorf("write a workflow file: %w", err)
-	}
-	if failed && c.param.Check {
+	// return error
+	if failed {
 		return ErrActionsNotPinned
 	}
 	return nil
+}
+
+func (c *Controller) handleParseLineError(ctx context.Context, logE *logrus.Entry, line *Line, gErr error) {
+	// Output error
+	logLine(logE, logrus.ErrorLevel, "action isn't pinned", line, "")
+	if c.param.Review == nil {
+		// Output GitHub Actions error
+		if c.param.IsGitHubActions {
+			fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact error::%s\n", line.File, line.Number, gErr)
+		}
+		return
+	}
+	// Create review
+	if err := c.review(ctx, line.File, c.param.Review.SHA, line.Number, "", gErr); err != nil {
+		logerr.WithError(logE, err).Error("create a review comment")
+		// Output GitHub Actions error
+		if c.param.IsGitHubActions {
+			fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact error::%s\n", line.File, line.Number, gErr)
+		}
+	}
+}
+
+func (c *Controller) handleChangedLine(ctx context.Context, logE *logrus.Entry, line *Line, newLine string) {
+	reviewed := false
+	if c.param.Review != nil {
+		// Create review
+		if err := c.review(ctx, line.File, c.param.Review.SHA, line.Number, newLine, nil); err != nil {
+			logerr.WithError(logE, err).Error("create a review comment")
+		} else {
+			reviewed = true
+		}
+	}
+	// Output GitHub Actions error
+	if c.param.IsGitHubActions && !reviewed {
+		level := "notice"
+		if c.param.Check {
+			level = "error"
+		}
+		fmt.Fprintf(c.param.Stderr, "::%s file=%s,line=%d,title=action isn't pinned::\n", level, line.File, line.Number)
+	}
+	// Output diff
+	if !c.param.Check && c.param.Fix && !c.param.Diff {
+		return
+	}
+	level := logrus.InfoLevel
+	if c.param.Check {
+		level = logrus.ErrorLevel
+	}
+	logLine(logE, level, "action isn't pinned", line, newLine)
 }
 
 func (c *Controller) readWorkflow(workflowFilePath string) ([]string, error) {
