@@ -2,6 +2,7 @@ package run
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/go-version"
@@ -182,9 +183,10 @@ func (c *Controller) review(ctx context.Context, filePath string, sha string, li
 	const header = "Reviewed by [pinact](https://github.com/suzuki-shunsuke/pinact)"
 	if suggestion != "" {
 		cmt.Body = github.Ptr(fmt.Sprintf("%s\n```suggestion\n%s\n```", header, suggestion))
-	}
-	if err != nil {
+	} else if err != nil {
 		cmt.Body = github.Ptr(fmt.Sprintf("%s\n%s", header, err.Error()))
+	} else {
+		return errors.New("Either suggestion or error must be provided")
 	}
 	_, _, e := c.pullRequestsService.CreateComment(ctx, c.param.Review.RepoOwner, c.param.Review.RepoName, c.param.Review.PullRequest, cmt)
 	if e != nil {
