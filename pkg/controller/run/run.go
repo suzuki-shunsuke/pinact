@@ -123,6 +123,12 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 		}
 		logE = logE.WithField("new_line", l)
 		changed = true
+		if c.param.Check {
+			if !c.param.Diff {
+				logerr.WithError(logE, err).Error("parse a line")
+			}
+			failed = true
+		}
 		lines[i] = l
 		if c.param.Review != nil {
 			if err := c.review(ctx, workflowFilePath, c.param.Review.SHA, i+1, l, nil); err != nil {
@@ -136,7 +142,11 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 			delete(fields, "line")
 			delete(fields, "workflow_file")
 			logE.Data = fields
-			logE.Errorf(`action isn't pinned
+			level := logrus.InfoLevel
+			if c.param.Check {
+				level = logrus.ErrorLevel
+			}
+			logE.Logf(level, `action isn't pinned
 %s:%d
 - %s
 + %s
