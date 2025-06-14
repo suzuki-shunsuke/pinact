@@ -181,11 +181,12 @@ func (c *Controller) review(ctx context.Context, filePath string, sha string, li
 		cmt.CommitID = github.Ptr(sha)
 	}
 	const header = "Reviewed by [pinact](https://github.com/suzuki-shunsuke/pinact)"
-	if suggestion != "" {
+	switch {
+	case suggestion != "":
 		cmt.Body = github.Ptr(fmt.Sprintf("%s\n```suggestion\n%s\n```", header, suggestion))
-	} else if err != nil {
+	case err != nil:
 		cmt.Body = github.Ptr(fmt.Sprintf("%s\n%s", header, err.Error()))
-	} else {
+	default:
 		return errors.New("either suggestion or error must be provided")
 	}
 	_, _, e := c.pullRequestsService.CreateComment(ctx, c.param.Review.RepoOwner, c.param.Review.RepoName, c.param.Review.PullRequest, cmt)
