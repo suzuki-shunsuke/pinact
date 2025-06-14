@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/logrus-error/logerr"
@@ -157,6 +158,10 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 	}
 
 	isGitHubActions := os.Getenv("GITHUB_ACTIONS") == "true"
+	if isGitHubActions {
+		log.SetColor("always", r.logE)
+		color.NoColor = false
+	}
 
 	gh := github.New(ctx, r.logE)
 	fs := afero.NewOsFs()

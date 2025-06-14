@@ -229,7 +229,7 @@ func (c *Controller) handleChangedLine(ctx context.Context, logE *logrus.Entry, 
 		if c.param.Check {
 			level = levelError
 		}
-		fmt.Fprintf(c.param.Stderr, "::%s file=%s,line=%d,title=action isn't pinned::\n", level, line.File, line.Number)
+		fmt.Fprintf(c.param.Stderr, "::%s file=%s,line=%d,title=pinact error::action isn't pinned\n", level, line.File, line.Number)
 	}
 	// Output diff
 	if !c.param.Check && c.param.Fix && !c.param.Diff {
