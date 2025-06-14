@@ -13,6 +13,7 @@ type Controller struct {
 	param               *ParamRun
 	cfgFinder           ConfigFinder
 	cfgReader           ConfigReader
+	logger              *Logger
 }
 
 type ConfigFinder interface {
@@ -32,5 +33,6 @@ func New(repositoriesService RepositoriesService, pullRequestsService PullReques
 		cfgFinder:           cfgFinder,
 		cfgReader:           cfgReader,
 		cfg:                 &config.Config{},
+		logger:              NewLogger(param.Stderr),
 	}
 }

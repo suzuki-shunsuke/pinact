@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/logrus-error/logerr"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
@@ -103,29 +104,41 @@ type Line struct {
 	Line   string
 }
 
-func logLine(logE *logrus.Entry, level logrus.Level, msg string, line *Line, newLine string) {
-	logE = logE.Dup()
-	fields := logE.Data
-	delete(fields, "line_number")
-	delete(fields, "new_line")
-	delete(fields, "line")
-	delete(fields, "workflow_file")
-	var s string
+type colorFunc func(a ...interface{}) string
+
+type Logger struct {
+	stderr io.Writer
+	red    colorFunc
+	green  colorFunc
+}
+
+func NewLogger(stderr io.Writer) *Logger {
+	return &Logger{
+		red:    color.New(color.FgRed).SprintFunc(),
+		green:  color.New(color.FgGreen).SprintFunc(),
+		stderr: stderr,
+	}
+}
+
+const levelError = "error"
+
+func (l *Logger) Output(level, message string, line *Line, newLine string) {
+	s := "INFO"
+	if level == levelError {
+		s = l.red("ERROR")
+	}
 	if newLine == "" {
-		s = fmt.Sprintf(`%s
+		fmt.Fprintf(l.stderr, `%s %s
 %s:%d
 %s
-
-`, msg, line.File, line.Number, line.Line)
-	} else {
-		s = fmt.Sprintf(`%s
-%s:%d
-- %s
-+ %s 
-
-`, msg, line.File, line.Number, line.Line, newLine)
+`, s, message, line.File, line.Number, line.Line)
+		return
 	}
-	logE.Log(level, s)
+	fmt.Fprintf(l.stderr, `%s %s
+%s:%d
+%s
+%s
+`, s, message, line.File, line.Number, l.red("- "+line.Line), l.green("+ "+newLine))
 }
 
 func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string) error { //nolint:cyclop
@@ -182,7 +195,7 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 
 func (c *Controller) handleParseLineError(ctx context.Context, logE *logrus.Entry, line *Line, gErr error) {
 	// Output error
-	logLine(logE, logrus.ErrorLevel, "action isn't pinned", line, "")
+	c.logger.Output(levelError, "action isn't pinned", line, "")
 	if c.param.Review == nil {
 		// Output GitHub Actions error
 		if c.param.IsGitHubActions {
@@ -214,7 +227,7 @@ func (c *Controller) handleChangedLine(ctx context.Context, logE *logrus.Entry, 
 	if c.param.IsGitHubActions && !reviewed {
 		level := "notice"
 		if c.param.Check {
-			level = "error"
+			level = levelError
 		}
 		fmt.Fprintf(c.param.Stderr, "::%s file=%s,line=%d,title=action isn't pinned::\n", level, line.File, line.Number)
 	}
@@ -222,11 +235,11 @@ func (c *Controller) handleChangedLine(ctx context.Context, logE *logrus.Entry, 
 	if !c.param.Check && c.param.Fix && !c.param.Diff {
 		return
 	}
-	level := logrus.InfoLevel
+	level := "info"
 	if c.param.Check {
-		level = logrus.ErrorLevel
+		level = levelError
 	}
-	logLine(logE, level, "action isn't pinned", line, newLine)
+	c.logger.Output(level, "action isn't pinned", line, newLine)
 }
 
 func (c *Controller) readWorkflow(workflowFilePath string) ([]string, error) {
