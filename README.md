@@ -229,11 +229,17 @@ $ echo $?
 1
 ```
 
-If `-check` is set, files aren't fixed.
+If `-check` is set, files aren't fixed and no diff is outputted.
 If you want to fix files, please use `-fix` option.
 
 ```sh
 pinact run -check -fix
+```
+
+And if you want to output diff, please use `-diff` option.
+
+```sh
+pinact run -check -diff
 ```
 
 ### Verify version annotations
@@ -262,9 +268,8 @@ No option | o | | |
 -check | | o | |
 -diff | | | o
 -check -diff | | o | o
--check -fix | o | o |
+-check -fix | o | o | o
 -fix -diff | o | | o
--check -diff -fix | o | o | o
 
 ## GitHub Actions
 
