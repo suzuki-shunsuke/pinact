@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
@@ -206,7 +207,15 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 
 func (r *runner) setReview(fs afero.Fs, review *run.Review) error {
 	if review.RepoName == "" {
-		review.RepoName = os.Getenv("GITHUB_REPOSITORY_OWNER")
+		repo := os.Getenv("GITHUB_REPOSITORY")
+		_, repoName, ok := strings.Cut(repo, "/")
+		if !ok {
+			return fmt.Errorf("GITHUB_REPOSITORY is not set or invalid: %s", repo)
+		}
+		if repoName == "" {
+			return fmt.Errorf("GITHUB_REPOSITORY is invalid: %s", repo)
+		}
+		review.RepoName = repoName
 	}
 	eventPath := os.Getenv("GITHUB_EVENT_PATH")
 	if eventPath == "" {
