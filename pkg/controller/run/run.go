@@ -35,6 +35,15 @@ type Review struct {
 	SHA         string
 }
 
+func (r *Review) Fields() logrus.Fields {
+	return logrus.Fields{
+		"review_repo_owner": r.RepoOwner,
+		"review_repo_name":  r.RepoName,
+		"review_pr_number":  r.PullRequest,
+		"review_sha":        r.SHA,
+	}
+}
+
 func (r *Review) Valid() bool {
 	return r != nil && r.RepoOwner != "" && r.RepoName != "" && r.PullRequest > 0
 }
@@ -183,7 +192,7 @@ func (c *Controller) handleParseLineError(ctx context.Context, logE *logrus.Entr
 	}
 	// Create review
 	if err := c.review(ctx, line.File, c.param.Review.SHA, line.Number, "", gErr); err != nil {
-		logerr.WithError(logE, err).Error("create a review comment")
+		logerr.WithError(logE, err).WithFields(c.param.Review.Fields()).Error("create a review comment")
 		// Output GitHub Actions error
 		if c.param.IsGitHubActions {
 			fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact error::%s\n", line.File, line.Number, gErr)
@@ -196,7 +205,7 @@ func (c *Controller) handleChangedLine(ctx context.Context, logE *logrus.Entry, 
 	if c.param.Review != nil {
 		// Create review
 		if err := c.review(ctx, line.File, c.param.Review.SHA, line.Number, newLine, nil); err != nil {
-			logerr.WithError(logE, err).Error("create a review comment")
+			logerr.WithError(logE, err).WithFields(c.param.Review.Fields()).Error("create a review comment")
 		} else {
 			reviewed = true
 		}
