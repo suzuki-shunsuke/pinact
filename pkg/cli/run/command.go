@@ -62,10 +62,6 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Usage: "Create reviews",
 			},
 			&cli.BoolFlag{
-				Name:  "fail",
-				Usage: "Fail if any action is not pinned",
-			},
-			&cli.BoolFlag{
 				Name:  "fix",
 				Usage: "Fix code. By default, this is true. If -check is true, this is false by default",
 			},
@@ -188,7 +184,6 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 		IsVerify:          c.Bool("verify"),
 		Check:             c.Bool("check"),
 		Update:            c.Bool("update"),
-		Fail:              c.Bool("fail"),
 		Diff:              c.Bool("diff"),
 		Fix:               true,
 		IsGitHubActions:   isGitHubActions,

@@ -22,7 +22,6 @@ type ParamRun struct {
 	Update            bool
 	Check             bool
 	IsGitHubActions   bool
-	Fail              bool
 	Fix               bool
 	Diff              bool
 	Stderr            io.Writer
@@ -53,15 +52,12 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry) error {
 	for _, workflowFilePath := range workflowFilePaths {
 		logE := logE.WithField("workflow_file", workflowFilePath)
 		if err := c.runWorkflow(ctx, logE, workflowFilePath); err != nil {
-			if c.param.Check {
-				failed = true
-				if !errors.Is(err, ErrActionsNotPinned) {
-					logerr.WithError(logE, err).Error("check a workflow")
-				}
-				continue
-			}
 			failed = true
 			if errors.Is(err, ErrActionsNotPinned) {
+				continue
+			}
+			if c.param.Check {
+				logerr.WithError(logE, err).Error("check a workflow")
 				continue
 			}
 			logerr.WithError(logE, err).Error("update a workflow")
@@ -133,7 +129,7 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 				logerr.WithError(logE, err).Error("create a review comment")
 			}
 		}
-		if c.param.Fail {
+		if c.param.Diff {
 			fields := logE.Data
 			delete(fields, "line_number")
 			delete(fields, "new_line")
@@ -148,7 +144,7 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 `, workflowFilePath, i+1, line, l)
 		}
 	}
-	if c.param.Check && failed {
+	if !c.param.Fix && failed {
 		return ErrActionsNotPinned
 	}
 	if !changed {
@@ -165,7 +161,7 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 	if _, err := f.WriteString(strings.Join(lines, "\n") + "\n"); err != nil {
 		return fmt.Errorf("write a workflow file: %w", err)
 	}
-	if failed || c.param.Fail {
+	if failed && c.param.Check {
 		return ErrActionsNotPinned
 	}
 	return nil

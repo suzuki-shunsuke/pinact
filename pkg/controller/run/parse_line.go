@@ -101,7 +101,7 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 		}
 	}
 
-	if c.param.Check {
+	if c.param.Check && !c.param.Diff {
 		if fullCommitSHAPattern.MatchString(action.Version) {
 			return "", nil
 		}
