@@ -206,15 +206,11 @@ func (c *Controller) handleParseLineError(ctx context.Context, logE *logrus.Entr
 	}
 	// Create review
 	if code, err := c.review(ctx, line.File, c.param.Review.SHA, line.Number, "", gErr); err != nil {
+		level := logrus.ErrorLevel
 		if code == http.StatusUnprocessableEntity {
-			logerr.WithError(logE, err).WithFields(c.param.Review.Fields()).Warn("create a review comment")
-			// Output GitHub Actions error
-			if c.param.IsGitHubActions {
-				fmt.Fprintf(c.param.Stderr, "::notice file=%s,line=%d,title=pinact error::%s\n", line.File, line.Number, gErr)
-			}
-			return
+			level = logrus.WarnLevel
 		}
-		logerr.WithError(logE, err).WithFields(c.param.Review.Fields()).Error("create a review comment")
+		logerr.WithError(logE, err).WithFields(c.param.Review.Fields()).Log(level, "create a review comment")
 		// Output GitHub Actions error
 		if c.param.IsGitHubActions {
 			fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact error::%s\n", line.File, line.Number, gErr)
