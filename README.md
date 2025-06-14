@@ -189,6 +189,10 @@ If pinact is run via GitHub Actions `pull_request` event, options are auto-compl
 > [!WARNING]
 > GitHub can't create pull request reviews on files not changed by the pull request.
 > When pinact fails to create reviews, pinact outputs warning and creates [GitHub Actions error messages to log instead](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions#setting-an-error-message).
+> You can ignore the warning like this:
+> ```
+> WARN[0004] create a review comment                       error="create a review comment: POST https://api.github.com/repos/szksh-lab-2/test-github-action/pulls/317/comments: 422 Validation Failed [{Resource:PullRequestReviewComment Field:pull_request_review_thread.path Code:invalid Message:} {Resource:PullRequestReviewComment Field:pull_request_review_thread.diff_hunk Code:missing_field Message:}]" line="      - uses: suzuki-shunsuke/watch-star-action@feat/first-pr" line_number=14 pinact_version=3.3.0-5 program=pinact review_pr_number=317 review_repo_name=test-github-action review_repo_owner=szksh-lab-2 review_sha=92f0b04efdc10acb793e78bdd1f70958dd3fd9a3 workflow_file=.github/workflows/watch.yaml
+> ```
 
 ![error-message-log](https://github.com/user-attachments/assets/0231dee4-4473-459b-8ea4-e4c6a1f417c8)
 
