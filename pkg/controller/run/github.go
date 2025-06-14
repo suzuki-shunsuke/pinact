@@ -186,7 +186,7 @@ func (c *Controller) review(ctx context.Context, filePath string, sha string, li
 	} else if err != nil {
 		cmt.Body = github.Ptr(fmt.Sprintf("%s\n%s", header, err.Error()))
 	} else {
-		return errors.New("Either suggestion or error must be provided")
+		return errors.New("either suggestion or error must be provided")
 	}
 	_, _, e := c.pullRequestsService.CreateComment(ctx, c.param.Review.RepoOwner, c.param.Review.RepoName, c.param.Review.PullRequest, cmt)
 	if e != nil {
