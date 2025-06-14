@@ -186,6 +186,12 @@ pinact run \
 
 If pinact is run via GitHub Actions `pull_request` event, options are auto-completed.
 
+> [!WARNING]
+> GitHub can't create pull request reviews on files not changed by the pull request.
+> When pinact fails to create reviews, pinact outputs warning and creates [GitHub Actions error messages to log instead](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions#setting-an-error-message).
+
+![error-message-log](https://github.com/user-attachments/assets/0231dee4-4473-459b-8ea4-e4c6a1f417c8)
+
 ### Generate a configuration file `.pinact.yaml`
 
 A configuration file is optional.
