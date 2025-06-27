@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/google/go-github/v72/github"
+	"github.com/google/go-github/v73/github"
 	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/keyring/ghtoken"
 	"golang.org/x/oauth2"
