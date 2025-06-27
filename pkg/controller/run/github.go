@@ -15,6 +15,7 @@ type RepositoriesService interface {
 	ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error)
 	GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error)
 	ListReleases(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error)
+	GetLatestRelease(ctx context.Context, owner, repo string) (*github.RepositoryRelease, *github.Response, error)
 }
 
 type PullRequestsService interface {
@@ -91,6 +92,10 @@ func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string
 	return releases, resp, err //nolint:wrapcheck
 }
 
+func (r *RepositoriesServiceImpl) GetLatestRelease(ctx context.Context, owner, repo string) (*github.RepositoryRelease, *github.Response, error) {
+	return r.RepositoriesService.GetLatestRelease(ctx, owner, repo) //nolint:wrapcheck
+}
+
 func (c *Controller) getLatestVersion(ctx context.Context, logE *logrus.Entry, owner string, repo string) (string, error) {
 	lv, err := c.getLatestVersionFromReleases(ctx, logE, owner, repo)
 	if err != nil {
@@ -119,30 +124,18 @@ func compare(latestSemver *version.Version, latestVersion, tag string) (*version
 	return v, "", nil
 }
 
-func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *logrus.Entry, owner string, repo string) (string, error) {
-	opts := &github.ListOptions{
-		PerPage: 30, //nolint:mnd
-	}
-	releases, _, err := c.repositoriesService.ListReleases(ctx, owner, repo, opts)
+func (c *Controller) getLatestVersionFromReleases(ctx context.Context, _ *logrus.Entry, owner string, repo string) (string, error) {
+	release, _, err := c.repositoriesService.GetLatestRelease(ctx, owner, repo)
 	if err != nil {
-		return "", fmt.Errorf("list releases: %w", err)
+		return "", fmt.Errorf("get latest release: %w", err)
 	}
-	var latestSemver *version.Version
-	latestVersion := ""
-	for _, release := range releases {
-		tag := release.GetTagName()
-		ls, lv, err := compare(latestSemver, latestVersion, tag)
-		latestSemver = ls
-		latestVersion = lv
-		if err != nil {
-			logerr.WithError(logE, err).WithField("tag", tag).Debug("compare tags")
-			continue
-		}
+
+	tag := release.GetTagName()
+	if tag == "" {
+		return "", errors.New("latest release has no tag name")
 	}
-	if latestSemver != nil {
-		return latestSemver.Original(), nil
-	}
-	return latestVersion, nil
+
+	return tag, nil
 }
 
 func (c *Controller) getLatestVersionFromTags(ctx context.Context, logE *logrus.Entry, owner string, repo string) (string, error) {
