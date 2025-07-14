@@ -2,12 +2,13 @@ package migrate
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/migrate"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/log"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/log"
 	"github.com/urfave/cli/v3"
 )
 
@@ -35,7 +36,9 @@ $ pinact migrate
 }
 
 func (r *runner) action(_ context.Context, c *cli.Command) error {
-	log.SetLevel(c.String("log-level"), r.logE)
+	if err := log.Set(r.logE, c.String("log-level"), "auto"); err != nil {
+		return fmt.Errorf("configure logger: %w", err)
+	}
 	fs := afero.NewOsFs()
 	ctrl := migrate.New(fs, config.NewFinder(fs), &migrate.Param{
 		ConfigFilePath: c.String("config"),
