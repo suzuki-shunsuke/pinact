@@ -3,6 +3,10 @@ version: 2
 project_name: pinact
 archives:
   - name_template: "{{.ProjectName}}_{{.Os}}_{{.Arch}}"
+    files:
+      - LICENSE
+      - README.md
+      - third_party_licenses/**/*
     format_overrides:
       - goos: windows
         formats: [zip]
@@ -38,7 +42,7 @@ signs:
       - --oidc-provider
       - github
       - ${artifact}
-brews:
+homebrew_casks:
   -
     # NOTE: make sure the url_template, the token and given repo (github or gitlab) owner and name are from the
     # same kind. We will probably unify this in the next major version like it is done with scoop.
@@ -66,11 +70,6 @@ brews:
     # in case there is an indicator for prerelease in the tag e.g. v1.0.0-rc1
     # Default is false.
     skip_upload: true
-
-    # So you can `brew test` your formula.
-    # Default is empty.
-    test: |
-      system "#{bin}/pinact --version"
 
 scoops:
   -
