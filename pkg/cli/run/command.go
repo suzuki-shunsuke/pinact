@@ -150,7 +150,7 @@ type Head struct {
 	SHA string `json:"sha"`
 }
 
-func (r *runner) action(ctx context.Context, c *cli.Command) error {
+func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop
 	clr := "auto"
 	isGitHubActions := os.Getenv("GITHUB_ACTIONS") == "true"
 	if isGitHubActions {
