@@ -1,6 +1,31 @@
 {
   "checksums": [
     {
+      "id": "github_release/github.com/anchore/syft/v1.28.0/syft_1.28.0_darwin_amd64.tar.gz",
+      "checksum": "15067673A0EA8AEBA31E2A53DEB1633EAC5C0024AB73BDFF91CFFB157735D90A",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/anchore/syft/v1.28.0/syft_1.28.0_darwin_arm64.tar.gz",
+      "checksum": "8666A08560B7AFB3A547A5CD596880C9FF51736A4C49B1576009AEF292C08343",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/anchore/syft/v1.28.0/syft_1.28.0_linux_amd64.tar.gz",
+      "checksum": "3EDEE7FE1CEB1F78360E547F57048930D57F00C7EC3D0B8BDFB902805F048468",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/anchore/syft/v1.28.0/syft_1.28.0_linux_arm64.tar.gz",
+      "checksum": "95C8533C46D4A952A576365F373D04FC0A4348E7335CBB82AC3EA2BC66E1E58B",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/anchore/syft/v1.28.0/syft_1.28.0_windows_amd64.zip",
+      "checksum": "A1637FDC074E9C80C6BF900DF26A883516BF32E90499E3BD9AA314493D40A0A8",
+      "algorithm": "sha256"
+    },
+    {
       "id": "github_release/github.com/golangci/golangci-lint/v2.1.6/golangci-lint-2.1.6-darwin-amd64.tar.gz",
       "checksum": "E091107C4CA7E283902343BA3A09D14FB56B86E071EFFD461CE9D67193EF580E",
       "algorithm": "sha256"
@@ -53,31 +78,6 @@
     {
       "id": "github_release/github.com/goreleaser/goreleaser/v2.11.0/goreleaser_Windows_x86_64.zip",
       "checksum": "9DEE11DC151B45CE3195E7CE911320DE94533BF1661544FFC46539C850E021DF",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/int128/ghcp/v1.15.0/ghcp_darwin_amd64.zip",
-      "checksum": "BBFC2198A03E72724D8D4A69290C63EE795A7272C94E23CDDB723A389B49E03E",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/int128/ghcp/v1.15.0/ghcp_darwin_arm64.zip",
-      "checksum": "9C5098814639EC85BCE76283980B6E8CBDA9CFBA334C360F542F993800D0C507",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/int128/ghcp/v1.15.0/ghcp_linux_amd64.zip",
-      "checksum": "7793962CE99E3CE153A691565D6904743995D922F8D452427C5EC066BD71E0D0",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/int128/ghcp/v1.15.0/ghcp_linux_arm64.zip",
-      "checksum": "BF2D2B54A848A1C10AA751D52F7FA5AF3E147A459514522C5A0A1FA8A43457CE",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/int128/ghcp/v1.15.0/ghcp_windows_amd64.zip",
-      "checksum": "F6E3A8296EC17CDB3092660DFCA3781D53644E0D05B5706A9B00076C11FB6CEC",
       "algorithm": "sha256"
     },
     {

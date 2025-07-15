@@ -11,7 +11,7 @@ import (
 	"github.com/suzuki-shunsuke/logrus-error/logerr"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/log"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/log"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 )
 
@@ -26,7 +26,7 @@ type HasExitCode interface {
 }
 
 func main() {
-	logE := log.New(version)
+	logE := log.New("pinact", version)
 	if err := core(logE); err != nil {
 		if errors.Is(err, run.ErrActionsNotPinned) {
 			os.Exit(1)

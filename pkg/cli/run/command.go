@@ -14,7 +14,7 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/log"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/log"
 	"github.com/urfave/cli/v3"
 )
 
@@ -150,17 +150,20 @@ type Head struct {
 	SHA string `json:"sha"`
 }
 
-func (r *runner) action(ctx context.Context, c *cli.Command) error {
-	log.SetLevel(c.String("log-level"), r.logE)
+func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop
+	clr := "auto"
+	isGitHubActions := os.Getenv("GITHUB_ACTIONS") == "true"
+	if isGitHubActions {
+		clr = "always"
+		color.NoColor = false
+	}
+	if err := log.Set(r.logE, c.String("log-level"), clr); err != nil {
+		return fmt.Errorf("configure logger: %w", err)
+	}
+
 	pwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get the current directory: %w", err)
-	}
-
-	isGitHubActions := os.Getenv("GITHUB_ACTIONS") == "true"
-	if isGitHubActions {
-		log.SetColor("always", r.logE)
-		color.NoColor = false
 	}
 
 	gh := github.New(ctx, r.logE)
