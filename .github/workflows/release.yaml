@@ -9,7 +9,7 @@ jobs:
     uses: suzuki-shunsuke/go-release-workflow/.github/workflows/release.yaml@d13097c9dbb3e199e90c4e8ee45d852c5b7d86ed # v6.0.1
     with:
       go-version-file: go.mod
-      aqua_version: v2.53.8
+      aqua_version: v2.53.9
     permissions:
       contents: write
       id-token: write
