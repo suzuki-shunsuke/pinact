@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/fatih/color"
@@ -29,7 +30,7 @@ type runner struct {
 	logE *logrus.Entry
 }
 
-func (r *runner) Command() *cli.Command {
+func (r *runner) Command() *cli.Command { //nolint:funlen
 	return &cli.Command{
 		Name:  "run",
 		Usage: "Pin GitHub Actions versions",
@@ -87,6 +88,16 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 			&cli.IntFlag{
 				Name:  "pr",
 				Usage: "GitHub pull request number",
+			},
+			&cli.StringSliceFlag{
+				Name:    "include",
+				Aliases: []string{"i"},
+				Usage:   "A regular expression to fix actions",
+			},
+			&cli.StringSliceFlag{
+				Name:    "exclude",
+				Aliases: []string{"e"},
+				Usage:   "A regular expression to exclude actions",
 			},
 		},
 	}
@@ -150,7 +161,7 @@ type Head struct {
 	SHA string `json:"sha"`
 }
 
-func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop
+func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop,funlen
 	clr := "auto"
 	isGitHubActions := os.Getenv("GITHUB_ACTIONS") == "true"
 	if isGitHubActions {
@@ -186,6 +197,14 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 			review = nil
 		}
 	}
+	includes, err := parseIncludes(c.StringSlice("include"))
+	if err != nil {
+		return err
+	}
+	excludes, err := parseExcludes(c.StringSlice("exclude"))
+	if err != nil {
+		return err
+	}
 	param := &run.ParamRun{
 		WorkflowFilePaths: c.Args().Slice(),
 		ConfigFilePath:    c.String("config"),
@@ -198,6 +217,8 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		IsGitHubActions:   isGitHubActions,
 		Stderr:            os.Stderr,
 		Review:            review,
+		Includes:          includes,
+		Excludes:          excludes,
 	}
 	if c.IsSet("fix") {
 		param.Fix = c.Bool("fix")
@@ -211,6 +232,34 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		RepositoriesService: gh.Repositories,
 	}, gh.PullRequests, fs, config.NewFinder(fs), config.NewReader(fs), param)
 	return ctrl.Run(ctx, r.logE) //nolint:wrapcheck
+}
+
+func parseIncludes(opts []string) ([]*regexp.Regexp, error) {
+	includes := make([]*regexp.Regexp, len(opts))
+	for i, include := range opts {
+		r, err := regexp.Compile(include)
+		if err != nil {
+			return nil, fmt.Errorf("compile an include regexp: %w", logerr.WithFields(err, logrus.Fields{
+				"regexp": include,
+			}))
+		}
+		includes[i] = r
+	}
+	return includes, nil
+}
+
+func parseExcludes(opts []string) ([]*regexp.Regexp, error) {
+	excludes := make([]*regexp.Regexp, len(opts))
+	for i, exclude := range opts {
+		r, err := regexp.Compile(exclude)
+		if err != nil {
+			return nil, fmt.Errorf("compile an exclude regexp: %w", logerr.WithFields(err, logrus.Fields{
+				"regexp": exclude,
+			}))
+		}
+		excludes[i] = r
+	}
+	return excludes, nil
 }
 
 func (r *runner) setReview(fs afero.Fs, review *run.Review) error {

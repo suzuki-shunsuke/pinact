@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -27,6 +28,8 @@ type ParamRun struct {
 	Diff              bool
 	Stderr            io.Writer
 	Review            *Review
+	Includes          []*regexp.Regexp
+	Excludes          []*regexp.Regexp
 }
 
 type Review struct {

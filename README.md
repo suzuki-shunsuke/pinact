@@ -281,6 +281,23 @@ No option | o | | |
 -check -fix | o | o | o
 -fix -diff | o | | o
 
+## Fix or exclude only specific actions
+
+[#1082](https://github.com/suzuki-shunsuke/pinact/pull/1082) pinact >= v3.4.0
+
+You can fix only specific actions using the `-include (-i) <regular expression>` option.
+You can also exclude only specific actions using the `-exclude (-e) <regular expression>` option.
+
+e.g.
+
+```sh
+pinact run -i "actions/.*" -i "^aquaproj/aqua-installer$"
+```
+
+```sh
+pinact run -e "actions/.*" -e "^aquaproj/aqua-installer$"
+```
+
 ## GitHub Actions
 
 https://github.com/suzuki-shunsuke/pinact-action

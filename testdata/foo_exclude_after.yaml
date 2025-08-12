@@ -1,0 +1,30 @@
+---
+name: foo
+on: workflow_call
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # tag=v3
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9  #  v3
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9  #  tag=v3
+      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247
+      - uses: actions/checkout@v2
+      - uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+      - uses: actions/setup-java@v3
+      - uses: rharkor/caching-for-turbo@c3de885e542eec7eb01eb1a6a59e97c7a2448615 # v1.6
+      - uses: peaceiris/actions-gh-pages@v4.0.0
+      - 'uses': "actions/checkout@v3"
+      - "uses": 'actions/checkout@v3'
+      - uses: cardinalby/git-get-release-action@cf4593dd18e51a1ecfbfb1c68abac9910a8b1e0c # v1
+  actionlint:
+    uses: suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml@b6a5f966d4504893b2aeb60cf2b0de8946e48504 # v0.5.0
+    with:
+      aqua_version: v2.3.4
+    permissions:
+      pull-requests: write
+      contents: read
+  slsa-github-generator:
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.6.0
