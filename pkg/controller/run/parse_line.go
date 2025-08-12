@@ -76,6 +76,41 @@ func parseAction(line string) *Action {
 
 var ErrCantPinned = errors.New("action can't be pinned")
 
+func (c *Controller) ignoreAction(logE *logrus.Entry, action *Action) bool {
+	for _, ignoreAction := range c.cfg.IgnoreActions {
+		f, err := ignoreAction.Match(action.Name, action.Version, c.cfg.Version)
+		if err != nil {
+			logerr.WithError(logE, err).Warn("match the action")
+			continue
+		}
+		if f {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Controller) excludeAction(actionName string) bool {
+	for _, exclude := range c.param.Excludes {
+		if exclude.MatchString(actionName) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Controller) excludeByIncludes(actionName string) bool {
+	if len(c.param.Includes) == 0 {
+		return false
+	}
+	for _, include := range c.param.Includes {
+		if include.MatchString(actionName) {
+			return false
+		}
+	}
+	return true
+}
+
 func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string) (s string, e error) { //nolint:cyclop
 	defer func() {
 		e = logerr.WithFields(e, logE.Data)
@@ -89,16 +124,17 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 
 	logE = logE.WithField("action", action.Name+"@"+action.Version)
 
-	for _, ignoreAction := range c.cfg.IgnoreActions {
-		f, err := ignoreAction.Match(action.Name, action.Version, c.cfg.Version)
-		if err != nil {
-			logerr.WithError(logE, err).Warn("match the action")
-			continue
-		}
-		if f {
-			logE.Debug("ignore the action")
-			return "", nil
-		}
+	if c.ignoreAction(logE, action) {
+		logE.Debug("ignore the action")
+		return "", nil
+	}
+	if c.excludeAction(action.Name) {
+		logE.Debug("exclude the action")
+		return "", nil
+	}
+	if c.excludeByIncludes(action.Name) {
+		logE.Debug("exclude the action")
+		return "", nil
 	}
 
 	if c.param.Check && !c.param.Diff && !c.param.Fix {
