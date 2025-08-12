@@ -56,6 +56,12 @@ jobs:
           GITHUB_TOKEN: ${{github.token}}
       - run: diff testdata/foo.yaml testdata/foo_include_after.yaml
 
+      - run: git checkout -- testdata/foo.yaml
+      - run: pinact run -e "^actions/checkout$" testdata/foo.yaml
+        env:
+          GITHUB_TOKEN: ${{github.token}}
+      - run: diff testdata/foo.yaml testdata/foo_exclude_after.yaml
+
       - run: pinact run
         working-directory: testdata/actions
         env:
