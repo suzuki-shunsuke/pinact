@@ -161,7 +161,7 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 
 func (c *Controller) handleParseLineError(ctx context.Context, logE *logrus.Entry, line *Line, gErr error) {
 	// Output error
-	c.logger.Output(levelError, "action isn't pinned", line, "")
+	c.logger.Output(levelError, "failed to handle a line: "+gErr.Error(), line, "")
 	if c.param.Review == nil {
 		// Output GitHub Actions error
 		if c.param.IsGitHubActions {
