@@ -4,7 +4,7 @@ on: workflow_call
 permissions: {}
 jobs:
   integration-test:
-    uses: ./.github/workflows/wc-test.yaml
+    uses: ./.github/workflows/workflow_call-integration_test.yaml
     needs: path-filter
     permissions: {}
 
