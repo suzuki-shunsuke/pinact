@@ -1,3 +1,10 @@
+// Package config manages pinact configuration files and validation.
+// This package is responsible for reading, parsing, and validating .pinact.yaml
+// configuration files. It handles multiple schema versions, manages file patterns
+// for targeting specific workflow files, and maintains ignore rules for excluding
+// certain actions from the pinning process. The package provides interfaces for
+// finding and reading configuration files from standard locations, ensuring
+// backward compatibility while supporting schema evolution.
 package config
 
 import (

@@ -1,3 +1,10 @@
+// Package github provides GitHub API client integration and authentication.
+// This package abstracts GitHub API operations, handling client creation with
+// proper authentication through environment variables or OS keyring storage.
+// It manages OAuth2 token-based authentication, provides type aliases for
+// commonly used GitHub API types, and configures HTTP clients for API calls.
+// The package supports both authenticated and unauthenticated API access,
+// with automatic fallback mechanisms for different authentication sources.
 package github
 
 import (
