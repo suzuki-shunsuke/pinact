@@ -1,3 +1,8 @@
+// Package cli provides the command-line interface layer for pinact.
+// This package serves as the main entry point for all CLI operations,
+// handling command parsing, flag processing, and routing to appropriate subcommands.
+// It orchestrates the overall CLI structure using urfave/cli framework and delegates
+// actual business logic to controller packages.
 package cli
 
 import (

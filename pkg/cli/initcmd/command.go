@@ -1,3 +1,8 @@
+// Package initcmd implements the 'pinact init' command.
+// This package is responsible for generating pinact configuration files (.pinact.yaml)
+// with default settings to help users quickly set up pinact in their repositories.
+// It creates configuration templates that define target workflow files and
+// action ignore patterns for the pinning process.
 package initcmd
 
 import (

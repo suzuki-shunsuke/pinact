@@ -1,3 +1,10 @@
+// Package run implements the 'pinact run' command, the core functionality of pinact.
+// This package orchestrates the main pinning process for GitHub Actions and reusable workflows,
+// including version resolution, SHA pinning, update operations, and pull request review creation.
+// It handles various modes of operation (check, diff, fix, update, review) and integrates
+// with GitHub Actions CI environment for automated processing. The package also manages
+// include/exclude patterns for selective action processing and coordinates with the
+// controller layer to perform the actual file modifications.
 package run
 
 import (

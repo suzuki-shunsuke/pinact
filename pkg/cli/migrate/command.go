@@ -1,3 +1,8 @@
+// Package migrate implements the 'pinact migrate' command.
+// This package handles the migration of pinact configuration files between
+// different schema versions. It ensures smooth upgrades when pinact introduces
+// new configuration formats or features, allowing users to automatically
+// update their .pinact.yaml files to the latest schema version.
 package migrate
 
 import (
