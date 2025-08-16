@@ -72,6 +72,10 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Name:  "diff",
 				Usage: "Output diff. By default, this is false",
 			},
+			&cli.BoolFlag{
+				Name:  "prerelease",
+				Usage: "Include prerelease versions if -update option is true",
+			},
 			&cli.StringFlag{
 				Name:    "repo-owner",
 				Usage:   "GitHub repository owner",
@@ -213,6 +217,7 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		Check:             c.Bool("check"),
 		Update:            c.Bool("update"),
 		Diff:              c.Bool("diff"),
+		Prerelease:        c.Bool("prerelease"),
 		Fix:               true,
 		IsGitHubActions:   isGitHubActions,
 		Stderr:            os.Stderr,
