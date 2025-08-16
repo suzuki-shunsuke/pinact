@@ -13,6 +13,14 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// New creates a new token command for the CLI.
+// It initializes a GitHub token management command using the system keyring
+// for secure credential storage and retrieval.
+//
+// Parameters:
+//   - logE: logrus entry for structured logging
+//
+// Returns a pointer to the configured CLI command for token operations.
 func New(logE *logrus.Entry) *cli.Command {
 	return ghTokenCLI.New(logE, github.KeyService)
 }

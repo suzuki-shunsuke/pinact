@@ -42,6 +42,14 @@ const (
 	Other
 )
 
+// getVersionType determines the type of version string.
+// It analyzes the version format to classify it as semantic version,
+// short semantic version, full commit SHA, empty, or other.
+//
+// Parameters:
+//   - v: version string to analyze
+//
+// Returns the VersionType classification.
 func getVersionType(v string) VersionType {
 	if v == "" {
 		return Empty
@@ -58,6 +66,14 @@ func getVersionType(v string) VersionType {
 	return Other
 }
 
+// parseAction extracts action information from a YAML line.
+// It uses regular expressions to parse 'uses' statements and extract
+// action name, version, comments, and formatting details.
+//
+// Parameters:
+//   - line: YAML line containing a 'uses' statement
+//
+// Returns an Action struct with parsed information, or nil if no match.
 func parseAction(line string) *Action {
 	matches := usesPattern.FindStringSubmatch(line)
 	if matches == nil {
@@ -76,6 +92,14 @@ func parseAction(line string) *Action {
 
 var ErrCantPinned = errors.New("action can't be pinned")
 
+// ignoreAction checks if an action should be ignored based on configuration.
+// It evaluates the action against all ignore rules in the configuration.
+//
+// Parameters:
+//   - logE: logrus entry for structured logging
+//   - action: action to check against ignore rules
+//
+// Returns true if the action should be ignored, false otherwise.
 func (c *Controller) ignoreAction(logE *logrus.Entry, action *Action) bool {
 	for _, ignoreAction := range c.cfg.IgnoreActions {
 		f, err := ignoreAction.Match(action.Name, action.Version, c.cfg.Version)
@@ -90,6 +114,13 @@ func (c *Controller) ignoreAction(logE *logrus.Entry, action *Action) bool {
 	return false
 }
 
+// excludeAction checks if an action should be excluded based on exclude patterns.
+// It tests the action name against all configured exclude regular expressions.
+//
+// Parameters:
+//   - actionName: name of the action to check
+//
+// Returns true if the action matches any exclude pattern, false otherwise.
 func (c *Controller) excludeAction(actionName string) bool {
 	for _, exclude := range c.param.Excludes {
 		if exclude.MatchString(actionName) {
@@ -99,6 +130,14 @@ func (c *Controller) excludeAction(actionName string) bool {
 	return false
 }
 
+// excludeByIncludes checks if an action should be excluded due to include patterns.
+// When include patterns are specified, only actions matching include patterns
+// are processed, so this returns true if the action doesn't match any include pattern.
+//
+// Parameters:
+//   - actionName: name of the action to check
+//
+// Returns true if includes are specified and action doesn't match any, false otherwise.
 func (c *Controller) excludeByIncludes(actionName string) bool {
 	if len(c.param.Includes) == 0 {
 		return false
@@ -111,6 +150,16 @@ func (c *Controller) excludeByIncludes(actionName string) bool {
 	return true
 }
 
+// parseLine processes a single line from a workflow file.
+// It parses the line for action usage, applies filtering rules, and determines
+// what modifications (if any) should be made based on the operation mode.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeout control
+//   - logE: logrus entry for structured logging
+//   - line: workflow file line to process
+//
+// Returns the modified line content and any error encountered.
 func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string) (s string, e error) { //nolint:cyclop
 	defer func() {
 		e = logerr.WithFields(e, logE.Data)
@@ -168,6 +217,16 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 	}
 }
 
+// parseNoTagLine processes actions without version comments.
+// It handles pinning actions that don't have version annotations,
+// either by updating to latest version or converting tags to commit SHAs.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeout control
+//   - logE: logrus entry for structured logging
+//   - action: parsed action information
+//
+// Returns the modified line content and any error encountered.
 func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) { //nolint:cyclop
 	typ := getVersionType(action.Version)
 	switch typ {
@@ -212,6 +271,15 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, act
 	return patchLine(action, sha, longVersion), nil
 }
 
+// compareVersion compares two version strings.
+// It attempts semantic version comparison first, falling back to
+// string comparison if semantic parsing fails.
+//
+// Parameters:
+//   - currentVersion: current version string
+//   - newVersion: new version string to compare
+//
+// Returns true if newVersion is greater than currentVersion.
 func compareVersion(currentVersion, newVersion string) bool {
 	cv, err := version.NewVersion(currentVersion)
 	if err != nil {
@@ -224,6 +292,16 @@ func compareVersion(currentVersion, newVersion string) bool {
 	return nv.GreaterThan(cv)
 }
 
+// parseSemverTagLine processes actions with semantic version comments.
+// It handles updating semantic versions to latest and verifying that
+// commit SHAs match their corresponding version tags.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeout control
+//   - logE: logrus entry for structured logging
+//   - action: parsed action information
+//
+// Returns the modified line content and any error encountered.
 func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) {
 	// @xxx # v3.0.0
 	if c.param.Update { //nolint:nestif
@@ -265,6 +343,16 @@ func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry,
 	return "", nil
 }
 
+// parseShortSemverTagLine processes actions with short semantic version comments.
+// It handles expanding short versions (like v3) to full versions (like v3.1.0)
+// and updating to latest versions when requested.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeout control
+//   - logE: logrus entry for structured logging
+//   - action: parsed action information
+//
+// Returns the modified line content and any error encountered.
 func (c *Controller) parseShortSemverTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) {
 	// @xxx # v3
 	// @<full commit hash> # v3
@@ -294,6 +382,16 @@ func (c *Controller) parseShortSemverTagLine(ctx context.Context, logE *logrus.E
 	return patchLine(action, action.Version, longVersion), nil
 }
 
+// patchLine reconstructs a workflow line with updated version and tag.
+// It combines the action information with new version and tag to create
+// the updated line with proper formatting and comments.
+//
+// Parameters:
+//   - action: parsed action information
+//   - version: new version (commit SHA or tag)
+//   - tag: new tag for version comment
+//
+// Returns the reconstructed line string.
 func patchLine(action *Action, version, tag string) string {
 	sep := action.VersionCommentSeparator
 	if sep == "" {
@@ -302,6 +400,16 @@ func patchLine(action *Action, version, tag string) string {
 	return action.Uses + action.Quote + action.Name + "@" + version + action.Quote + sep + tag + action.Suffix
 }
 
+// getLongVersionFromSHA finds the full semantic version tag for a commit SHA.
+// It searches through repository tags to find a tag that points to the given
+// commit and matches the version comment prefix.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeout control
+//   - action: parsed action information
+//   - sha: commit SHA to search for
+//
+// Returns the matching full version tag or empty string if not found.
 func (c *Controller) getLongVersionFromSHA(ctx context.Context, action *Action, sha string) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 100, //nolint:mnd
@@ -338,8 +446,14 @@ func (c *Controller) getLongVersionFromSHA(ctx context.Context, action *Action, 
 	return "", nil
 }
 
-// parseActionName returns true if the action is a target.
-// Otherwise, it returns false.
+// parseActionName extracts repository owner and name from action name.
+// It parses the action name to extract the repository owner and name
+// components, which are needed for GitHub API calls.
+//
+// Parameters:
+//   - action: action to parse (modifies RepoOwner and RepoName fields)
+//
+// Returns true if parsing successful, false if action name is invalid.
 func (c *Controller) parseActionName(action *Action) bool {
 	a := strings.Split(action.Name, "/")
 	if len(a) == 1 {
@@ -351,6 +465,15 @@ func (c *Controller) parseActionName(action *Action) bool {
 	return true
 }
 
+// verify checks that an action's version SHA matches its version comment.
+// It validates that the commit SHA in the action version matches the
+// commit SHA of the version specified in the comment.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeout control
+//   - action: parsed action information to verify
+//
+// Returns an error if verification fails, nil if successful.
 func (c *Controller) verify(ctx context.Context, action *Action) error {
 	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.VersionComment, "")
 	if err != nil {

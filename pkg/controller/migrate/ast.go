@@ -10,6 +10,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// parseConfigAST parses and migrates a YAML configuration file using AST.
+// It parses the YAML content, applies migrations to each document,
+// and returns the updated YAML content as a string.
+//
+// Parameters:
+//   - _: logrus entry (unused in current implementation)
+//   - content: YAML configuration file content as bytes
+//
+// Returns the migrated YAML content as string and any error encountered.
 func parseConfigAST(_ *logrus.Entry, content []byte) (string, error) {
 	file, err := parser.ParseBytes(content, parser.ParseComments)
 	if err != nil {
@@ -23,6 +32,14 @@ func parseConfigAST(_ *logrus.Entry, content []byte) (string, error) {
 	return file.String(), nil
 }
 
+// parseDocAST migrates a single YAML document node.
+// It processes the document body to migrate ignore_actions and version fields
+// to the latest configuration schema format.
+//
+// Parameters:
+//   - doc: YAML document node to migrate
+//
+// Returns an error if migration fails.
 func parseDocAST(doc *ast.DocumentNode) error {
 	body, ok := doc.Body.(*ast.MappingNode)
 	if !ok {
@@ -37,6 +54,14 @@ func parseDocAST(doc *ast.DocumentNode) error {
 	return nil
 }
 
+// migrateIgnoreActions migrates the ignore_actions section of the configuration.
+// It processes each ignore action to ensure they have required ref fields
+// with default values if missing.
+//
+// Parameters:
+//   - body: YAML mapping node containing the configuration
+//
+// Returns an error if migration fails.
 func migrateIgnoreActions(body *ast.MappingNode) error {
 	// ignore_actions:
 	//   - name:
@@ -58,6 +83,14 @@ func migrateIgnoreActions(body *ast.MappingNode) error {
 	}
 }
 
+// migrateIgnoreAction migrates a single ignore action configuration.
+// It ensures the ignore action has a ref field, adding a default ".*"
+// pattern if the ref field is missing.
+//
+// Parameters:
+//   - body: YAML node representing an ignore action
+//
+// Returns an error if migration fails.
 func migrateIgnoreAction(body ast.Node) error {
 	// name:
 	// ref:
@@ -80,6 +113,14 @@ func migrateIgnoreAction(body ast.Node) error {
 	return nil
 }
 
+// migrateVersion migrates the version field of the configuration.
+// It adds a version field if missing or updates an existing version
+// to the current schema version (3).
+//
+// Parameters:
+//   - body: YAML mapping node containing the configuration
+//
+// Returns an error if migration fails.
 func migrateVersion(body *ast.MappingNode) error {
 	// version:
 	versionNode := findNodeByKey(body.Values, "version")
@@ -104,7 +145,7 @@ func migrateVersion(body *ast.MappingNode) error {
 	}
 }
 
-func findNodeByKey(values []*ast.MappingValueNode, key string) *ast.MappingValueNode {
+// findNodeByKey searches for a YAML mapping value node by key name.\n// It iterates through the mapping values to find a node with the specified key.\n//\n// Parameters:\n//   - values: slice of YAML mapping value nodes to search\n//   - key: key name to search for\n//\n// Returns the matching mapping value node or nil if not found.\nfunc findNodeByKey(values []*ast.MappingValueNode, key string) *ast.MappingValueNode {
 	for _, value := range values {
 		k, ok := value.Key.(*ast.StringNode)
 		if !ok {

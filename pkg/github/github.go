@@ -30,22 +30,58 @@ type (
 	PullRequestComment = github.PullRequestComment
 )
 
+// New creates a new GitHub API client with authentication.
+// It configures the client with appropriate HTTP client based on available
+// authentication methods (environment token or keyring).
+//
+// Parameters:
+//   - ctx: context for OAuth2 token source
+//   - logE: logrus entry for structured logging
+//
+// Returns a configured GitHub API client.
 func New(ctx context.Context, logE *logrus.Entry) *Client {
 	return github.NewClient(getHTTPClientForGitHub(ctx, logE, getGitHubToken()))
 }
 
+// Ptr returns a pointer to the provided value.
+// This is a convenience function that delegates to github.Ptr for
+// creating pointers to values, commonly needed for GitHub API structs.
+//
+// Parameters:
+//   - v: value to get a pointer to
+//
+// Returns a pointer to the value.
 func Ptr[T any](v T) *T {
 	return github.Ptr(v)
 }
 
+// getGitHubToken retrieves the GitHub token from environment variables.
+// It reads the GITHUB_TOKEN environment variable for authentication.
+//
+// Returns the GitHub token string or empty string if not set.
 func getGitHubToken() string {
 	return os.Getenv("GITHUB_TOKEN")
 }
 
+// checkKeyringEnabled checks if keyring authentication is enabled.
+// It examines the PINACT_KEYRING_ENABLED environment variable to determine
+// if OS keyring should be used for token storage and retrieval.
+//
+// Returns true if keyring is enabled, false otherwise.
 func checkKeyringEnabled() bool {
 	return os.Getenv("PINACT_KEYRING_ENABLED") == "true"
 }
 
+// getHTTPClientForGitHub creates an HTTP client configured for GitHub API access.
+// It handles authentication using environment token, keyring, or falls back
+// to unauthenticated access. The client is configured with OAuth2 for authenticated requests.
+//
+// Parameters:
+//   - ctx: context for OAuth2 token source
+//   - logE: logrus entry for structured logging
+//   - token: GitHub token for authentication (empty string for alternative auth)
+//
+// Returns an HTTP client configured for GitHub API access.
 func getHTTPClientForGitHub(ctx context.Context, logE *logrus.Entry, token string) *http.Client {
 	if token == "" {
 		if checkKeyringEnabled() {

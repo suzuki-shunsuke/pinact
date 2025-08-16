@@ -27,7 +27,7 @@ type Param struct {
 	ConfigFilePath string
 }
 
-func New(fs afero.Fs, cfgFinder ConfigFinder, param *Param) *Controller {
+// New creates a new Controller for configuration migration operations.\n// It initializes the controller with filesystem interface, configuration finder,\n// and migration parameters needed to perform schema migrations.\n//\n// Parameters:\n//   - fs: filesystem interface for file operations\n//   - cfgFinder: service for locating configuration files\n//   - param: migration parameters including configuration file path\n//\n// Returns a pointer to the configured Controller.\nfunc New(fs afero.Fs, cfgFinder ConfigFinder, param *Param) *Controller {
 	return &Controller{
 		param:     param,
 		fs:        fs,
