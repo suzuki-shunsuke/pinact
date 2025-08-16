@@ -26,6 +26,7 @@ type ParamRun struct {
 	IsGitHubActions   bool
 	Fix               bool
 	Diff              bool
+	Prerelease        bool
 	Stderr            io.Writer
 	Review            *Review
 	Includes          []*regexp.Regexp

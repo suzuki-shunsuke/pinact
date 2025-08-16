@@ -121,7 +121,7 @@ func compare(latestSemver *version.Version, latestVersion, tag string) (*version
 
 func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *logrus.Entry, owner string, repo string) (string, error) {
 	opts := &github.ListOptions{
-		PerPage: 30, //nolint:mnd
+		PerPage: 100, //nolint:mnd
 	}
 	releases, _, err := c.repositoriesService.ListReleases(ctx, owner, repo, opts)
 	if err != nil {
@@ -130,6 +130,10 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *log
 	var latestSemver *version.Version
 	latestVersion := ""
 	for _, release := range releases {
+		if !c.param.Prerelease && release.GetPrerelease() {
+			// Ignore prerelease
+			continue
+		}
 		tag := release.GetTagName()
 		ls, lv, err := compare(latestSemver, latestVersion, tag)
 		latestSemver = ls
