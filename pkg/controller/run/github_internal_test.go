@@ -156,9 +156,13 @@ func Test_compare(t *testing.T) {
 // mockRepositoriesService is a mock implementation of RepositoriesService for testing
 type mockRepositoriesService struct {
 	listReleasesFunc func(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error)
+	listTagsFunc     func(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error)
 }
 
 func (m *mockRepositoriesService) ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
+	if m.listTagsFunc != nil {
+		return m.listTagsFunc(ctx, owner, repo, opts)
+	}
 	return nil, nil, errors.New("not implemented")
 }
 
@@ -305,6 +309,163 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 
 			if gotVersion != tt.wantVersion {
 				t.Errorf("getLatestVersionFromReleases() = %v, want %v", gotVersion, tt.wantVersion)
+			}
+		})
+	}
+}
+
+func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	tests := []struct {
+		name        string
+		tags        []*github.RepositoryTag
+		listErr     error
+		wantVersion string
+		wantErr     bool
+	}{
+		{
+			name: "single semver tag",
+			tags: []*github.RepositoryTag{
+				{Name: github.Ptr("v1.0.0")},
+			},
+			wantVersion: "v1.0.0",
+			wantErr:     false,
+		},
+		{
+			name: "multiple semver tags - returns highest",
+			tags: []*github.RepositoryTag{
+				{Name: github.Ptr("v1.0.0")},
+				{Name: github.Ptr("v2.0.0")},
+				{Name: github.Ptr("v1.5.0")},
+			},
+			wantVersion: "v2.0.0",
+			wantErr:     false,
+		},
+		{
+			name: "mix of valid and invalid semver",
+			tags: []*github.RepositoryTag{
+				{Name: github.Ptr("v1.0.0")},
+				{Name: github.Ptr("not-a-version")},
+				{Name: github.Ptr("v2.0.0")},
+			},
+			wantVersion: "v2.0.0",
+			wantErr:     false,
+		},
+		{
+			name: "only invalid versions - returns latest by string comparison",
+			tags: []*github.RepositoryTag{
+				{Name: github.Ptr("main")},
+				{Name: github.Ptr("release")},
+				{Name: github.Ptr("develop")},
+			},
+			wantVersion: "release",
+			wantErr:     false,
+		},
+		{
+			name:        "no tags",
+			tags:        []*github.RepositoryTag{},
+			wantVersion: "",
+			wantErr:     false,
+		},
+		{
+			name:        "nil tags",
+			tags:        nil,
+			wantVersion: "",
+			wantErr:     false,
+		},
+		{
+			name: "prerelease versions",
+			tags: []*github.RepositoryTag{
+				{Name: github.Ptr("v1.0.0-alpha")},
+				{Name: github.Ptr("v1.0.0-beta")},
+				{Name: github.Ptr("v1.0.0")},
+			},
+			wantVersion: "v1.0.0",
+			wantErr:     false,
+		},
+		{
+			name: "build metadata versions",
+			tags: []*github.RepositoryTag{
+				{Name: github.Ptr("v1.0.0+build.1")},
+				{Name: github.Ptr("v1.0.0+build.2")},
+				{Name: github.Ptr("v1.0.1")},
+			},
+			wantVersion: "v1.0.1",
+			wantErr:     false,
+		},
+		{
+			name: "tags with nil names",
+			tags: []*github.RepositoryTag{
+				{Name: nil},
+				{Name: github.Ptr("v1.0.0")},
+				{Name: nil},
+			},
+			wantVersion: "v1.0.0",
+			wantErr:     false,
+		},
+		{
+			name:        "API error",
+			tags:        nil,
+			listErr:     errors.New("API error"),
+			wantVersion: "",
+			wantErr:     true,
+		},
+		{
+			name: "empty tag name",
+			tags: []*github.RepositoryTag{
+				{Name: github.Ptr("")},
+				{Name: github.Ptr("v1.0.0")},
+			},
+			wantVersion: "v1.0.0",
+			wantErr:     false,
+		},
+		{
+			name: "tags without v prefix",
+			tags: []*github.RepositoryTag{
+				{Name: github.Ptr("1.0.0")},
+				{Name: github.Ptr("2.0.0")},
+				{Name: github.Ptr("1.5.0")},
+			},
+			wantVersion: "2.0.0",
+			wantErr:     false,
+		},
+		{
+			name: "mixed v prefix and no prefix",
+			tags: []*github.RepositoryTag{
+				{Name: github.Ptr("v1.0.0")},
+				{Name: github.Ptr("2.0.0")},
+				{Name: github.Ptr("v1.5.0")},
+			},
+			wantVersion: "2.0.0",
+			wantErr:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			mockRepo := &mockRepositoriesService{
+				listTagsFunc: func(_ context.Context, _, _ string, _ *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
+					return tt.tags, nil, tt.listErr
+				},
+			}
+
+			c := &Controller{
+				repositoriesService: mockRepo,
+			}
+
+			ctx := t.Context()
+			logE := logrus.NewEntry(logrus.New())
+
+			gotVersion, err := c.getLatestVersionFromTags(ctx, logE, "owner", "repo")
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getLatestVersionFromTags() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if gotVersion != tt.wantVersion {
+				t.Errorf("getLatestVersionFromTags() = %v, want %v", gotVersion, tt.wantVersion)
 			}
 		})
 	}
