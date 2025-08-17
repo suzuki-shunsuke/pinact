@@ -8,32 +8,24 @@
 
 ## File Operations
 
-- Ensure UTF-8 encoding for all text files
-- Use relative paths when possible for portability
-- Always check file existence before operations
+- Use VS Code's file explorer for navigation
+- Prefer relative paths for portability
+- Respect .gitignore patterns
 
-## Testing and Validation
+## Error Reporting in VS Code
 
-Before committing any changes:
-1. Run `cmdx v` for code validation (go vet)
-2. Run `cmdx t` to execute all tests
-3. Ensure all checks pass
+- Format errors with file paths as clickable links (e.g., `pkg/controller/run/parse_line.go:123`)
+- Use VS Code's Problems panel format when appropriate
+- Provide clear, actionable error messages in the output
 
-## Error Reporting
+## VS Code Terminal Usage
 
-When reporting errors:
-- Include file paths with line numbers (e.g., `pkg/controller/run/parse_line.go:123`)
-- Provide clear, actionable error messages
+- Execute validation and test commands in the integrated terminal
+- Show command output directly in the terminal
+- Use VS Code's task runner integration when available
+
+## Cline Chat Interface
+
 - Use markdown formatting for better readability
-
-## Git Operations
-
-- Use conventional commit messages (see [AI_GUIDE.md](../AI_GUIDE.md#commit-messages))
-- Create feature branches from `main`
-- Write descriptive PR titles and bodies
-
-## Resource Management
-
-- Be mindful of file system operations
-- Clean up temporary files if created
-- Don't modify files outside the project directory
+- Keep responses concise and focused
+- Provide file paths that VS Code can navigate to
