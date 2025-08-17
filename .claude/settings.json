@@ -1,5 +1,15 @@
 {
   "hooks": {
-    "afterFileEdit": "cmdx fmt && cmdx v"
+    "PostToolUse": [
+      {
+        "matcher": "^(Edit|Write|MultiEdit)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmdx fmt && cmdx v"
+          }
+        ]
+      }
+    ]
   }
 }
