@@ -6,7 +6,7 @@ This document contains GitHub Copilot-specific instructions. For general project
 
 Refer to [AI_GUIDE.md](../AI_GUIDE.md) for all project conventions, including:
 - Language, commit messages, code style
-- Project structure and package responsibilities  
+- Project structure and package responsibilities
 - Testing and validation commands
 - Error handling patterns
 
