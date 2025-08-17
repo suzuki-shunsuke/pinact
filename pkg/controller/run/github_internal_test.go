@@ -10,7 +10,7 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 )
 
-func Test_compare(t *testing.T) {
+func Test_compare(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	tests := []struct {
 		name              string
@@ -166,7 +166,7 @@ func (m *mockRepositoriesService) ListTags(ctx context.Context, owner string, re
 	return nil, nil, errors.New("not implemented")
 }
 
-func (m *mockRepositoriesService) GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error) {
+func (m *mockRepositoriesService) GetCommitSHA1(_ context.Context, _, _, _, _ string) (string, *github.Response, error) {
 	return "", nil, errors.New("not implemented")
 }
 
