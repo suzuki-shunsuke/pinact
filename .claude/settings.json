@@ -1,5 +1,5 @@
 {
   "hooks": {
-    "afterFileEdit": "cmdx fmt"
+    "afterFileEdit": "cmdx fmt && cmdx v"
   }
 }
