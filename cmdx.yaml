@@ -49,3 +49,9 @@ tasks:
   description: Generate JSON Schema
   usage: Generate JSON Schema
   script: "go run ./cmd/gen-jsonschema"
+- name: fmt
+  description: Format code
+  usage: Format code
+  script: |
+    git ls-files | grep -E "\.go$" | xargs gofumpt -l -w
+    git ls-files | xargs nllint -f -s
