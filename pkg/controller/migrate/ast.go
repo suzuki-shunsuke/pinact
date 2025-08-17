@@ -145,7 +145,7 @@ func migrateVersion(body *ast.MappingNode) error {
 	}
 }
 
-// findNodeByKey searches for a YAML mapping value node by key name.\n// It iterates through the mapping values to find a node with the specified key.\n//\n// Parameters:\n//   - values: slice of YAML mapping value nodes to search\n//   - key: key name to search for\n//\n// Returns the matching mapping value node or nil if not found.\nfunc findNodeByKey(values []*ast.MappingValueNode, key string) *ast.MappingValueNode {
+func findNodeByKey(values []*ast.MappingValueNode, key string) *ast.MappingValueNode {
 	for _, value := range values {
 		k, ok := value.Key.(*ast.StringNode)
 		if !ok {
