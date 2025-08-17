@@ -39,6 +39,10 @@ type Review struct {
 	SHA         string
 }
 
+// Fields returns structured log fields for the review configuration.
+// It provides consistent field names for logging review information.
+//
+// Returns logrus.Fields with review configuration data.
 func (r *Review) Fields() logrus.Fields {
 	return logrus.Fields{
 		"review_repo_owner": r.RepoOwner,
@@ -48,10 +52,23 @@ func (r *Review) Fields() logrus.Fields {
 	}
 }
 
+// Valid checks if the review configuration has all required fields.
+// It validates that repo owner, repo name, and pull request number are set.
+//
+// Returns true if the review configuration is valid for creating reviews.
 func (r *Review) Valid() bool {
 	return r != nil && r.RepoOwner != "" && r.RepoName != "" && r.PullRequest > 0
 }
 
+// Run executes the main pinact operation.
+// It reads configuration, searches for workflow files, and processes each file
+// to pin GitHub Actions versions according to the specified parameters.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeout control
+//   - logE: logrus entry for structured logging
+//
+// Returns an error if the operation fails or actions are not pinned in check mode.
 func (c *Controller) Run(ctx context.Context, logE *logrus.Entry) error {
 	if err := c.readConfig(); err != nil {
 		return err
@@ -82,6 +99,11 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry) error {
 	return nil
 }
 
+// readConfig loads and processes the pinact configuration file.
+// It finds the configuration file path and reads the configuration,
+// updating the controller's configuration state.
+//
+// Returns an error if configuration cannot be found or read.
 func (c *Controller) readConfig() error {
 	p, err := c.cfgFinder.Find(c.param.ConfigFilePath)
 	if err != nil {
@@ -107,6 +129,16 @@ type Line struct {
 	Line   string
 }
 
+// runWorkflow processes a single workflow file.
+// It reads the file line by line, parses each line for actions,
+// applies transformations, and optionally writes changes back to the file.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeout control
+//   - logE: logrus entry for structured logging
+//   - workflowFilePath: path to the workflow file to process
+//
+// Returns an error if processing fails or actions are not pinned in check mode.
 func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string) error { //nolint:cyclop
 	lines, err := c.readWorkflow(workflowFilePath)
 	if err != nil {
@@ -159,6 +191,15 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 	return nil
 }
 
+// handleParseLineError handles errors that occur during line parsing.
+// It outputs error messages, creates GitHub Actions annotations, and
+// optionally creates pull request review comments.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeout control
+//   - logE: logrus entry for structured logging
+//   - line: line information where the error occurred
+//   - gErr: error that occurred during parsing
 func (c *Controller) handleParseLineError(ctx context.Context, logE *logrus.Entry, line *Line, gErr error) {
 	// Output error
 	c.logger.Output(levelError, "failed to handle a line: "+gErr.Error(), line, "")
@@ -183,6 +224,15 @@ func (c *Controller) handleParseLineError(ctx context.Context, logE *logrus.Entr
 	}
 }
 
+// handleChangedLine handles lines that have been modified.
+// It creates review comments, GitHub Actions annotations, and outputs
+// diff information depending on the operation mode.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeout control
+//   - logE: logrus entry for structured logging
+//   - line: original line information
+//   - newLine: modified line content
 func (c *Controller) handleChangedLine(ctx context.Context, logE *logrus.Entry, line *Line, newLine string) { //nolint:cyclop
 	reviewed := false
 	if c.param.Review != nil {
@@ -216,6 +266,14 @@ func (c *Controller) handleChangedLine(ctx context.Context, logE *logrus.Entry, 
 	c.logger.Output(level, "action isn't pinned", line, newLine)
 }
 
+// readWorkflow reads a workflow file and returns its lines.
+// It opens the file and scans it line by line, returning all lines
+// as a slice of strings.
+//
+// Parameters:
+//   - workflowFilePath: path to the workflow file to read
+//
+// Returns a slice of lines from the file and any error encountered.
 func (c *Controller) readWorkflow(workflowFilePath string) ([]string, error) {
 	workflowReadFile, err := os.Open(workflowFilePath)
 	if err != nil {

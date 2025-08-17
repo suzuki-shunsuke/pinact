@@ -1,3 +1,8 @@
+// Package migrate implements the 'pinact migrate' command.
+// This package handles the migration of pinact configuration files between
+// different schema versions. It ensures smooth upgrades when pinact introduces
+// new configuration formats or features, allowing users to automatically
+// update their .pinact.yaml files to the latest schema version.
 package migrate
 
 import (
@@ -16,6 +21,14 @@ type runner struct {
 	logE *logrus.Entry
 }
 
+// New creates a new migrate command for the CLI.
+// It initializes a runner with the provided logger and returns
+// the configured CLI command for migrating pinact configuration files.
+//
+// Parameters:
+//   - logE: logrus entry for structured logging
+//
+// Returns a pointer to the configured CLI command.
 func New(logE *logrus.Entry) *cli.Command {
 	r := runner{
 		logE: logE,
@@ -23,6 +36,11 @@ func New(logE *logrus.Entry) *cli.Command {
 	return r.Command()
 }
 
+// Command builds and returns the migrate CLI command configuration.
+// It defines the command name, usage description, and action handler
+// for the migrate subcommand.
+//
+// Returns a pointer to the configured CLI command.
 func (r *runner) Command() *cli.Command {
 	return &cli.Command{
 		Name:  "migrate",
@@ -35,6 +53,15 @@ $ pinact migrate
 	}
 }
 
+// action executes the migrate command logic.
+// It configures logging, creates the filesystem interface and controller,
+// then performs the configuration file migration.
+//
+// Parameters:
+//   - _: context (unused in this implementation)
+//   - c: CLI command containing parsed flags and arguments
+//
+// Returns an error if migration fails or logging configuration fails.
 func (r *runner) action(_ context.Context, c *cli.Command) error {
 	if err := log.Set(r.logE, c.String("log-level"), "auto"); err != nil {
 		return fmt.Errorf("configure logger: %w", err)

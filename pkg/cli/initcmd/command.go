@@ -1,3 +1,8 @@
+// Package initcmd implements the 'pinact init' command.
+// This package is responsible for generating pinact configuration files (.pinact.yaml)
+// with default settings to help users quickly set up pinact in their repositories.
+// It creates configuration templates that define target workflow files and
+// action ignore patterns for the pinning process.
 package initcmd
 
 import (
@@ -13,6 +18,8 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// New creates a new init command instance with the provided logger.
+// It returns a CLI command that can be registered with the main CLI application.
 func New(logE *logrus.Entry) *cli.Command {
 	r := &runner{
 		logE: logE,
@@ -24,6 +31,8 @@ type runner struct {
 	logE *logrus.Entry
 }
 
+// Command returns the CLI command definition for the init subcommand.
+// It defines the command name, usage, description, and action handler.
 func (r *runner) Command() *cli.Command {
 	return &cli.Command{
 		Name:  "init",
@@ -42,6 +51,10 @@ $ pinact init .github/pinact.yaml
 	}
 }
 
+// action handles the execution of the init command.
+// It creates a default .pinact.yaml configuration file in the specified location.
+// The function sets up the necessary controllers and services, determines the output
+// path for the configuration file, and delegates to the controller's Init method.
 func (r *runner) action(ctx context.Context, c *cli.Command) error {
 	pwd, err := os.Getwd()
 	if err != nil {

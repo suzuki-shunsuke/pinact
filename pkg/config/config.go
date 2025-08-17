@@ -1,3 +1,10 @@
+// Package config manages pinact configuration files and validation.
+// This package is responsible for reading, parsing, and validating .pinact.yaml
+// configuration files. It handles multiple schema versions, manages file patterns
+// for targeting specific workflow files, and maintains ignore rules for excluding
+// certain actions from the pinning process. The package provides interfaces for
+// finding and reading configuration files from standard locations, ensuring
+// backward compatibility while supporting schema evolution.
 package config
 
 import (
@@ -28,6 +35,14 @@ var (
 	errEmptyConfigVersion       = errors.New("schema version is required")
 )
 
+// validateSchemaVersion checks if the provided configuration schema version is supported.
+// It validates against the current supported version (3) and provides helpful error
+// messages for unsupported, abandoned, or missing versions.
+//
+// Parameters:
+//   - v: schema version number to validate
+//
+// Returns an error if the version is not supported, nil if valid.
 func validateSchemaVersion(v int) error {
 	switch v {
 	case 0:
@@ -47,6 +62,13 @@ func validateSchemaVersion(v int) error {
 	}
 }
 
+// Init initializes and validates a File configuration.
+// It validates the pattern field and ensures it's a valid glob pattern.
+//
+// Parameters:
+//   - v: configuration schema version
+//
+// Returns an error if validation fails.
 func (f *File) Init(v int) error {
 	if f.Pattern == "" {
 		return errors.New("pattern is required")
@@ -68,6 +90,13 @@ type IgnoreAction struct {
 	refRegexp  *regexp.Regexp
 }
 
+// Init initializes and validates an IgnoreAction configuration.
+// It compiles the name and ref patterns as regular expressions.
+//
+// Parameters:
+//   - v: configuration schema version
+//
+// Returns an error if initialization or validation fails.
 func (ia *IgnoreAction) Init(v int) error {
 	if err := ia.initName(); err != nil {
 		return err
@@ -78,6 +107,15 @@ func (ia *IgnoreAction) Init(v int) error {
 	return nil
 }
 
+// Match checks if an action matches the ignore criteria.
+// It evaluates both name and ref patterns against the provided values.
+//
+// Parameters:
+//   - name: action name to match against
+//   - ref: action reference to match against
+//   - version: configuration schema version
+//
+// Returns true if the action should be ignored, false otherwise, or an error if matching fails.
 func (ia *IgnoreAction) Match(name, ref string, version int) (bool, error) {
 	f, err := ia.matchName(name, version)
 	if err != nil {
@@ -93,6 +131,10 @@ func (ia *IgnoreAction) Match(name, ref string, version int) (bool, error) {
 	return b, nil
 }
 
+// initName compiles the name pattern as a regular expression.
+// It validates that a name pattern is provided and can be compiled.
+//
+// Returns an error if the name is empty or the regex compilation fails.
 func (ia *IgnoreAction) initName() error {
 	if ia.Name == "" {
 		return errors.New("name is required")
@@ -105,6 +147,13 @@ func (ia *IgnoreAction) initName() error {
 	return nil
 }
 
+// initRef compiles the ref pattern as a regular expression.
+// It validates that a ref pattern is provided and can be compiled.
+//
+// Parameters:
+//   - v: configuration schema version
+//
+// Returns an error if the ref is empty or the regex compilation fails.
 func (ia *IgnoreAction) initRef(v int) error {
 	if err := validateSchemaVersion(v); err != nil {
 		return err
@@ -120,6 +169,14 @@ func (ia *IgnoreAction) initRef(v int) error {
 	return nil
 }
 
+// matchName checks if the provided name matches the compiled name pattern.
+// It performs exact string matching using the regular expression.
+//
+// Parameters:
+//   - name: action name to match
+//   - version: configuration schema version
+//
+// Returns true if the name matches exactly, false otherwise, or an error if validation fails.
 func (ia *IgnoreAction) matchName(name string, version int) (bool, error) {
 	if err := validateSchemaVersion(version); err != nil {
 		return false, err
@@ -127,6 +184,14 @@ func (ia *IgnoreAction) matchName(name string, version int) (bool, error) {
 	return ia.nameRegexp.FindString(name) == name, nil
 }
 
+// matchRef checks if the provided ref matches the compiled ref pattern.
+// It performs exact string matching using the regular expression.
+//
+// Parameters:
+//   - ref: action reference to match
+//   - version: configuration schema version
+//
+// Returns true if the ref matches exactly, false otherwise, or an error if validation fails.
 func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
 	if err := validateSchemaVersion(version); err != nil {
 		return false, err
@@ -134,6 +199,14 @@ func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
 	return ia.refRegexp.FindString(ref) == ref, nil
 }
 
+// getConfigPath searches for a pinact configuration file in standard locations.
+// It checks for .pinact.yaml, .github/pinact.yaml, .pinact.yml, and .github/pinact.yml
+// in order of preference.
+//
+// Parameters:
+//   - fs: filesystem interface for file operations
+//
+// Returns the path to the first found configuration file, empty string if none found, or an error.
 func getConfigPath(fs afero.Fs) (string, error) {
 	for _, path := range []string{".pinact.yaml", ".github/pinact.yaml", ".pinact.yml", ".github/pinact.yml"} {
 		f, err := afero.Exists(fs, path)
@@ -151,10 +224,25 @@ type Finder struct {
 	fs afero.Fs
 }
 
+// NewFinder creates a new configuration file finder.
+// It initializes a Finder with the provided filesystem interface.
+//
+// Parameters:
+//   - fs: filesystem interface for file operations
+//
+// Returns a pointer to the configured Finder.
 func NewFinder(fs afero.Fs) *Finder {
 	return &Finder{fs: fs}
 }
 
+// Find locates the configuration file path to use.
+// If a specific path is provided, it returns that path.
+// Otherwise, it searches for configuration files in standard locations.
+//
+// Parameters:
+//   - configFilePath: explicit configuration file path or empty string
+//
+// Returns the configuration file path to use or an error if search fails.
 func (f *Finder) Find(configFilePath string) (string, error) {
 	if configFilePath != "" {
 		return configFilePath, nil
@@ -170,10 +258,26 @@ type Reader struct {
 	fs afero.Fs
 }
 
+// NewReader creates a new configuration file reader.
+// It initializes a Reader with the provided filesystem interface.
+//
+// Parameters:
+//   - fs: filesystem interface for file operations
+//
+// Returns a pointer to the configured Reader.
 func NewReader(fs afero.Fs) *Reader {
 	return &Reader{fs: fs}
 }
 
+// Read loads and parses a configuration file.
+// It reads the YAML file, validates the schema version, and initializes
+// all configuration components including files and ignore actions.
+//
+// Parameters:
+//   - cfg: Config struct to populate with parsed data
+//   - configFilePath: path to the configuration file to read
+//
+// Returns an error if reading, parsing, or validation fails.
 func (r *Reader) Read(cfg *Config, configFilePath string) error {
 	if configFilePath == "" {
 		return nil

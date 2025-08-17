@@ -1,3 +1,8 @@
+// Package cli provides the command-line interface layer for pinact.
+// This package serves as the main entry point for all CLI operations,
+// handling command parsing, flag processing, and routing to appropriate subcommands.
+// It orchestrates the overall CLI structure using urfave/cli framework and delegates
+// actual business logic to controller packages.
 package cli
 
 import (
@@ -12,6 +17,17 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// Run creates and executes the main pinact CLI application.
+// It configures the command structure with global flags and subcommands,
+// then runs the CLI with the provided arguments.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeout control
+//   - logE: logrus entry for structured logging
+//   - ldFlags: linker flags containing build information
+//   - args: command line arguments to parse and execute
+//
+// Returns an error if command parsing or execution fails.
 func Run(ctx context.Context, logE *logrus.Entry, ldFlags *urfave.LDFlags, args ...string) error {
 	return urfave.Command(logE, ldFlags, &cli.Command{ //nolint:wrapcheck
 		Name:  "pinact",

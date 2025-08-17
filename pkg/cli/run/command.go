@@ -1,3 +1,10 @@
+// Package run implements the 'pinact run' command, the core functionality of pinact.
+// This package orchestrates the main pinning process for GitHub Actions and reusable workflows,
+// including version resolution, SHA pinning, update operations, and pull request review creation.
+// It handles various modes of operation (check, diff, fix, update, review) and integrates
+// with GitHub Actions CI environment for automated processing. The package also manages
+// include/exclude patterns for selective action processing and coordinates with the
+// controller layer to perform the actual file modifications.
 package run
 
 import (
@@ -19,6 +26,14 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// New creates a new run command for the CLI.
+// It initializes a runner with the provided logger and returns
+// the configured CLI command for pinning GitHub Actions versions.
+//
+// Parameters:
+//   - logE: logrus entry for structured logging
+//
+// Returns a pointer to the configured CLI command.
 func New(logE *logrus.Entry) *cli.Command {
 	r := &runner{
 		logE: logE,
@@ -30,6 +45,12 @@ type runner struct {
 	logE *logrus.Entry
 }
 
+// Command builds and returns the run CLI command configuration.
+// It defines all flags, options, and the action handler for the run subcommand.
+// This command handles the core pinning functionality with various modes
+// like check, diff, fix, update, and review.
+//
+// Returns a pointer to the configured CLI command.
 func (r *runner) Command() *cli.Command { //nolint:funlen
 	return &cli.Command{
 		Name:  "run",
@@ -109,6 +130,10 @@ type Event struct {
 	Repository  *Repository  `json:"repository"`
 }
 
+// RepoName extracts the repository name from the GitHub event.
+// It safely accesses the repository information from the event payload.
+//
+// Returns the repository name or empty string if not available.
 func (e *Event) RepoName() string {
 	if e != nil && e.Repository != nil {
 		return e.Repository.Name
@@ -116,6 +141,10 @@ func (e *Event) RepoName() string {
 	return ""
 }
 
+// PRNumber extracts the pull request or issue number from the GitHub event.
+// It checks both pull request and issue fields to find the number.
+//
+// Returns the PR/issue number or 0 if not available.
 func (e *Event) PRNumber() int {
 	if e == nil {
 		return 0
@@ -129,6 +158,10 @@ func (e *Event) PRNumber() int {
 	return 0
 }
 
+// SHA extracts the commit SHA from the GitHub event.
+// It looks for the SHA in the pull request head information.
+//
+// Returns the commit SHA or empty string if not available.
 func (e *Event) SHA() string {
 	if e == nil {
 		return ""
@@ -161,6 +194,15 @@ type Head struct {
 	SHA string `json:"sha"`
 }
 
+// action executes the main run command logic.
+// It configures logging, processes GitHub Actions context, parses includes/excludes,
+// sets up the controller, and executes the pinning operation.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeout control
+//   - c: CLI command containing parsed flags and arguments
+//
+// Returns an error if the operation fails.
 func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop,funlen
 	clr := "auto"
 	isGitHubActions := os.Getenv("GITHUB_ACTIONS") == "true"
@@ -234,6 +276,13 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 	return ctrl.Run(ctx, r.logE) //nolint:wrapcheck
 }
 
+// parseIncludes compiles include regular expressions from command-line options.
+// These patterns are used to filter which actions should be processed.
+//
+// Parameters:
+//   - opts: slice of include pattern strings
+//
+// Returns compiled regular expressions or an error if compilation fails.
 func parseIncludes(opts []string) ([]*regexp.Regexp, error) {
 	includes := make([]*regexp.Regexp, len(opts))
 	for i, include := range opts {
@@ -248,6 +297,13 @@ func parseIncludes(opts []string) ([]*regexp.Regexp, error) {
 	return includes, nil
 }
 
+// parseExcludes compiles exclude regular expressions from command-line options.
+// These patterns are used to filter which actions should be skipped.
+//
+// Parameters:
+//   - opts: slice of exclude pattern strings
+//
+// Returns compiled regular expressions or an error if compilation fails.
 func parseExcludes(opts []string) ([]*regexp.Regexp, error) {
 	excludes := make([]*regexp.Regexp, len(opts))
 	for i, exclude := range opts {
@@ -262,6 +318,15 @@ func parseExcludes(opts []string) ([]*regexp.Regexp, error) {
 	return excludes, nil
 }
 
+// setReview configures review information from GitHub Actions environment.
+// It extracts repository name, pull request number, and commit SHA from
+// environment variables and GitHub event payload.
+//
+// Parameters:
+//   - fs: filesystem interface for reading event files
+//   - review: review configuration to populate
+//
+// Returns an error if required information cannot be extracted.
 func (r *runner) setReview(fs afero.Fs, review *run.Review) error {
 	if review.RepoName == "" {
 		repo := os.Getenv("GITHUB_REPOSITORY")
@@ -299,6 +364,15 @@ func (r *runner) setReview(fs afero.Fs, review *run.Review) error {
 	return nil
 }
 
+// readEvent reads and parses the GitHub event payload from file.
+// It unmarshals the JSON event data into the provided Event struct.
+//
+// Parameters:
+//   - fs: filesystem interface for file operations
+//   - ev: Event struct to populate with parsed data
+//   - eventPath: path to the GitHub event file
+//
+// Returns an error if the file cannot be read or parsed.
 func (r *runner) readEvent(fs afero.Fs, ev *Event, eventPath string) error {
 	event, err := fs.Open(eventPath)
 	if err != nil {

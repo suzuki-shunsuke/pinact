@@ -26,6 +26,14 @@ ignore_actions:
 	filePermission os.FileMode = 0o644
 )
 
+// Init creates a new pinact configuration file if it doesn't exist.
+// It checks if the configuration file already exists and creates it with
+// a template configuration if it doesn't exist.
+//
+// Parameters:
+//   - configFilePath: path where the configuration file should be created
+//
+// Returns an error if file operations fail, nil if successful or file already exists.
 func (c *Controller) Init(configFilePath string) error {
 	f, err := afero.Exists(c.fs, configFilePath)
 	if err != nil {
