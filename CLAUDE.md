@@ -95,6 +95,7 @@ This project uses:
 4. Keep functions focused and small
 5. Handle errors explicitly
 6. Use context for cancellation and timeouts
+7. Always end files with a newline character
 
 ## Pull Request Process
 
