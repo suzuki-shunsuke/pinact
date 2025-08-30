@@ -8,8 +8,11 @@ import (
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/util"
 )
+
+func strP(s string) *string {
+	return &s
+}
 
 func Test_parseAction(t *testing.T) { //nolint:funlen
 	t.Parallel()
@@ -160,27 +163,27 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 					"actions/checkout/0": {
 						Tags: []*github.RepositoryTag{
 							{
-								Name: util.StrP("v3"),
+								Name: strP("v3"),
 								Commit: &github.Commit{
-									SHA: util.StrP("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
+									SHA: strP("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
 								},
 							},
 							{
-								Name: util.StrP("v3.5.2"),
+								Name: strP("v3.5.2"),
 								Commit: &github.Commit{
-									SHA: util.StrP("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
+									SHA: strP("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
 								},
 							},
 							{
-								Name: util.StrP("v2"),
+								Name: strP("v2"),
 								Commit: &github.Commit{
-									SHA: util.StrP("ee0669bd1cc54295c223e0bb666b733df41de1c5"),
+									SHA: strP("ee0669bd1cc54295c223e0bb666b733df41de1c5"),
 								},
 							},
 							{
-								Name: util.StrP("v2.7.0"),
+								Name: strP("v2.7.0"),
 								Commit: &github.Commit{
-									SHA: util.StrP("ee0669bd1cc54295c223e0bb666b733df41de1c5"),
+									SHA: strP("ee0669bd1cc54295c223e0bb666b733df41de1c5"),
 								},
 							},
 						},
