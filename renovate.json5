@@ -2,6 +2,7 @@
   extends: [
     "github>suzuki-shunsuke/renovate-config#3.3.0",
     "github>suzuki-shunsuke/renovate-config:nolimit#3.3.0",
+    "github>suzuki-shunsuke/renovate-config:go-directive#3.3.0",
     "github>aquaproj/aqua-renovate-config#2.9.0",
     "github>aquaproj/aqua-renovate-config:file#2.9.0(aqua/imports/.*\\.ya?ml)",
   ],
