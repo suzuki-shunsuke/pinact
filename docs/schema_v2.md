@@ -43,7 +43,7 @@ This is required.
 A regular expression of ignored actions and reusable workflows.
 
 ```yaml
-ignored_actions:
+ignore_actions:
   - name: actions/.*
     ref: main
 ```
