@@ -134,10 +134,11 @@ func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string
 //   - logE: logrus entry for structured logging
 //   - owner: repository owner
 //   - repo: repository name
+//   - currentVersion: current version to check if stable (empty string to include all versions)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersion(ctx context.Context, logE *logrus.Entry, owner string, repo string) (string, error) {
-	lv, err := c.getLatestVersionFromReleases(ctx, logE, owner, repo)
+func (c *Controller) getLatestVersion(ctx context.Context, logE *logrus.Entry, owner string, repo string, currentVersion string) (string, error) {
+	lv, err := c.getLatestVersionFromReleases(ctx, logE, owner, repo, currentVersion)
 	if err != nil {
 		logerr.WithError(logE, err).Debug("get the latest version from releases")
 	}
@@ -183,9 +184,10 @@ func compare(latestSemver *version.Version, latestVersion, tag string) (*version
 //   - logE: logrus entry for structured logging
 //   - owner: repository owner
 //   - repo: repository name
+//   - currentVersion: current version to check if stable (empty string to include all versions)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *logrus.Entry, owner string, repo string) (string, error) {
+func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *logrus.Entry, owner string, repo string, currentVersion string) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
@@ -193,9 +195,23 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *log
 	if err != nil {
 		return "", fmt.Errorf("list releases: %w", err)
 	}
+
+	// Check if current version is stable (issue #1095)
+	currentIsStable := false
+	if currentVersion != "" {
+		cv, err := version.NewVersion(currentVersion)
+		if err == nil && cv.Prerelease() == "" {
+			currentIsStable = true
+		}
+	}
+
 	var latestSemver *version.Version
 	latestVersion := ""
 	for _, release := range releases {
+		// Skip prereleases if current version is stable (issue #1095)
+		if currentIsStable && release.GetPrerelease() {
+			continue
+		}
 		tag := release.GetTagName()
 		ls, lv, err := compare(latestSemver, latestVersion, tag)
 		latestSemver = ls
@@ -205,6 +221,7 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *log
 			continue
 		}
 	}
+
 	if latestSemver != nil {
 		return latestSemver.Original(), nil
 	}
