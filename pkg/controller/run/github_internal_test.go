@@ -120,6 +120,33 @@ func Test_compare(t *testing.T) { //nolint:funlen
 			wantLatestVersion: "",
 			wantErr:           false,
 		},
+		{
+			name:              "stable version should not update to prerelease (issue #1095)",
+			latestSemver:      version.Must(version.NewVersion("5.0.0")),
+			latestVersion:     "",
+			tag:               "v6-beta",
+			wantSemver:        "5.0.0",
+			wantLatestVersion: "",
+			wantErr:           false,
+		},
+		{
+			name:              "stable version should not update to prerelease with proper semver",
+			latestSemver:      version.Must(version.NewVersion("v5.0.0")),
+			latestVersion:     "",
+			tag:               "v6.0.0-beta",
+			wantSemver:        "v5.0.0",
+			wantLatestVersion: "",
+			wantErr:           false,
+		},
+		{
+			name:              "prerelease version can update to newer prerelease",
+			latestSemver:      version.Must(version.NewVersion("v6.0.0-beta")),
+			latestVersion:     "",
+			tag:               "v6.0.0-rc.1",
+			wantSemver:        "v6.0.0-rc.1",
+			wantLatestVersion: "",
+			wantErr:           false,
+		},
 	}
 
 	for _, tt := range tests {

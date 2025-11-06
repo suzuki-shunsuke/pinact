@@ -166,6 +166,11 @@ func compare(latestSemver *version.Version, latestVersion, tag string) (*version
 		return latestSemver, latestVersion, fmt.Errorf("parse a tag as a semver: %w", err)
 	}
 	if latestSemver != nil {
+		// If current version is stable (not a prerelease) and new version is a prerelease,
+		// skip the prerelease version (issue #1095)
+		if latestSemver.Prerelease() == "" && v.Prerelease() != "" {
+			return latestSemver, "", nil
+		}
 		if v.GreaterThan(latestSemver) {
 			return v, "", nil
 		}
