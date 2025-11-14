@@ -43,6 +43,10 @@ Creating reviews:
 
 ![review](https://github.com/user-attachments/assets/77e78d23-bd14-49ba-8097-751556fcf126)
 
+## :bulb: NotebookLM for pinact
+
+[You can ask any questions about pinact to NotebookLM.](https://notebooklm.google.com/notebook/31982d97-104e-4778-9a8f-3b2c044a719d)
+
 ## Motivation
 
 It is a good manner to pin GitHub Actions versions by commit hash.
