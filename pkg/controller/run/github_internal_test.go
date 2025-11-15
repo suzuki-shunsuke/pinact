@@ -155,8 +155,9 @@ func Test_compare(t *testing.T) { //nolint:funlen
 
 // mockRepositoriesService is a mock implementation of RepositoriesService for testing
 type mockRepositoriesService struct {
-	listReleasesFunc func(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error)
-	listTagsFunc     func(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error)
+	listReleasesFunc     func(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error)
+	listTagsFunc         func(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error)
+	getLatestReleaseFunc func(ctx context.Context, owner, repo string) (*github.RepositoryRelease, *github.Response, error)
 }
 
 func (m *mockRepositoriesService) ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
@@ -173,6 +174,13 @@ func (m *mockRepositoriesService) GetCommitSHA1(_ context.Context, _, _, _, _ st
 func (m *mockRepositoriesService) ListReleases(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
 	if m.listReleasesFunc != nil {
 		return m.listReleasesFunc(ctx, owner, repo, opts)
+	}
+	return nil, nil, errors.New("not implemented")
+}
+
+func (m *mockRepositoriesService) GetLatestRelease(ctx context.Context, owner, repo string) (*github.RepositoryRelease, *github.Response, error) {
+	if m.getLatestReleaseFunc != nil {
+		return m.getLatestReleaseFunc(ctx, owner, repo)
 	}
 	return nil, nil, errors.New("not implemented")
 }

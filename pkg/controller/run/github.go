@@ -15,6 +15,7 @@ type RepositoriesService interface {
 	ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error)
 	GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error)
 	ListReleases(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error)
+	GetLatestRelease(ctx context.Context, owner, repo string) (*github.RepositoryRelease, *github.Response, error)
 }
 
 type PullRequestsService interface {
@@ -65,6 +66,13 @@ type RepositoriesServiceImpl struct {
 	Tags                map[string]*ListTagsResult
 	Commits             map[string]*GetCommitSHA1Result
 	Releases            map[string]*ListReleasesResult
+	LatestReleases      map[string]*GetLatestReleaseResult
+}
+
+type GetLatestReleaseResult struct {
+	Release  *github.RepositoryRelease
+	Response *github.Response
+	err      error
 }
 
 type GetCommitSHA1Result struct {
@@ -123,6 +131,21 @@ func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string
 		err:      err,
 	}
 	return releases, resp, err //nolint:wrapcheck
+}
+
+func (r *RepositoriesServiceImpl) GetLatestRelease(ctx context.Context, owner, repo string) (*github.RepositoryRelease, *github.Response, error) {
+	key := fmt.Sprintf("%s/%s/latest", owner, repo)
+	a, ok := r.LatestReleases[key]
+	if ok {
+		return a.Release, a.Response, a.err
+	}
+	release, resp, err := r.RepositoriesService.GetLatestRelease(ctx, owner, repo)
+	r.LatestReleases[key] = &GetLatestReleaseResult{
+		Release:  release,
+		Response: resp,
+		err:      err,
+	}
+	return release, resp, err //nolint:wrapcheck
 }
 
 // getLatestVersion determines the latest version of a repository.
@@ -188,6 +211,14 @@ func compare(latestSemver *version.Version, latestVersion, tag string) (*version
 //
 // Returns the latest version string or an error.
 func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *logrus.Entry, owner string, repo string, currentVersion string) (string, error) {
+	release, _, err := c.repositoriesService.GetLatestRelease(ctx, owner, repo)
+	if err != nil {
+		return c.listReleasesAndGetLatest(ctx, logE, owner, repo, currentVersion)
+	}
+	return release.GetTagName(), nil
+}
+
+func (c *Controller) listReleasesAndGetLatest(ctx context.Context, logE *logrus.Entry, owner string, repo string, currentVersion string) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
