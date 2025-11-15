@@ -239,7 +239,7 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, act
 	// @xxx
 	if c.param.Update {
 		// get the latest version
-		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName, "")
+		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName, action.Version)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
@@ -360,7 +360,7 @@ func (c *Controller) parseShortSemverTagLine(ctx context.Context, logE *logrus.E
 		return "", ErrCantPinned
 	}
 	if c.param.Update {
-		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName, "")
+		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName, action.VersionComment)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
