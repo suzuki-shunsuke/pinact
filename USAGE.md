@@ -11,7 +11,7 @@ USAGE:
    pinact [global options] [command [command options]]
 
 VERSION:
-   3.4.2
+   3.4.3
 
 COMMANDS:
    init        Create .pinact.yaml if it doesn't exist
@@ -78,12 +78,12 @@ DESCRIPTION:
 
 
 OPTIONS:
-   --verify, -v                                                 Verify if pairs of commit SHA and version are correct (default: false)
-   --check                                                      Exit with a non-zero status code if actions are not pinned. If this is true, files aren't updated (default: false)
-   --update, -u                                                 Update actions to latest versions (default: false)
-   --review                                                     Create reviews (default: false)
-   --fix                                                        Fix code. By default, this is true. If -check or -diff is true, this is false by default (default: false)
-   --diff                                                       Output diff. By default, this is false (default: false)
+   --verify, -v                                                 Verify if pairs of commit SHA and version are correct
+   --check                                                      Exit with a non-zero status code if actions are not pinned. If this is true, files aren't updated
+   --update, -u                                                 Update actions to latest versions
+   --review                                                     Create reviews
+   --fix                                                        Fix code. By default, this is true. If -check or -diff is true, this is false by default
+   --diff                                                       Output diff. By default, this is false
    --repo-owner string                                          GitHub repository owner [$GITHUB_REPOSITORY_OWNER]
    --repo-name string                                           GitHub repository name
    --sha string                                                 Commit SHA to be reviewed
@@ -148,7 +148,7 @@ DESCRIPTION:
    Set GitHub Access token to keyring.
 
 OPTIONS:
-   --stdin     Read GitHub Access token from stdin (default: false)
+   --stdin     Read GitHub Access token from stdin
    --help, -h  show help
 ```
 
@@ -180,7 +180,7 @@ USAGE:
    pinact version
 
 OPTIONS:
-   --json, -j  Output version in JSON format (default: false)
+   --json, -j  Output version in JSON format
    --help, -h  show help
 ```
 
