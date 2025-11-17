@@ -11,7 +11,7 @@ USAGE:
    pinact [global options] [command [command options]]
 
 VERSION:
-   3.4.3
+   3.4.4
 
 COMMANDS:
    init        Create .pinact.yaml if it doesn't exist
