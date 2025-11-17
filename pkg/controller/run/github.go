@@ -145,7 +145,7 @@ func (c *Controller) getLatestVersion(ctx context.Context, logE *logrus.Entry, o
 	if lv != "" {
 		return lv, nil
 	}
-	return c.getLatestVersionFromTags(ctx, logE, owner, repo)
+	return c.getLatestVersionFromTags(ctx, logE, owner, repo, currentVersion)
 }
 
 // compare evaluates a tag against the current latest version.
@@ -231,15 +231,17 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *log
 // getLatestVersionFromTags finds the latest version from repository tags.
 // It retrieves tags from GitHub API and compares them to find the highest
 // version using semantic versioning when possible, falling back to string comparison.
+// It filters out prerelease versions when currentVersion is stable.
 //
 // Parameters:
 //   - ctx: context for cancellation and timeout control
 //   - logE: logrus entry for structured logging
 //   - owner: repository owner
 //   - repo: repository name
+//   - currentVersion: current version to check if stable (empty string to include all versions)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersionFromTags(ctx context.Context, logE *logrus.Entry, owner string, repo string) (string, error) {
+func (c *Controller) getLatestVersionFromTags(ctx context.Context, logE *logrus.Entry, owner string, repo string, currentVersion string) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
@@ -247,10 +249,28 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logE *logrus.
 	if err != nil {
 		return "", fmt.Errorf("list tags: %w", err)
 	}
+
+	// Check if current version is stable (issue #1095)
+	currentIsStable := false
+	if currentVersion != "" {
+		cv, err := version.NewVersion(currentVersion)
+		if err == nil && cv.Prerelease() == "" {
+			currentIsStable = true
+		}
+	}
+
 	var latestSemver *version.Version
 	latestVersion := ""
 	for _, tag := range tags {
 		t := tag.GetName()
+		
+		// Skip prereleases if current version is stable (issue #1095)
+		if currentIsStable {
+			if tv, err := version.NewVersion(t); err == nil && tv.Prerelease() != "" {
+				continue
+			}
+		}
+		
 		ls, lv, err := compare(latestSemver, latestVersion, t)
 		latestSemver = ls
 		latestVersion = lv

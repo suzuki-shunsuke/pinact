@@ -14,6 +14,10 @@ func strP(s string) *string {
 	return &s
 }
 
+func boolP(b bool) *bool {
+	return &b
+}
+
 func Test_parseAction(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	data := []struct {
@@ -187,6 +191,12 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 								},
 							},
 						},
+						Response: &github.Response{},
+					},
+				},
+				Releases: map[string]*ListReleasesResult{
+					"actions/checkout/0": {
+						Releases: []*github.RepositoryRelease{}, // Empty releases forces fallback to tags
 						Response: &github.Response{},
 					},
 				},

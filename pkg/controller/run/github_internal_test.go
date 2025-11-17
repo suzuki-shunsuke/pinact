@@ -479,7 +479,7 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 			ctx := t.Context()
 			logE := logrus.NewEntry(logrus.New())
 
-			gotVersion, err := c.getLatestVersionFromTags(ctx, logE, "owner", "repo")
+			gotVersion, err := c.getLatestVersionFromTags(ctx, logE, "owner", "repo", "")
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getLatestVersionFromTags() error = %v, wantErr %v", err, tt.wantErr)
