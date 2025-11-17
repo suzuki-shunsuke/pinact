@@ -137,15 +137,24 @@ func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string
 //   - currentVersion: current version to check if stable (empty string to include all versions)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersion(ctx context.Context, logE *logrus.Entry, owner string, repo string, currentVersion string) (string, error) {
-	lv, err := c.getLatestVersionFromReleases(ctx, logE, owner, repo, currentVersion)
+func (c *Controller) getLatestVersion(ctx context.Context, logE *logrus.Entry, owner, repo, currentVersion string) (string, error) {
+	isStable := isStableVersion(currentVersion)
+	lv, err := c.getLatestVersionFromReleases(ctx, logE, owner, repo, isStable)
 	if err != nil {
 		logerr.WithError(logE, err).Debug("get the latest version from releases")
 	}
 	if lv != "" {
 		return lv, nil
 	}
-	return c.getLatestVersionFromTags(ctx, logE, owner, repo)
+	return c.getLatestVersionFromTags(ctx, logE, owner, repo, isStable)
+}
+
+func isStableVersion(v string) bool {
+	if v == "" {
+		return false
+	}
+	cv, err := version.NewVersion(v)
+	return err == nil && cv.Prerelease() == ""
 }
 
 // compare evaluates a tag against the current latest version.
@@ -187,7 +196,7 @@ func compare(latestSemver *version.Version, latestVersion, tag string) (*version
 //   - currentVersion: current version to check if stable (empty string to include all versions)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *logrus.Entry, owner string, repo string, currentVersion string) (string, error) {
+func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *logrus.Entry, owner, repo string, isStable bool) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
@@ -196,20 +205,11 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *log
 		return "", fmt.Errorf("list releases: %w", err)
 	}
 
-	// Check if current version is stable (issue #1095)
-	currentIsStable := false
-	if currentVersion != "" {
-		cv, err := version.NewVersion(currentVersion)
-		if err == nil && cv.Prerelease() == "" {
-			currentIsStable = true
-		}
-	}
-
 	var latestSemver *version.Version
 	latestVersion := ""
 	for _, release := range releases {
 		// Skip prereleases if current version is stable (issue #1095)
-		if currentIsStable && release.GetPrerelease() {
+		if isStable && release.GetPrerelease() {
 			continue
 		}
 		tag := release.GetTagName()
@@ -231,15 +231,17 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *log
 // getLatestVersionFromTags finds the latest version from repository tags.
 // It retrieves tags from GitHub API and compares them to find the highest
 // version using semantic versioning when possible, falling back to string comparison.
+// It filters out prerelease versions when currentVersion is stable.
 //
 // Parameters:
 //   - ctx: context for cancellation and timeout control
 //   - logE: logrus entry for structured logging
 //   - owner: repository owner
 //   - repo: repository name
+//   - currentVersion: current version to check if stable (empty string to include all versions)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersionFromTags(ctx context.Context, logE *logrus.Entry, owner string, repo string) (string, error) {
+func (c *Controller) getLatestVersionFromTags(ctx context.Context, logE *logrus.Entry, owner, repo string, isStable bool) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
@@ -247,10 +249,19 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logE *logrus.
 	if err != nil {
 		return "", fmt.Errorf("list tags: %w", err)
 	}
+
 	var latestSemver *version.Version
 	latestVersion := ""
 	for _, tag := range tags {
 		t := tag.GetName()
+
+		// Skip prereleases if current version is stable (issue #1095)
+		if isStable {
+			if tv, err := version.NewVersion(t); err == nil && tv.Prerelease() != "" {
+				continue
+			}
+		}
+
 		ls, lv, err := compare(latestSemver, latestVersion, t)
 		latestSemver = ls
 		latestVersion = lv
@@ -278,7 +289,7 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logE *logrus.
 //   - err: error to report (mutually exclusive with suggestion)
 //
 // Returns the HTTP status code and any error.
-func (c *Controller) review(ctx context.Context, filePath string, sha string, line int, suggestion string, err error) (int, error) {
+func (c *Controller) review(ctx context.Context, filePath, sha string, line int, suggestion string, err error) (int, error) {
 	cmt := &github.PullRequestComment{
 		Body: github.Ptr(""),
 		Path: github.Ptr(filePath),

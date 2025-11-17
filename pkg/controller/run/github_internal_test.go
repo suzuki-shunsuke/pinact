@@ -180,12 +180,12 @@ func (m *mockRepositoriesService) ListReleases(ctx context.Context, owner, repo 
 func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	tests := []struct {
-		name           string
-		releases       []*github.RepositoryRelease
-		listErr        error
-		currentVersion string
-		wantVersion    string
-		wantErr        bool
+		name        string
+		releases    []*github.RepositoryRelease
+		listErr     error
+		isStable    bool
+		wantVersion string
+		wantErr     bool
 	}{
 		{
 			name: "single semver release",
@@ -290,9 +290,9 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 				{TagName: github.Ptr("v5.0.0"), Prerelease: github.Ptr(false)},
 				{TagName: github.Ptr("v4.3.0"), Prerelease: github.Ptr(false)},
 			},
-			currentVersion: "v5.0.0",
-			wantVersion:    "v5.0.0",
-			wantErr:        false,
+			isStable:    true,
+			wantVersion: "v5.0.0",
+			wantErr:     false,
 		},
 		{
 			name: "prerelease version can update to newer prerelease (issue #1095)",
@@ -300,9 +300,9 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 				{TagName: github.Ptr("v6-beta"), Prerelease: github.Ptr(true)},
 				{TagName: github.Ptr("v5.0.0"), Prerelease: github.Ptr(false)},
 			},
-			currentVersion: "v6-alpha",
-			wantVersion:    "v6-beta",
-			wantErr:        false,
+			isStable:    false,
+			wantVersion: "v6-beta",
+			wantErr:     false,
 		},
 	}
 
@@ -322,7 +322,7 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 			ctx := t.Context()
 			logE := logrus.NewEntry(logrus.New())
 
-			gotVersion, err := c.getLatestVersionFromReleases(ctx, logE, "owner", "repo", tt.currentVersion)
+			gotVersion, err := c.getLatestVersionFromReleases(ctx, logE, "owner", "repo", tt.isStable)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getLatestVersionFromReleases() error = %v, wantErr %v", err, tt.wantErr)
@@ -479,7 +479,7 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 			ctx := t.Context()
 			logE := logrus.NewEntry(logrus.New())
 
-			gotVersion, err := c.getLatestVersionFromTags(ctx, logE, "owner", "repo")
+			gotVersion, err := c.getLatestVersionFromTags(ctx, logE, "owner", "repo", false)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getLatestVersionFromTags() error = %v, wantErr %v", err, tt.wantErr)
