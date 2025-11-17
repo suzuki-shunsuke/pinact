@@ -14,10 +14,6 @@ func strP(s string) *string {
 	return &s
 }
 
-func boolP(b bool) *bool {
-	return &b
-}
-
 func Test_parseAction(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	data := []struct {
