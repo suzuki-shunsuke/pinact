@@ -152,6 +152,16 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			line: `  "uses": 'actions/checkout@v2'`,
 			exp:  `  "uses": 'actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5' # v2.7.0`,
 		},
+		{
+			name: "branch reference main",
+			line: "        - uses: depends-on/depends-on-action@main",
+			exp:  "        - uses: depends-on/depends-on-action@abc123def456 # main",
+		},
+		{
+			name: "branch reference master",
+			line: "        - uses: actions/setup-go@master",
+			exp:  "        - uses: actions/setup-go@def456abc123 # master",
+		},
 	}
 	logE := logrus.NewEntry(logrus.New())
 	for _, d := range data {
@@ -202,6 +212,12 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 					},
 					"actions/checkout/v2": {
 						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
+					},
+					"depends-on/depends-on-action/main": {
+						SHA: "abc123def456",
+					},
+					"actions/setup-go/master": {
+						SHA: "def456abc123",
 					},
 				},
 			}, nil, fs, config.NewFinder(fs), config.NewReader(fs), &ParamRun{})

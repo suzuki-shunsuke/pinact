@@ -233,6 +233,16 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, act
 	case Shortsemver, Semver:
 	case FullCommitSHA:
 		return "", nil
+	case Other:
+		// Try to resolve branch references like "main", "master", "develop", etc.
+		// to their current commit SHA for security pinning
+		sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Version, "")
+		if err != nil {
+			// If we can't resolve it, it's not pinnable
+			return "", ErrCantPinned
+		}
+		// Successfully resolved branch to commit SHA
+		return patchLine(action, sha, action.Version), nil
 	default:
 		return "", ErrCantPinned
 	}
