@@ -263,14 +263,14 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logE *logrus.
 	latestVersion := ""
 	for _, tag := range tags {
 		t := tag.GetName()
-		
+
 		// Skip prereleases if current version is stable (issue #1095)
 		if currentIsStable {
 			if tv, err := version.NewVersion(t); err == nil && tv.Prerelease() != "" {
 				continue
 			}
 		}
-		
+
 		ls, lv, err := compare(latestSemver, latestVersion, t)
 		latestSemver = ls
 		latestVersion = lv
