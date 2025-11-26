@@ -117,12 +117,20 @@ func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string
 		return a.Releases, a.Response, a.err
 	}
 	releases, resp, err := r.RepositoriesService.ListReleases(ctx, owner, repo, opts)
+	arr := make([]*github.RepositoryRelease, 0, len(releases))
+	for _, r := range releases {
+		// Ignore draft releases
+		if r.GetDraft() {
+			continue
+		}
+		arr = append(arr, r)
+	}
 	r.Releases[key] = &ListReleasesResult{
-		Releases: releases,
+		Releases: arr,
 		Response: resp,
 		err:      err,
 	}
-	return releases, resp, err //nolint:wrapcheck
+	return arr, resp, err //nolint:wrapcheck
 }
 
 // getLatestVersion determines the latest version of a repository.
