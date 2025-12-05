@@ -13,9 +13,8 @@ import (
 	"path"
 	"regexp"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/logrus-error/logerr"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"gopkg.in/yaml.v3"
 )
 
@@ -46,19 +45,19 @@ var (
 func validateSchemaVersion(v int) error {
 	switch v {
 	case 0:
-		return logerr.WithFields(errEmptyConfigVersion, logrus.Fields{ //nolint:wrapcheck
-			"docs": "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/002.md",
-		})
+		return slogerr.With(errEmptyConfigVersion, //nolint:wrapcheck
+			"docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/002.md",
+		)
 	case 2: //nolint:mnd
-		return logerr.WithFields(errAbandonedConfigVersion, logrus.Fields{ //nolint:wrapcheck
-			"docs": "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/003.md",
-		})
+		return slogerr.With(errAbandonedConfigVersion, //nolint:wrapcheck
+			"docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/003.md",
+		)
 	case 3: //nolint:mnd
 		return nil
 	default:
-		return logerr.WithFields(errUnsupportedConfigVersion, logrus.Fields{ //nolint:wrapcheck
-			"docs": "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/004.md",
-		})
+		return slogerr.With(errUnsupportedConfigVersion, //nolint:wrapcheck
+			"docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/004.md",
+		)
 	}
 }
 

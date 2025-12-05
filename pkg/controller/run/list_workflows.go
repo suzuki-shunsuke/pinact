@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/sirupsen/logrus"
-	"github.com/suzuki-shunsuke/logrus-error/logerr"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
 // listWorkflows discovers GitHub Actions workflow and composite action files.
@@ -30,9 +29,7 @@ func listWorkflows() ([]string, error) {
 	for _, pattern := range patterns {
 		matches, err := filepath.Glob(pattern)
 		if err != nil {
-			return nil, fmt.Errorf("look for workflow or composite action files using glob: %w", logerr.WithFields(err, logrus.Fields{
-				"pattern": pattern,
-			}))
+			return nil, fmt.Errorf("look for workflow or composite action files using glob: %w", slogerr.With(err, "pattern", pattern))
 		}
 		files = append(files, matches...)
 	}
