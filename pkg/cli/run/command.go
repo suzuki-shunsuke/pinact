@@ -11,18 +11,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"regexp"
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/logrus-error/logerr"
-	"github.com/suzuki-shunsuke/logrus-util/log"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
+	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/urfave/cli/v3"
 )
 
@@ -31,18 +31,21 @@ import (
 // the configured CLI command for pinning GitHub Actions versions.
 //
 // Parameters:
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
+//   - logLevelVar: slog level variable for dynamic log level changes
 //
 // Returns a pointer to the configured CLI command.
-func New(logE *logrus.Entry) *cli.Command {
+func New(logger *slog.Logger, logLevelVar *slog.LevelVar) *cli.Command {
 	r := &runner{
-		logE: logE,
+		logger:      logger,
+		logLevelVar: logLevelVar,
 	}
 	return r.Command()
 }
 
 type runner struct {
-	logE *logrus.Entry
+	logger      *slog.Logger
+	logLevelVar *slog.LevelVar
 }
 
 // Command builds and returns the run CLI command configuration.
@@ -204,14 +207,12 @@ type Head struct {
 //
 // Returns an error if the operation fails.
 func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop,funlen
-	clr := "auto"
 	isGitHubActions := os.Getenv("GITHUB_ACTIONS") == "true"
 	if isGitHubActions {
-		clr = "always"
 		color.NoColor = false
 	}
-	if err := log.Set(r.logE, c.String("log-level"), clr); err != nil {
-		return fmt.Errorf("configure logger: %w", err)
+	if err := slogutil.SetLevel(r.logLevelVar, c.String("log-level")); err != nil {
+		return fmt.Errorf("set log level: %w", err)
 	}
 
 	pwd, err := os.Getwd()
@@ -219,7 +220,7 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		return fmt.Errorf("get the current directory: %w", err)
 	}
 
-	gh := github.New(ctx, r.logE)
+	gh := github.New(ctx, r.logger)
 	fs := afero.NewOsFs()
 	var review *run.Review
 	if c.Bool("review") {
@@ -231,11 +232,11 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		}
 		if isGitHubActions {
 			if err := r.setReview(fs, review); err != nil {
-				logerr.WithError(r.logE, err).Error("set review information")
+				slogerr.WithError(r.logger, err).Error("set review information")
 			}
 		}
 		if !review.Valid() {
-			r.logE.Warn("skip creating reviews because the review information is invalid")
+			r.logger.Warn("skip creating reviews because the review information is invalid")
 			review = nil
 		}
 	}
@@ -273,7 +274,7 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		Commits:             map[string]*run.GetCommitSHA1Result{},
 		RepositoriesService: gh.Repositories,
 	}, gh.PullRequests, fs, config.NewFinder(fs), config.NewReader(fs), param)
-	return ctrl.Run(ctx, r.logE) //nolint:wrapcheck
+	return ctrl.Run(ctx, r.logger) //nolint:wrapcheck
 }
 
 // parseIncludes compiles include regular expressions from command-line options.
@@ -288,9 +289,7 @@ func parseIncludes(opts []string) ([]*regexp.Regexp, error) {
 	for i, include := range opts {
 		r, err := regexp.Compile(include)
 		if err != nil {
-			return nil, fmt.Errorf("compile an include regexp: %w", logerr.WithFields(err, logrus.Fields{
-				"regexp": include,
-			}))
+			return nil, fmt.Errorf("compile an include regexp: %w", slogerr.With(err, "regexp", include))
 		}
 		includes[i] = r
 	}
@@ -309,9 +308,7 @@ func parseExcludes(opts []string) ([]*regexp.Regexp, error) {
 	for i, exclude := range opts {
 		r, err := regexp.Compile(exclude)
 		if err != nil {
-			return nil, fmt.Errorf("compile an exclude regexp: %w", logerr.WithFields(err, logrus.Fields{
-				"regexp": exclude,
-			}))
+			return nil, fmt.Errorf("compile an exclude regexp: %w", slogerr.With(err, "regexp", exclude))
 		}
 		excludes[i] = r
 	}

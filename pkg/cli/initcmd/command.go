@@ -8,27 +8,29 @@ package initcmd
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/logrus-util/log"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/urfave/cli/v3"
 )
 
 // New creates a new init command instance with the provided logger.
 // It returns a CLI command that can be registered with the main CLI application.
-func New(logE *logrus.Entry) *cli.Command {
+func New(logger *slog.Logger, logLevelVar *slog.LevelVar) *cli.Command {
 	r := &runner{
-		logE: logE,
+		logger:      logger,
+		logLevelVar: logLevelVar,
 	}
 	return r.Command()
 }
 
 type runner struct {
-	logE *logrus.Entry
+	logger      *slog.Logger
+	logLevelVar *slog.LevelVar
 }
 
 // Command returns the CLI command definition for the init subcommand.
@@ -60,7 +62,7 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("get the current directory: %w", err)
 	}
-	gh := github.New(ctx, r.logE)
+	gh := github.New(ctx, r.logger)
 	ctrl := run.New(&run.RepositoriesServiceImpl{
 		Tags:                map[string]*run.ListTagsResult{},
 		Releases:            map[string]*run.ListReleasesResult{},
@@ -75,8 +77,8 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 		Update:            c.Bool("update"),
 	})
 
-	if err := log.Set(r.logE, c.String("log-level"), "auto"); err != nil {
-		return fmt.Errorf("configure logger: %w", err)
+	if err := slogutil.SetLevel(r.logLevelVar, c.String("log-level")); err != nil {
+		return fmt.Errorf("set log level: %w", err)
 	}
 	configFilePath := c.Args().First()
 	if configFilePath == "" {

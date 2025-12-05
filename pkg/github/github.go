@@ -9,12 +9,11 @@ package github
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"os"
 
 	"github.com/google/go-github/v79/github"
-	"github.com/sirupsen/logrus"
-	"github.com/suzuki-shunsuke/slog-logrus/slogrus"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/keyring/ghtoken"
 	"golang.org/x/oauth2"
 )
@@ -37,11 +36,11 @@ type (
 //
 // Parameters:
 //   - ctx: context for OAuth2 token source
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //
 // Returns a configured GitHub API client.
-func New(ctx context.Context, logE *logrus.Entry) *Client {
-	return github.NewClient(getHTTPClientForGitHub(ctx, logE, getGitHubToken()))
+func New(ctx context.Context, logger *slog.Logger) *Client {
+	return github.NewClient(getHTTPClientForGitHub(ctx, logger, getGitHubToken()))
 }
 
 // Ptr returns a pointer to the provided value.
@@ -79,14 +78,14 @@ func checkKeyringEnabled() bool {
 //
 // Parameters:
 //   - ctx: context for OAuth2 token source
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //   - token: GitHub token for authentication (empty string for alternative auth)
 //
 // Returns an HTTP client configured for GitHub API access.
-func getHTTPClientForGitHub(ctx context.Context, logE *logrus.Entry, token string) *http.Client {
+func getHTTPClientForGitHub(ctx context.Context, logger *slog.Logger, token string) *http.Client {
 	if token == "" {
 		if checkKeyringEnabled() {
-			return oauth2.NewClient(ctx, ghtoken.NewTokenSource(slogrus.Convert(logE), KeyService))
+			return oauth2.NewClient(ctx, ghtoken.NewTokenSource(logger, KeyService))
 		}
 		return http.DefaultClient
 	}

@@ -2,8 +2,8 @@ package migrate
 
 import (
 	"fmt"
+	"log/slog"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"gopkg.in/yaml.v3"
@@ -14,10 +14,10 @@ import (
 // migration path, and applies necessary transformations to update the schema.
 //
 // Parameters:
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //
 // Returns an error if migration fails, nil if successful or no migration needed.
-func (c *Controller) Migrate(logE *logrus.Entry) error {
+func (c *Controller) Migrate(logger *slog.Logger) error {
 	// find and read .pinact.yaml
 	p, err := c.cfgFinder.Find(c.param.ConfigFilePath)
 	if err != nil {
@@ -25,7 +25,7 @@ func (c *Controller) Migrate(logE *logrus.Entry) error {
 	}
 	if p == "" {
 		// if .pinact.yaml doesn't exist, return nil
-		logE.Warn("no configuration file is found")
+		logger.Warn("no configuration file is found")
 		return nil
 	}
 	c.param.ConfigFilePath = p
@@ -41,12 +41,12 @@ func (c *Controller) Migrate(logE *logrus.Entry) error {
 	}
 	c.cfg = cfg
 
-	s, err := c.migrate(logE, content)
+	s, err := c.migrate(logger, content)
 	if err != nil {
 		return err
 	}
 	if s == "" {
-		logE.Info("configuration file isn't changed")
+		logger.Info("configuration file isn't changed")
 		return nil
 	}
 	if err := c.edit(c.param.ConfigFilePath, s); err != nil {
@@ -80,18 +80,18 @@ func (c *Controller) edit(file, content string) error {
 // corresponding migration function.
 //
 // Parameters:
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //   - content: original configuration file content
 //
 // Returns the migrated content as string and any error encountered.
-func (c *Controller) migrate(logE *logrus.Entry, content []byte) (string, error) {
+func (c *Controller) migrate(logger *slog.Logger, content []byte) (string, error) {
 	switch c.cfg.Version {
 	case 2: //nolint:mnd
-		return c.migrateV2(logE, content)
+		return c.migrateV2(logger, content)
 	case 3: //nolint:mnd
 		return "", nil
 	case 0:
-		return c.migrateEmptyVersion(logE, content)
+		return c.migrateEmptyVersion(logger, content)
 	default:
 		return "", fmt.Errorf("unsupported version: %d", c.cfg.Version)
 	}
@@ -102,12 +102,12 @@ func (c *Controller) migrate(logE *logrus.Entry, content []byte) (string, error)
 // fields by applying AST-based migration.
 //
 // Parameters:
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //   - content: original configuration file content
 //
 // Returns the migrated content as string and any error encountered.
-func (c *Controller) migrateEmptyVersion(logE *logrus.Entry, content []byte) (string, error) {
-	return parseConfigAST(logE, content)
+func (c *Controller) migrateEmptyVersion(logger *slog.Logger, content []byte) (string, error) {
+	return parseConfigAST(logger, content)
 }
 
 // migrateV2 migrates configuration files from version 2 to version 3.
@@ -115,13 +115,13 @@ func (c *Controller) migrateEmptyVersion(logE *logrus.Entry, content []byte) (st
 // format to the current version 3 format.
 //
 // Parameters:
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //   - content: original configuration file content
 //
 // Returns the migrated content as string and any error encountered.
-func (c *Controller) migrateV2(logE *logrus.Entry, content []byte) (string, error) {
+func (c *Controller) migrateV2(logger *slog.Logger, content []byte) (string, error) {
 	// Add code comment
 	// Change version from 2 to 3
 	// Set name_format and ref_format
-	return parseConfigAST(logE, content)
+	return parseConfigAST(logger, content)
 }

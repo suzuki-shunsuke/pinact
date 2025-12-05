@@ -7,8 +7,8 @@ package cli
 
 import (
 	"context"
+	"log/slog"
 
-	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/go-stdutil"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/initcmd"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/migrate"
@@ -24,12 +24,13 @@ import (
 //
 // Parameters:
 //   - ctx: context for cancellation and timeout control
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
+//   - logLevelVar: slog level variable for dynamic log level changes
 //   - ldFlags: linker flags containing build information
 //   - args: command line arguments to parse and execute
 //
 // Returns an error if command parsing or execution fails.
-func Run(ctx context.Context, logE *logrus.Entry, ldFlags *stdutil.LDFlags, args ...string) error {
+func Run(ctx context.Context, logger *slog.Logger, logLevelVar *slog.LevelVar, ldFlags *stdutil.LDFlags, args ...string) error {
 	return urfave.Command(ldFlags, &cli.Command{ //nolint:wrapcheck
 		Name:  "pinact",
 		Usage: "Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact",
@@ -49,10 +50,10 @@ func Run(ctx context.Context, logE *logrus.Entry, ldFlags *stdutil.LDFlags, args
 			},
 		},
 		Commands: []*cli.Command{
-			initcmd.New(logE),
-			run.New(logE),
-			migrate.New(logE),
-			token.New(logE),
+			initcmd.New(logger, logLevelVar),
+			run.New(logger, logLevelVar),
+			migrate.New(logger, logLevelVar),
+			token.New(logger),
 		},
 	}).Run(ctx, args)
 }

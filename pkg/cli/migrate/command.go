@@ -8,17 +8,18 @@ package migrate
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/logrus-util/log"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/migrate"
+	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/urfave/cli/v3"
 )
 
 type runner struct {
-	logE *logrus.Entry
+	logger      *slog.Logger
+	logLevelVar *slog.LevelVar
 }
 
 // New creates a new migrate command for the CLI.
@@ -26,12 +27,14 @@ type runner struct {
 // the configured CLI command for migrating pinact configuration files.
 //
 // Parameters:
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
+//   - logLevelVar: slog level variable for dynamic log level changes
 //
 // Returns a pointer to the configured CLI command.
-func New(logE *logrus.Entry) *cli.Command {
+func New(logger *slog.Logger, logLevelVar *slog.LevelVar) *cli.Command {
 	r := runner{
-		logE: logE,
+		logger:      logger,
+		logLevelVar: logLevelVar,
 	}
 	return r.Command()
 }
@@ -63,13 +66,13 @@ $ pinact migrate
 //
 // Returns an error if migration fails or logging configuration fails.
 func (r *runner) action(_ context.Context, c *cli.Command) error {
-	if err := log.Set(r.logE, c.String("log-level"), "auto"); err != nil {
-		return fmt.Errorf("configure logger: %w", err)
+	if err := slogutil.SetLevel(r.logLevelVar, c.String("log-level")); err != nil {
+		return fmt.Errorf("set log level: %w", err)
 	}
 	fs := afero.NewOsFs()
 	ctrl := migrate.New(fs, config.NewFinder(fs), &migrate.Param{
 		ConfigFilePath: c.String("config"),
 	})
 
-	return ctrl.Migrate(r.logE) //nolint:wrapcheck
+	return ctrl.Migrate(r.logger) //nolint:wrapcheck
 }

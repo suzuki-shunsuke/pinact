@@ -3,11 +3,11 @@ package migrate
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
-	"github.com/sirupsen/logrus"
 )
 
 // parseConfigAST parses and migrates a YAML configuration file using AST.
@@ -15,11 +15,11 @@ import (
 // and returns the updated YAML content as a string.
 //
 // Parameters:
-//   - _: logrus entry (unused in current implementation)
+//   - _: slog logger (unused in current implementation)
 //   - content: YAML configuration file content as bytes
 //
 // Returns the migrated YAML content as string and any error encountered.
-func parseConfigAST(_ *logrus.Entry, content []byte) (string, error) {
+func parseConfigAST(_ *slog.Logger, content []byte) (string, error) {
 	file, err := parser.ParseBytes(content, parser.ParseComments)
 	if err != nil {
 		return "", fmt.Errorf("parse a workflow file as YAML: %w", err)
