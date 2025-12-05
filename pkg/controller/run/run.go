@@ -6,14 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
 
-	"github.com/sirupsen/logrus"
-	"github.com/suzuki-shunsuke/logrus-error/logerr"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
 type ParamRun struct {
@@ -39,19 +39,6 @@ type Review struct {
 	SHA         string
 }
 
-// Fields returns structured log fields for the review configuration.
-// It provides consistent field names for logging review information.
-//
-// Returns logrus.Fields with review configuration data.
-func (r *Review) Fields() logrus.Fields {
-	return logrus.Fields{
-		"review_repo_owner": r.RepoOwner,
-		"review_repo_name":  r.RepoName,
-		"review_pr_number":  r.PullRequest,
-		"review_sha":        r.SHA,
-	}
-}
-
 // Valid checks if the review configuration has all required fields.
 // It validates that repo owner, repo name, and pull request number are set.
 //
@@ -66,10 +53,10 @@ func (r *Review) Valid() bool {
 //
 // Parameters:
 //   - ctx: context for cancellation and timeout control
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //
 // Returns an error if the operation fails or actions are not pinned in check mode.
-func (c *Controller) Run(ctx context.Context, logE *logrus.Entry) error {
+func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	if err := c.readConfig(); err != nil {
 		return err
 	}
@@ -80,17 +67,17 @@ func (c *Controller) Run(ctx context.Context, logE *logrus.Entry) error {
 
 	failed := false
 	for _, workflowFilePath := range workflowFilePaths {
-		logE := logE.WithField("workflow_file", workflowFilePath)
-		if err := c.runWorkflow(ctx, logE, workflowFilePath); err != nil {
+		logger := logger.With("workflow_file", workflowFilePath)
+		if err := c.runWorkflow(ctx, logger, workflowFilePath); err != nil {
 			failed = true
 			if errors.Is(err, ErrActionsNotPinned) {
 				continue
 			}
 			if c.param.Check {
-				logerr.WithError(logE, err).Error("check a workflow")
+				slogerr.WithError(logger, err).Error("check a workflow")
 				continue
 			}
-			logerr.WithError(logE, err).Error("update a workflow")
+			slogerr.WithError(logger, err).Error("update a workflow")
 		}
 	}
 	if failed {
@@ -135,11 +122,11 @@ type Line struct {
 //
 // Parameters:
 //   - ctx: context for cancellation and timeout control
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //   - workflowFilePath: path to the workflow file to process
 //
 // Returns an error if processing fails or actions are not pinned in check mode.
-func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workflowFilePath string) error { //nolint:cyclop
+func (c *Controller) runWorkflow(ctx context.Context, logger *slog.Logger, workflowFilePath string) error { //nolint:cyclop
 	lines, err := c.readWorkflow(workflowFilePath)
 	if err != nil {
 		return err
@@ -152,26 +139,26 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 			Number: i + 1,
 			Line:   lineS,
 		}
-		logE := logE.WithFields(logrus.Fields{
-			"line_number": i + 1,
-			"line":        lineS,
-		})
-		l, err := c.parseLine(ctx, logE, lineS)
+		logger := logger.With(
+			"line_number", i+1,
+			"line", lineS,
+		)
+		l, err := c.parseLine(ctx, logger, lineS)
 		if err != nil {
 			failed = true
-			c.handleParseLineError(ctx, logE, line, err)
+			c.handleParseLineError(ctx, logger, line, err)
 			continue
 		}
 		if l == "" || lineS == l {
 			continue
 		}
-		logE = logE.WithField("new_line", l)
+		logger = logger.With("new_line", l)
 		changed = true
 		if c.param.Check {
 			failed = true
 		}
 		lines[i] = l
-		c.handleChangedLine(ctx, logE, line, l)
+		c.handleChangedLine(ctx, logger, line, l)
 	}
 	// Fix file
 	if changed && c.param.Fix {
@@ -197,10 +184,10 @@ func (c *Controller) runWorkflow(ctx context.Context, logE *logrus.Entry, workfl
 //
 // Parameters:
 //   - ctx: context for cancellation and timeout control
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //   - line: line information where the error occurred
 //   - gErr: error that occurred during parsing
-func (c *Controller) handleParseLineError(ctx context.Context, logE *logrus.Entry, line *Line, gErr error) {
+func (c *Controller) handleParseLineError(ctx context.Context, logger *slog.Logger, line *Line, gErr error) {
 	// Output error
 	c.logger.Output(levelError, "failed to handle a line: "+gErr.Error(), line, "")
 	if c.param.Review == nil {
@@ -212,11 +199,16 @@ func (c *Controller) handleParseLineError(ctx context.Context, logE *logrus.Entr
 	}
 	// Create review
 	if code, err := c.review(ctx, line.File, c.param.Review.SHA, line.Number, "", gErr); err != nil {
-		level := logrus.ErrorLevel
+		level := slog.LevelError
 		if code == http.StatusUnprocessableEntity {
-			level = logrus.WarnLevel
+			level = slog.LevelWarn
 		}
-		logerr.WithError(logE, err).WithFields(c.param.Review.Fields()).Log(level, "create a review comment")
+		slogerr.WithError(logger, err).Log(ctx, level, "create a review comment",
+			"review_repo_owner", c.param.Review.RepoOwner,
+			"review_repo_name", c.param.Review.RepoName,
+			"review_pr_number", c.param.Review.PullRequest,
+			"review_sha", c.param.Review.SHA,
+		)
 		// Output GitHub Actions error
 		if c.param.IsGitHubActions {
 			fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact error::%s\n", line.File, line.Number, gErr)
@@ -230,19 +222,24 @@ func (c *Controller) handleParseLineError(ctx context.Context, logE *logrus.Entr
 //
 // Parameters:
 //   - ctx: context for cancellation and timeout control
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //   - line: original line information
 //   - newLine: modified line content
-func (c *Controller) handleChangedLine(ctx context.Context, logE *logrus.Entry, line *Line, newLine string) { //nolint:cyclop
+func (c *Controller) handleChangedLine(ctx context.Context, logger *slog.Logger, line *Line, newLine string) { //nolint:cyclop
 	reviewed := false
 	if c.param.Review != nil {
 		// Create review
 		if code, err := c.review(ctx, line.File, c.param.Review.SHA, line.Number, newLine, nil); err != nil {
-			level := logrus.ErrorLevel
+			level := slog.LevelError
 			if code == http.StatusUnprocessableEntity {
-				level = logrus.WarnLevel
+				level = slog.LevelWarn
 			}
-			logerr.WithError(logE, err).WithFields(c.param.Review.Fields()).Log(level, "create a review comment")
+			slogerr.WithError(logger, err).Log(ctx, level, "create a review comment",
+				"review_repo_owner", c.param.Review.RepoOwner,
+				"review_repo_name", c.param.Review.RepoName,
+				"review_pr_number", c.param.Review.PullRequest,
+				"review_sha", c.param.Review.SHA,
+			)
 		} else {
 			reviewed = true
 		}

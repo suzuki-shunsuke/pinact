@@ -1,10 +1,10 @@
 package run
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
@@ -153,7 +153,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			exp:  `  "uses": 'actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5' # v2.7.0`,
 		},
 	}
-	logE := logrus.NewEntry(logrus.New())
+	logger := slog.New(slog.DiscardHandler)
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
@@ -205,7 +205,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 					},
 				},
 			}, nil, fs, config.NewFinder(fs), config.NewReader(fs), &ParamRun{})
-			line, err := ctrl.parseLine(t.Context(), logE, d.line)
+			line, err := ctrl.parseLine(t.Context(), logger, d.line)
 			if err != nil {
 				if d.isErr {
 					return

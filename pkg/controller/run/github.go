@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/hashicorp/go-version"
-	"github.com/sirupsen/logrus"
-	"github.com/suzuki-shunsuke/logrus-error/logerr"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
 type RepositoriesService interface {
@@ -139,22 +139,22 @@ func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string
 //
 // Parameters:
 //   - ctx: context for cancellation and timeout control
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //   - owner: repository owner
 //   - repo: repository name
 //   - currentVersion: current version to check if stable (empty string to include all versions)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersion(ctx context.Context, logE *logrus.Entry, owner, repo, currentVersion string) (string, error) {
+func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, owner, repo, currentVersion string) (string, error) {
 	isStable := isStableVersion(currentVersion)
-	lv, err := c.getLatestVersionFromReleases(ctx, logE, owner, repo, isStable)
+	lv, err := c.getLatestVersionFromReleases(ctx, logger, owner, repo, isStable)
 	if err != nil {
-		logerr.WithError(logE, err).Debug("get the latest version from releases")
+		slogerr.WithError(logger, err).Debug("get the latest version from releases")
 	}
 	if lv != "" {
 		return lv, nil
 	}
-	return c.getLatestVersionFromTags(ctx, logE, owner, repo, isStable)
+	return c.getLatestVersionFromTags(ctx, logger, owner, repo, isStable)
 }
 
 func isStableVersion(v string) bool {
@@ -198,13 +198,13 @@ func compare(latestSemver *version.Version, latestVersion, tag string) (*version
 //
 // Parameters:
 //   - ctx: context for cancellation and timeout control
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //   - owner: repository owner
 //   - repo: repository name
 //   - currentVersion: current version to check if stable (empty string to include all versions)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *logrus.Entry, owner, repo string, isStable bool) (string, error) {
+func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
@@ -225,7 +225,7 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *log
 		latestSemver = ls
 		latestVersion = lv
 		if err != nil {
-			logerr.WithError(logE, err).WithField("tag", tag).Debug("compare tags")
+			slogerr.WithError(logger, err).Debug("compare tags", "tag", tag)
 			continue
 		}
 	}
@@ -243,13 +243,13 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logE *log
 //
 // Parameters:
 //   - ctx: context for cancellation and timeout control
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //   - owner: repository owner
 //   - repo: repository name
 //   - currentVersion: current version to check if stable (empty string to include all versions)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersionFromTags(ctx context.Context, logE *logrus.Entry, owner, repo string, isStable bool) (string, error) {
+func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
@@ -274,7 +274,7 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logE *logrus.
 		latestSemver = ls
 		latestVersion = lv
 		if err != nil {
-			logerr.WithError(logE, err).WithField("tag", tag).Debug("compare tags")
+			slogerr.WithError(logger, err).Debug("compare tags", "tag", tag)
 			continue
 		}
 	}

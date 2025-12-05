@@ -7,9 +7,9 @@
 package token
 
 import (
-	"github.com/sirupsen/logrus"
+	"log/slog"
+
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
-	"github.com/suzuki-shunsuke/slog-logrus/slogrus"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/keyring/ghtoken"
 	"github.com/urfave/cli/v3"
 )
@@ -19,9 +19,9 @@ import (
 // for secure credential storage and retrieval.
 //
 // Parameters:
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //
 // Returns a pointer to the configured CLI command for token operations.
-func New(logE *logrus.Entry) *cli.Command {
-	return ghtoken.Command(ghtoken.NewActor(slogrus.Convert(logE), github.KeyService))
+func New(logger *slog.Logger) *cli.Command {
+	return ghtoken.Command(ghtoken.NewActor(logger, github.KeyService))
 }

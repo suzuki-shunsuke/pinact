@@ -3,10 +3,10 @@ package run
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 
 	"github.com/hashicorp/go-version"
-	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 )
 
@@ -320,9 +320,9 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 			}
 
 			ctx := t.Context()
-			logE := logrus.NewEntry(logrus.New())
+			logger := slog.New(slog.DiscardHandler)
 
-			gotVersion, err := c.getLatestVersionFromReleases(ctx, logE, "owner", "repo", tt.isStable)
+			gotVersion, err := c.getLatestVersionFromReleases(ctx, logger, "owner", "repo", tt.isStable)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getLatestVersionFromReleases() error = %v, wantErr %v", err, tt.wantErr)
@@ -477,9 +477,9 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 			}
 
 			ctx := t.Context()
-			logE := logrus.NewEntry(logrus.New())
+			logger := slog.New(slog.DiscardHandler)
 
-			gotVersion, err := c.getLatestVersionFromTags(ctx, logE, "owner", "repo", false)
+			gotVersion, err := c.getLatestVersionFromTags(ctx, logger, "owner", "repo", false)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getLatestVersionFromTags() error = %v, wantErr %v", err, tt.wantErr)

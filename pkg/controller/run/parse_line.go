@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strings"
 
 	"github.com/hashicorp/go-version"
-	"github.com/sirupsen/logrus"
-	"github.com/suzuki-shunsuke/logrus-error/logerr"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
 var (
@@ -96,15 +96,15 @@ var ErrCantPinned = errors.New("action can't be pinned")
 // It evaluates the action against all ignore rules in the configuration.
 //
 // Parameters:
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //   - action: action to check against ignore rules
 //
 // Returns true if the action should be ignored, false otherwise.
-func (c *Controller) ignoreAction(logE *logrus.Entry, action *Action) bool {
+func (c *Controller) ignoreAction(logger *slog.Logger, action *Action) bool {
 	for _, ignoreAction := range c.cfg.IgnoreActions {
 		f, err := ignoreAction.Match(action.Name, action.Version, c.cfg.Version)
 		if err != nil {
-			logerr.WithError(logE, err).Warn("match the action")
+			slogerr.WithError(logger, err).Warn("match the action")
 			continue
 		}
 		if f {
@@ -156,33 +156,34 @@ func (c *Controller) excludeByIncludes(actionName string) bool {
 //
 // Parameters:
 //   - ctx: context for cancellation and timeout control
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //   - line: workflow file line to process
 //
 // Returns the modified line content and any error encountered.
-func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line string) (s string, e error) { //nolint:cyclop
+func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line string) (s string, e error) { //nolint:cyclop
+	attrs := slogerr.NewAttrs(2) //nolint:mnd
 	defer func() {
-		e = logerr.WithFields(e, logE.Data)
+		e = attrs.With(e)
 	}()
 	action := parseAction(line)
 	if action == nil {
 		// Ignore a line if the line doesn't use an action.
-		logE.Debug("unmatch")
+		logger.Debug("unmatch")
 		return "", nil
 	}
 
-	logE = logE.WithField("action", action.Name+"@"+action.Version)
+	logger = attrs.Add(logger, "action", action.Name+"@"+action.Version)
 
-	if c.ignoreAction(logE, action) {
-		logE.Debug("ignore the action")
+	if c.ignoreAction(logger, action) {
+		logger.Debug("ignore the action")
 		return "", nil
 	}
 	if c.excludeAction(action.Name) {
-		logE.Debug("exclude the action")
+		logger.Debug("exclude the action")
 		return "", nil
 	}
 	if c.excludeByIncludes(action.Name) {
-		logE.Debug("exclude the action")
+		logger.Debug("exclude the action")
 		return "", nil
 	}
 
@@ -194,21 +195,21 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 	}
 
 	if f := c.parseActionName(action); !f {
-		logE.Debug("ignore line")
+		logger.Debug("ignore line")
 		return "", nil
 	}
 
 	switch getVersionType(action.VersionComment) {
 	case Empty:
-		return c.parseNoTagLine(ctx, logE, action)
+		return c.parseNoTagLine(ctx, logger, action)
 	case Semver:
 		// @xxx # v3.0.0
-		return c.parseSemverTagLine(ctx, logE, action)
+		return c.parseSemverTagLine(ctx, logger, action)
 	case Shortsemver:
 		// @xxx # v3
 		// @<full commit hash> # v3
-		logE = logE.WithField("version_annotation", action.VersionComment)
-		return c.parseShortSemverTagLine(ctx, logE, action)
+		logger = attrs.Add(logger, "version_annotation", action.VersionComment)
+		return c.parseShortSemverTagLine(ctx, logger, action)
 	default:
 		if getVersionType(action.Version) == FullCommitSHA {
 			return "", nil
@@ -223,11 +224,11 @@ func (c *Controller) parseLine(ctx context.Context, logE *logrus.Entry, line str
 //
 // Parameters:
 //   - ctx: context for cancellation and timeout control
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //   - action: parsed action information
 //
 // Returns the modified line content and any error encountered.
-func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) { //nolint:cyclop
+func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, action *Action) (string, error) { //nolint:cyclop
 	typ := getVersionType(action.Version)
 	switch typ {
 	case Shortsemver, Semver:
@@ -239,7 +240,7 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logE *logrus.Entry, act
 	// @xxx
 	if c.param.Update {
 		// get the latest version
-		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName, action.Version)
+		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.Version)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
@@ -298,15 +299,15 @@ func compareVersion(currentVersion, newVersion string) bool {
 //
 // Parameters:
 //   - ctx: context for cancellation and timeout control
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //   - action: parsed action information
 //
 // Returns the modified line content and any error encountered.
-func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) {
+func (c *Controller) parseSemverTagLine(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
 	// @xxx # v3.0.0
 	if c.param.Update { //nolint:nestif
 		// get the latest version
-		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName, action.VersionComment)
+		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
@@ -314,10 +315,10 @@ func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry,
 			return "", nil
 		}
 		if !compareVersion(action.VersionComment, lv) {
-			logE.WithFields(logrus.Fields{
-				"current_version": action.VersionComment,
-				"new_version":     lv,
-			}).Warn("skip updating because the current version is newer than the new version")
+			logger.Warn("skip updating because the current version is newer than the new version",
+				"current_version", action.VersionComment,
+				"new_version", lv,
+			)
 			return "", nil
 		}
 		if action.VersionComment != lv {
@@ -349,18 +350,18 @@ func (c *Controller) parseSemverTagLine(ctx context.Context, logE *logrus.Entry,
 //
 // Parameters:
 //   - ctx: context for cancellation and timeout control
-//   - logE: logrus entry for structured logging
+//   - logger: slog logger for structured logging
 //   - action: parsed action information
 //
 // Returns the modified line content and any error encountered.
-func (c *Controller) parseShortSemverTagLine(ctx context.Context, logE *logrus.Entry, action *Action) (string, error) {
+func (c *Controller) parseShortSemverTagLine(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
 	// @xxx # v3
 	// @<full commit hash> # v3
 	if FullCommitSHA != getVersionType(action.Version) {
 		return "", ErrCantPinned
 	}
 	if c.param.Update {
-		lv, err := c.getLatestVersion(ctx, logE, action.RepoOwner, action.RepoName, action.VersionComment)
+		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
@@ -376,7 +377,7 @@ func (c *Controller) parseShortSemverTagLine(ctx context.Context, logE *logrus.E
 		return "", err
 	}
 	if longVersion == "" {
-		logE.Debug("a long tag whose SHA is same as SHA of the version annotation isn't found")
+		logger.Debug("a long tag whose SHA is same as SHA of the version annotation isn't found")
 		return "", nil
 	}
 	return patchLine(action, action.Version, longVersion), nil
@@ -482,11 +483,11 @@ func (c *Controller) verify(ctx context.Context, action *Action) error {
 	if action.Version == sha {
 		return nil
 	}
-	return logerr.WithFields(errors.New("action_version must be equal to commit_hash_of_version_annotation"), logrus.Fields{ //nolint:wrapcheck
-		"action":                            action.Name,
-		"action_version":                    action.Version,
-		"version_annotation":                action.VersionComment,
-		"commit_hash_of_version_annotation": sha,
-		"help_docs":                         "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md",
-	})
+	return slogerr.With(errors.New("action_version must be equal to commit_hash_of_version_annotation"), //nolint:wrapcheck
+		"action", action.Name,
+		"action_version", action.Version,
+		"version_annotation", action.VersionComment,
+		"commit_hash_of_version_annotation", sha,
+		"help_docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md",
+	)
 }
