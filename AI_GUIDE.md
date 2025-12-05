@@ -205,7 +205,7 @@ pinact run
 - Always check and handle errors explicitly
 - Use `fmt.Errorf` with `%w` for wrapping errors
 - Add context to errors to aid debugging
-- Use structured logging with logrus
+- Use structured logging with slog
 
 ## Documentation
 
