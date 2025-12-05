@@ -183,6 +183,7 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		name        string
 		releases    []*github.RepositoryRelease
 		listErr     error
+		isStable    bool
 		wantVersion string
 		wantErr     bool
 	}{
@@ -282,6 +283,27 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 			wantVersion: "v1.0.0",
 			wantErr:     false,
 		},
+		{
+			name: "stable version ignores prerelease when current is stable (issue #1095)",
+			releases: []*github.RepositoryRelease{
+				{TagName: github.Ptr("v6-beta"), Prerelease: github.Ptr(true)},
+				{TagName: github.Ptr("v5.0.0"), Prerelease: github.Ptr(false)},
+				{TagName: github.Ptr("v4.3.0"), Prerelease: github.Ptr(false)},
+			},
+			isStable:    true,
+			wantVersion: "v5.0.0",
+			wantErr:     false,
+		},
+		{
+			name: "prerelease version can update to newer prerelease (issue #1095)",
+			releases: []*github.RepositoryRelease{
+				{TagName: github.Ptr("v6-beta"), Prerelease: github.Ptr(true)},
+				{TagName: github.Ptr("v5.0.0"), Prerelease: github.Ptr(false)},
+			},
+			isStable:    false,
+			wantVersion: "v6-beta",
+			wantErr:     false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -300,7 +322,7 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 			ctx := t.Context()
 			logE := logrus.NewEntry(logrus.New())
 
-			gotVersion, err := c.getLatestVersionFromReleases(ctx, logE, "owner", "repo")
+			gotVersion, err := c.getLatestVersionFromReleases(ctx, logE, "owner", "repo", tt.isStable)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getLatestVersionFromReleases() error = %v, wantErr %v", err, tt.wantErr)
@@ -457,7 +479,7 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 			ctx := t.Context()
 			logE := logrus.NewEntry(logrus.New())
 
-			gotVersion, err := c.getLatestVersionFromTags(ctx, logE, "owner", "repo")
+			gotVersion, err := c.getLatestVersionFromTags(ctx, logE, "owner", "repo", false)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getLatestVersionFromTags() error = %v, wantErr %v", err, tt.wantErr)

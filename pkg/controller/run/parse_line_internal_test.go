@@ -190,6 +190,12 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						Response: &github.Response{},
 					},
 				},
+				Releases: map[string]*ListReleasesResult{
+					"actions/checkout/0": {
+						Releases: []*github.RepositoryRelease{}, // Empty releases forces fallback to tags
+						Response: &github.Response{},
+					},
+				},
 				Commits: map[string]*GetCommitSHA1Result{
 					"actions/checkout/v3": {
 						SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",

@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/google/go-github/v74/github"
+	"github.com/google/go-github/v79/github"
 	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/slog-logrus/slogrus"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/keyring/ghtoken"

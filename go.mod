@@ -1,23 +1,23 @@
 module github.com/suzuki-shunsuke/pinact/v3
 
-go 1.25.0
+go 1.25.5
 
 require (
 	github.com/fatih/color v1.18.0
-	github.com/goccy/go-yaml v1.18.0
+	github.com/goccy/go-yaml v1.19.0
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-github/v74 v74.0.0
-	github.com/hashicorp/go-version v1.7.0
+	github.com/google/go-github/v79 v79.0.0
+	github.com/hashicorp/go-version v1.8.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/afero v1.14.0
+	github.com/spf13/afero v1.15.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/go-stdutil v0.0.0-20250829203246-323a2d220819
 	github.com/suzuki-shunsuke/logrus-error v0.1.4
 	github.com/suzuki-shunsuke/logrus-util v0.0.1
 	github.com/suzuki-shunsuke/slog-logrus v0.0.0-20250830072248-7be62b7ac197
 	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.0.8-0.20250830063646-87773e1bf444
-	github.com/urfave/cli/v3 v3.4.1
-	golang.org/x/oauth2 v0.30.0
+	github.com/urfave/cli/v3 v3.6.1
+	golang.org/x/oauth2 v0.33.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -40,6 +40,6 @@ require (
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/zalando/go-keyring v0.2.6 // indirect
 	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.24.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
