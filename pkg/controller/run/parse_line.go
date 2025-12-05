@@ -161,9 +161,9 @@ func (c *Controller) excludeByIncludes(actionName string) bool {
 //
 // Returns the modified line content and any error encountered.
 func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line string) (s string, e error) { //nolint:cyclop
-	var attrs []any
+	attrs := slogerr.NewAttrs(2) //nolint:mnd
 	defer func() {
-		e = slogerr.With(e, attrs...)
+		e = attrs.With(e)
 	}()
 	action := parseAction(line)
 	if action == nil {
@@ -172,8 +172,7 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 		return "", nil
 	}
 
-	logger = logger.With("action", action.Name+"@"+action.Version)
-	attrs = append(attrs, "action", action.Name+"@"+action.Version)
+	logger = attrs.Add(logger, "action", action.Name+"@"+action.Version)
 
 	if c.ignoreAction(logger, action) {
 		logger.Debug("ignore the action")
@@ -209,8 +208,7 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 	case Shortsemver:
 		// @xxx # v3
 		// @<full commit hash> # v3
-		logger = logger.With("version_annotation", action.VersionComment)
-		attrs = append(attrs, "version_annotation", action.VersionComment)
+		logger = attrs.Add(logger, "version_annotation", action.VersionComment)
 		return c.parseShortSemverTagLine(ctx, logger, action)
 	default:
 		if getVersionType(action.Version) == FullCommitSHA {
