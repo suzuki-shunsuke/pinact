@@ -14,7 +14,7 @@ require (
 	github.com/suzuki-shunsuke/go-stdutil v0.0.1
 	github.com/suzuki-shunsuke/logrus-error v0.1.4
 	github.com/suzuki-shunsuke/logrus-util v0.0.1
-	github.com/suzuki-shunsuke/slog-logrus v0.0.0-20250830072248-7be62b7ac197
+	github.com/suzuki-shunsuke/slog-logrus v0.1.0
 	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.1.0
 	github.com/urfave/cli/v3 v3.6.1
 	golang.org/x/oauth2 v0.33.0
