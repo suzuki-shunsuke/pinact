@@ -8,11 +8,11 @@ import (
 	"syscall"
 
 	"github.com/sirupsen/logrus"
+	"github.com/suzuki-shunsuke/go-stdutil"
 	"github.com/suzuki-shunsuke/logrus-error/logerr"
+	"github.com/suzuki-shunsuke/logrus-util/log"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/log"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 )
 
 var (
@@ -38,7 +38,7 @@ func main() {
 func core(logE *logrus.Entry) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return cli.Run(ctx, logE, &urfave.LDFlags{ //nolint:wrapcheck
+	return cli.Run(ctx, logE, &stdutil.LDFlags{ //nolint:wrapcheck
 		Version: version,
 		Commit:  commit,
 		Date:    date,
