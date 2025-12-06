@@ -4,8 +4,6 @@ github.com/bahlo/generic-list-go v0.2.0 h1:5sz/EEAK+ls5wF+NeqDpk5+iNdMDXrh3z3nPn
 github.com/bahlo/generic-list-go v0.2.0/go.mod h1:2KvAjgMlE5NNynlg/5iLrrCCZ2+5xWbdbCW3pNTGyYg=
 github.com/buger/jsonparser v1.1.1 h1:2PnMjfWD7wBILjqQbt530v576A/cAbQvEW9gGIpYMUs=
 github.com/buger/jsonparser v1.1.1/go.mod h1:6RYKKt7H4d4+iWqouImQ9R2FZql3VbhNgx27UK13J/0=
-github.com/charmbracelet/x/term v0.2.1 h1:AQeHeLZ1OqSXhrAWpYUtZyX1T3zVxfpZuEQMIQaGIAQ=
-github.com/charmbracelet/x/term v0.2.1/go.mod h1:oQ4enTYFV7QN4m0i9mzHrViD7TQKvNEEkHUMCmsxdUg=
 github.com/charmbracelet/x/term v0.2.2 h1:xVRT/S2ZcKdhhOuSP4t5cLi5o+JxklsoEObBSgfgZRk=
 github.com/charmbracelet/x/term v0.2.2/go.mod h1:kF8CY5RddLWrsgVwpw4kAa6TESp6EB5y3uxGLeCqzAI=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
@@ -67,12 +65,8 @@ github.com/suzuki-shunsuke/go-stdutil v0.0.1 h1:b5SZ4rLFHgO6MBRlZEt4ud4+YaNobzsq
 github.com/suzuki-shunsuke/go-stdutil v0.0.1/go.mod h1:k/SZUeN5RkfUWGLTCPLMagz7k1RexZ227aauyxLAckM=
 github.com/suzuki-shunsuke/slog-error v0.2.1 h1:zcWOEo451RWmgusiONt/GueyvkTL7n4qA0ZJ3gTEjbA=
 github.com/suzuki-shunsuke/slog-error v0.2.1/go.mod h1:w45QyO2G0uiEuo9hhrcLqqRl3hmYon9jGgq9CrCxxOY=
-github.com/suzuki-shunsuke/slog-util v0.2.2 h1:sSAZvjWign2hE//CdFvcY0/vbHpGEpq70PH/DUX2BUg=
-github.com/suzuki-shunsuke/slog-util v0.2.2/go.mod h1:GBnGT/JhPyQ2lbwQM+M2MrsGuntdswcFi3vhk+z8Adw=
 github.com/suzuki-shunsuke/slog-util v0.3.0 h1:s+Go2yZqBnJCyV4kj1MDJEITfS7ELdDAEKk/aCulBkQ=
 github.com/suzuki-shunsuke/slog-util v0.3.0/go.mod h1:PgZMd+2rC8pA9jBbXDfkI8mTuWYAiaVkKxjrbLtfN5I=
-github.com/suzuki-shunsuke/urfave-cli-v3-util v0.1.0 h1:wF2BTklnW4k5xC3LqGbOBdhJ331hRhpObzElteZl7NE=
-github.com/suzuki-shunsuke/urfave-cli-v3-util v0.1.0/go.mod h1:MMs7fMTx4wnMFLeWEwOKV3Gr80n610q1otc6jLPpYVk=
 github.com/suzuki-shunsuke/urfave-cli-v3-util v0.1.1 h1:JRaK9Z1c3VHXhyXTkFPHB3iN4ZRkcW+Wj6tz8NnntSE=
 github.com/suzuki-shunsuke/urfave-cli-v3-util v0.1.1/go.mod h1:tqv8QxCUDNTsAjDoWJpmUp8XDjco+w+MU7EA0bwOXno=
 github.com/urfave/cli/v3 v3.6.1 h1:j8Qq8NyUawj/7rTYdBGrxcH7A/j7/G8Q5LhWEW4G3Mo=
