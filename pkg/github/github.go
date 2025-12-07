@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/google/go-github/v79/github"
+	"github.com/google/go-github/v80/github"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/keyring/ghtoken"
 	"golang.org/x/oauth2"
 )

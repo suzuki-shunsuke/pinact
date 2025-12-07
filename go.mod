@@ -6,7 +6,7 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/goccy/go-yaml v1.19.0
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-github/v79 v79.0.0
+	github.com/google/go-github/v80 v80.0.0
 	github.com/hashicorp/go-version v1.8.0
 	github.com/spf13/afero v1.15.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
