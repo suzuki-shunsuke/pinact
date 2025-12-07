@@ -28,6 +28,7 @@ import (
 
 type Flags struct {
 	*flag.GlobalFlags
+
 	Verify    bool
 	Check     bool
 	Update    bool

@@ -20,6 +20,7 @@ import (
 
 type Flags struct {
 	*flag.GlobalFlags
+
 	Args     []string
 	FirstArg string
 }
