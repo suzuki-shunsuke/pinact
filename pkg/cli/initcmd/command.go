@@ -8,34 +8,28 @@ package initcmd
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
 
 // New creates a new init command instance with the provided logger.
 // It returns a CLI command that can be registered with the main CLI application.
-func New(logger *slog.Logger, logLevelVar *slog.LevelVar) *cli.Command {
-	r := &runner{
-		logger:      logger,
-		logLevelVar: logLevelVar,
-	}
-	return r.Command()
+func New(logger *slogutil.Logger) *cli.Command {
+	r := &runner{}
+	return r.Command(logger)
 }
 
-type runner struct {
-	logger      *slog.Logger
-	logLevelVar *slog.LevelVar
-}
+type runner struct{}
 
 // Command returns the CLI command definition for the init subcommand.
 // It defines the command name, usage, description, and action handler.
-func (r *runner) Command() *cli.Command {
+func (r *runner) Command(logger *slogutil.Logger) *cli.Command {
 	return &cli.Command{
 		Name:  "init",
 		Usage: "Create .pinact.yaml if it doesn't exist",
@@ -49,7 +43,7 @@ e.g.
 
 $ pinact init .github/pinact.yaml
 `,
-		Action: r.action,
+		Action: urfave.Action(r.action, logger),
 	}
 }
 
@@ -57,12 +51,12 @@ $ pinact init .github/pinact.yaml
 // It creates a default .pinact.yaml configuration file in the specified location.
 // The function sets up the necessary controllers and services, determines the output
 // path for the configuration file, and delegates to the controller's Init method.
-func (r *runner) action(ctx context.Context, c *cli.Command) error {
+func (r *runner) action(ctx context.Context, c *cli.Command, logger *slogutil.Logger) error {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get the current directory: %w", err)
 	}
-	gh := github.New(ctx, r.logger)
+	gh := github.New(ctx, logger.Logger)
 	ctrl := run.New(&run.RepositoriesServiceImpl{
 		Tags:                map[string]*run.ListTagsResult{},
 		Releases:            map[string]*run.ListReleasesResult{},
@@ -77,7 +71,7 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 		Update:            c.Bool("update"),
 	})
 
-	if err := slogutil.SetLevel(r.logLevelVar, c.String("log-level")); err != nil {
+	if err := logger.SetLevel(c.String("log-level")); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
 	configFilePath := c.Args().First()

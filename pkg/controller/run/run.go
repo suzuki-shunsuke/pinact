@@ -14,6 +14,7 @@ import (
 
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 )
 
 type ParamRun struct {
@@ -50,11 +51,6 @@ func (r *Review) Valid() bool {
 // Run executes the main pinact operation.
 // It reads configuration, searches for workflow files, and processes each file
 // to pin GitHub Actions versions according to the specified parameters.
-//
-// Parameters:
-//   - ctx: context for cancellation and timeout control
-//   - logger: slog logger for structured logging
-//
 // Returns an error if the operation fails or actions are not pinned in check mode.
 func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	if err := c.readConfig(); err != nil {
@@ -81,7 +77,7 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 		}
 	}
 	if failed {
-		return ErrActionsNotPinned
+		return urfave.ErrSilent
 	}
 	return nil
 }

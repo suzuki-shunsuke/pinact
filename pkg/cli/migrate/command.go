@@ -8,35 +8,24 @@ package migrate
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/migrate"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
 
-type runner struct {
-	logger      *slog.Logger
-	logLevelVar *slog.LevelVar
-}
+type runner struct{}
 
 // New creates a new migrate command for the CLI.
 // It initializes a runner with the provided logger and returns
 // the configured CLI command for migrating pinact configuration files.
-//
-// Parameters:
-//   - logger: slog logger for structured logging
-//   - logLevelVar: slog level variable for dynamic log level changes
-//
 // Returns a pointer to the configured CLI command.
-func New(logger *slog.Logger, logLevelVar *slog.LevelVar) *cli.Command {
-	r := runner{
-		logger:      logger,
-		logLevelVar: logLevelVar,
-	}
-	return r.Command()
+func New(logger *slogutil.Logger) *cli.Command {
+	r := runner{}
+	return r.Command(logger)
 }
 
 // Command builds and returns the migrate CLI command configuration.
@@ -44,7 +33,7 @@ func New(logger *slog.Logger, logLevelVar *slog.LevelVar) *cli.Command {
 // for the migrate subcommand.
 //
 // Returns a pointer to the configured CLI command.
-func (r *runner) Command() *cli.Command {
+func (r *runner) Command(logger *slogutil.Logger) *cli.Command {
 	return &cli.Command{
 		Name:  "migrate",
 		Usage: "Migrate .pinact.yaml",
@@ -52,21 +41,16 @@ func (r *runner) Command() *cli.Command {
 
 $ pinact migrate
 `,
-		Action: r.action,
+		Action: urfave.Action(r.action, logger),
 	}
 }
 
 // action executes the migrate command logic.
 // It configures logging, creates the filesystem interface and controller,
 // then performs the configuration file migration.
-//
-// Parameters:
-//   - _: context (unused in this implementation)
-//   - c: CLI command containing parsed flags and arguments
-//
 // Returns an error if migration fails or logging configuration fails.
-func (r *runner) action(_ context.Context, c *cli.Command) error {
-	if err := slogutil.SetLevel(r.logLevelVar, c.String("log-level")); err != nil {
+func (r *runner) action(_ context.Context, c *cli.Command, logger *slogutil.Logger) error {
+	if err := logger.SetLevel(c.String("log-level")); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
 	fs := afero.NewOsFs()
@@ -74,5 +58,5 @@ func (r *runner) action(_ context.Context, c *cli.Command) error {
 		ConfigFilePath: c.String("config"),
 	})
 
-	return ctrl.Migrate(r.logger) //nolint:wrapcheck
+	return ctrl.Migrate(logger.Logger) //nolint:wrapcheck
 }
