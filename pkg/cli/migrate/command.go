@@ -14,7 +14,7 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/migrate"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	urfavecli "github.com/urfave/cli/v3"
+	"github.com/urfave/cli/v3"
 )
 
 type runner struct{}
@@ -23,7 +23,7 @@ type runner struct{}
 // It initializes a runner with the provided logger and returns
 // the configured CLI command for migrating pinact configuration files.
 // Returns a pointer to the configured CLI command.
-func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *urfavecli.Command {
+func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command {
 	r := runner{}
 	return r.Command(logger, globalFlags)
 }
@@ -33,15 +33,15 @@ func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *urfavecli.Comm
 // for the migrate subcommand.
 //
 // Returns a pointer to the configured CLI command.
-func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *urfavecli.Command {
-	return &urfavecli.Command{
+func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command {
+	return &cli.Command{
 		Name:  "migrate",
 		Usage: "Migrate .pinact.yaml",
 		Description: `Migrate the version of .pinact.yaml
 
 $ pinact migrate
 `,
-		Action: func(_ context.Context, _ *urfavecli.Command) error {
+		Action: func(_ context.Context, _ *cli.Command) error {
 			return r.action(logger, globalFlags)
 		},
 	}

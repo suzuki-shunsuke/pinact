@@ -15,7 +15,7 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	urfavecli "github.com/urfave/cli/v3"
+	"github.com/urfave/cli/v3"
 )
 
 type Flags struct {
@@ -27,7 +27,7 @@ type Flags struct {
 
 // New creates a new init command instance with the provided logger.
 // It returns a CLI command that can be registered with the main CLI application.
-func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *urfavecli.Command {
+func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command {
 	r := &runner{}
 	return r.Command(logger, globalFlags)
 }
@@ -36,9 +36,9 @@ type runner struct{}
 
 // Command returns the CLI command definition for the init subcommand.
 // It defines the command name, usage, description, and action handler.
-func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *urfavecli.Command {
+func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command {
 	flags := &Flags{}
-	return &urfavecli.Command{
+	return &cli.Command{
 		Name:  "init",
 		Usage: "Create .pinact.yaml if it doesn't exist",
 		Description: `Create .pinact.yaml if it doesn't exist
@@ -51,7 +51,7 @@ e.g.
 
 $ pinact init .github/pinact.yaml
 `,
-		Action: func(ctx context.Context, cmd *urfavecli.Command) error {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
 			flags.LogLevel = globalFlags.LogLevel
 			flags.Config = globalFlags.Config
 			flags.Args = cmd.Args().Slice()

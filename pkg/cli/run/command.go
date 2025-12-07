@@ -23,7 +23,7 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	urfavecli "github.com/urfave/cli/v3"
+	"github.com/urfave/cli/v3"
 )
 
 type Flags struct {
@@ -54,7 +54,7 @@ type Flags struct {
 //   - logLevelVar: slog level variable for dynamic log level changes
 //
 // Returns a pointer to the configured CLI command.
-func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *urfavecli.Command {
+func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command {
 	r := &runner{}
 	return r.Command(logger, globalFlags)
 }
@@ -67,9 +67,9 @@ type runner struct{}
 // like check, diff, fix, update, and review.
 //
 // Returns a pointer to the configured CLI command.
-func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *urfavecli.Command { //nolint:funlen
+func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command { //nolint:funlen
 	flags := &Flags{}
-	return &urfavecli.Command{
+	return &cli.Command{
 		Name:  "run",
 		Usage: "Pin GitHub Actions versions",
 		Description: `If no argument is passed, pinact searches GitHub Actions workflow files from .github/workflows.
@@ -82,74 +82,74 @@ e.g.
 
 $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 `,
-		Action: func(ctx context.Context, cmd *urfavecli.Command) error {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
 			flags.LogLevel = globalFlags.LogLevel
 			flags.Config = globalFlags.Config
 			flags.FixIsSet = cmd.IsSet("fix")
 			flags.Args = cmd.Args().Slice()
 			return r.action(ctx, logger, flags)
 		},
-		Flags: []urfavecli.Flag{
-			&urfavecli.BoolFlag{
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
 				Name:        "verify",
 				Aliases:     []string{"v"},
 				Usage:       "Verify if pairs of commit SHA and version are correct",
 				Destination: &flags.Verify,
 			},
-			&urfavecli.BoolFlag{
+			&cli.BoolFlag{
 				Name:        "check",
 				Usage:       "Exit with a non-zero status code if actions are not pinned. If this is true, files aren't updated",
 				Destination: &flags.Check,
 			},
-			&urfavecli.BoolFlag{
+			&cli.BoolFlag{
 				Name:        "update",
 				Aliases:     []string{"u"},
 				Usage:       "Update actions to latest versions",
 				Destination: &flags.Update,
 			},
-			&urfavecli.BoolFlag{
+			&cli.BoolFlag{
 				Name:        "review",
 				Usage:       "Create reviews",
 				Destination: &flags.Review,
 			},
-			&urfavecli.BoolFlag{
+			&cli.BoolFlag{
 				Name:        "fix",
 				Usage:       "Fix code. By default, this is true. If -check or -diff is true, this is false by default",
 				Destination: &flags.Fix,
 			},
-			&urfavecli.BoolFlag{
+			&cli.BoolFlag{
 				Name:        "diff",
 				Usage:       "Output diff. By default, this is false",
 				Destination: &flags.Diff,
 			},
-			&urfavecli.StringFlag{
+			&cli.StringFlag{
 				Name:        "repo-owner",
 				Usage:       "GitHub repository owner",
-				Sources:     urfavecli.EnvVars("GITHUB_REPOSITORY_OWNER"),
+				Sources:     cli.EnvVars("GITHUB_REPOSITORY_OWNER"),
 				Destination: &flags.RepoOwner,
 			},
-			&urfavecli.StringFlag{
+			&cli.StringFlag{
 				Name:        "repo-name",
 				Usage:       "GitHub repository name",
 				Destination: &flags.RepoName,
 			},
-			&urfavecli.StringFlag{
+			&cli.StringFlag{
 				Name:        "sha",
 				Usage:       "Commit SHA to be reviewed",
 				Destination: &flags.SHA,
 			},
-			&urfavecli.IntFlag{
+			&cli.IntFlag{
 				Name:        "pr",
 				Usage:       "GitHub pull request number",
 				Destination: &flags.PR,
 			},
-			&urfavecli.StringSliceFlag{
+			&cli.StringSliceFlag{
 				Name:        "include",
 				Aliases:     []string{"i"},
 				Usage:       "A regular expression to fix actions",
 				Destination: &flags.Include,
 			},
-			&urfavecli.StringSliceFlag{
+			&cli.StringSliceFlag{
 				Name:        "exclude",
 				Aliases:     []string{"e"},
 				Usage:       "A regular expression to exclude actions",
