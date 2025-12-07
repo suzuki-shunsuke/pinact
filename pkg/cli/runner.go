@@ -35,23 +35,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
 	return urfave.Command(env, &cli.Command{ //nolint:wrapcheck
 		Name:  "pinact",
 		Usage: "Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:        "log-level",
-				Usage:       "log level",
-				Sources:     cli.EnvVars("PINACT_LOG_LEVEL"),
-				Destination: &globalFlags.LogLevel,
-			},
-			&cli.StringFlag{
-				Name: "config",
-				Aliases: []string{
-					"c",
-				},
-				Usage:       "configuration file path",
-				Sources:     cli.EnvVars("PINACT_CONFIG"),
-				Destination: &globalFlags.Config,
-			},
-		},
+		Flags: globalFlags.Flags(),
 		Commands: []*cli.Command{
 			initcmd.New(logger, globalFlags),
 			run.New(logger, globalFlags),
