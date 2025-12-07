@@ -17,14 +17,33 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/afero"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
+
+type Flags struct {
+	*flag.GlobalFlags
+
+	Verify    bool
+	Check     bool
+	Update    bool
+	Review    bool
+	Fix       bool
+	FixIsSet  bool
+	Diff      bool
+	RepoOwner string
+	RepoName  string
+	SHA       string
+	PR        int
+	Include   []string
+	Exclude   []string
+	Args      []string
+}
 
 // New creates a new run command for the CLI.
 // It initializes a runner with the provided logger and returns
@@ -35,9 +54,9 @@ import (
 //   - logLevelVar: slog level variable for dynamic log level changes
 //
 // Returns a pointer to the configured CLI command.
-func New(logger *slogutil.Logger) *cli.Command {
+func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command {
 	r := &runner{}
-	return r.Command(logger)
+	return r.Command(logger, globalFlags)
 }
 
 type runner struct{}
@@ -48,7 +67,8 @@ type runner struct{}
 // like check, diff, fix, update, and review.
 //
 // Returns a pointer to the configured CLI command.
-func (r *runner) Command(logger *slogutil.Logger) *cli.Command { //nolint:funlen
+func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command { //nolint:funlen
+	flags := &Flags{GlobalFlags: globalFlags}
 	return &cli.Command{
 		Name:  "run",
 		Usage: "Pin GitHub Actions versions",
@@ -62,60 +82,76 @@ e.g.
 
 $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 `,
-		Action: urfave.Action(r.action, logger),
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			flags.FixIsSet = cmd.IsSet("fix")
+			flags.Args = cmd.Args().Slice()
+			return r.action(ctx, logger, flags)
+		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:    "verify",
-				Aliases: []string{"v"},
-				Usage:   "Verify if pairs of commit SHA and version are correct",
+				Name:        "verify",
+				Aliases:     []string{"v"},
+				Usage:       "Verify if pairs of commit SHA and version are correct",
+				Destination: &flags.Verify,
 			},
 			&cli.BoolFlag{
-				Name:  "check",
-				Usage: "Exit with a non-zero status code if actions are not pinned. If this is true, files aren't updated",
+				Name:        "check",
+				Usage:       "Exit with a non-zero status code if actions are not pinned. If this is true, files aren't updated",
+				Destination: &flags.Check,
 			},
 			&cli.BoolFlag{
-				Name:    "update",
-				Aliases: []string{"u"},
-				Usage:   "Update actions to latest versions",
+				Name:        "update",
+				Aliases:     []string{"u"},
+				Usage:       "Update actions to latest versions",
+				Destination: &flags.Update,
 			},
 			&cli.BoolFlag{
-				Name:  "review",
-				Usage: "Create reviews",
+				Name:        "review",
+				Usage:       "Create reviews",
+				Destination: &flags.Review,
 			},
 			&cli.BoolFlag{
-				Name:  "fix",
-				Usage: "Fix code. By default, this is true. If -check or -diff is true, this is false by default",
+				Name:        "fix",
+				Usage:       "Fix code. By default, this is true. If -check or -diff is true, this is false by default",
+				Destination: &flags.Fix,
 			},
 			&cli.BoolFlag{
-				Name:  "diff",
-				Usage: "Output diff. By default, this is false",
+				Name:        "diff",
+				Usage:       "Output diff. By default, this is false",
+				Destination: &flags.Diff,
 			},
 			&cli.StringFlag{
-				Name:    "repo-owner",
-				Usage:   "GitHub repository owner",
-				Sources: cli.EnvVars("GITHUB_REPOSITORY_OWNER"),
+				Name:        "repo-owner",
+				Usage:       "GitHub repository owner",
+				Sources:     cli.EnvVars("GITHUB_REPOSITORY_OWNER"),
+				Destination: &flags.RepoOwner,
 			},
 			&cli.StringFlag{
-				Name:  "repo-name",
-				Usage: "GitHub repository name",
+				Name:        "repo-name",
+				Usage:       "GitHub repository name",
+				Destination: &flags.RepoName,
 			},
 			&cli.StringFlag{
-				Name:  "sha",
-				Usage: "Commit SHA to be reviewed",
+				Name:        "sha",
+				Usage:       "Commit SHA to be reviewed",
+				Destination: &flags.SHA,
 			},
 			&cli.IntFlag{
-				Name:  "pr",
-				Usage: "GitHub pull request number",
+				Name:        "pr",
+				Usage:       "GitHub pull request number",
+				Destination: &flags.PR,
 			},
 			&cli.StringSliceFlag{
-				Name:    "include",
-				Aliases: []string{"i"},
-				Usage:   "A regular expression to fix actions",
+				Name:        "include",
+				Aliases:     []string{"i"},
+				Usage:       "A regular expression to fix actions",
+				Destination: &flags.Include,
 			},
 			&cli.StringSliceFlag{
-				Name:    "exclude",
-				Aliases: []string{"e"},
-				Usage:   "A regular expression to exclude actions",
+				Name:        "exclude",
+				Aliases:     []string{"e"},
+				Usage:       "A regular expression to exclude actions",
+				Destination: &flags.Exclude,
 			},
 		},
 	}
@@ -195,12 +231,12 @@ type Head struct {
 // It configures logging, processes GitHub Actions context, parses includes/excludes,
 // sets up the controller, and executes the pinning operation.
 // Returns an error if the operation fails.
-func (r *runner) action(ctx context.Context, c *cli.Command, logger *slogutil.Logger) error { //nolint:cyclop,funlen
+func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Flags) error { //nolint:cyclop,funlen
 	isGitHubActions := os.Getenv("GITHUB_ACTIONS") == "true"
 	if isGitHubActions {
 		color.NoColor = false
 	}
-	if err := logger.SetLevel(c.String("log-level")); err != nil {
+	if err := logger.SetLevel(flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
 
@@ -212,12 +248,12 @@ func (r *runner) action(ctx context.Context, c *cli.Command, logger *slogutil.Lo
 	gh := github.New(ctx, logger.Logger)
 	fs := afero.NewOsFs()
 	var review *run.Review
-	if c.Bool("review") {
+	if flags.Review {
 		review = &run.Review{
-			RepoOwner:   c.String("repo-owner"),
-			RepoName:    c.String("repo-name"),
-			PullRequest: c.Int("pr"),
-			SHA:         c.String("sha"),
+			RepoOwner:   flags.RepoOwner,
+			RepoName:    flags.RepoName,
+			PullRequest: flags.PR,
+			SHA:         flags.SHA,
 		}
 		if isGitHubActions {
 			if err := r.setReview(fs, review); err != nil {
@@ -229,22 +265,22 @@ func (r *runner) action(ctx context.Context, c *cli.Command, logger *slogutil.Lo
 			review = nil
 		}
 	}
-	includes, err := parseIncludes(c.StringSlice("include"))
+	includes, err := parseIncludes(flags.Include)
 	if err != nil {
 		return err
 	}
-	excludes, err := parseExcludes(c.StringSlice("exclude"))
+	excludes, err := parseExcludes(flags.Exclude)
 	if err != nil {
 		return err
 	}
 	param := &run.ParamRun{
-		WorkflowFilePaths: c.Args().Slice(),
-		ConfigFilePath:    c.String("config"),
+		WorkflowFilePaths: flags.Args,
+		ConfigFilePath:    flags.Config,
 		PWD:               pwd,
-		IsVerify:          c.Bool("verify"),
-		Check:             c.Bool("check"),
-		Update:            c.Bool("update"),
-		Diff:              c.Bool("diff"),
+		IsVerify:          flags.Verify,
+		Check:             flags.Check,
+		Update:            flags.Update,
+		Diff:              flags.Diff,
 		Fix:               true,
 		IsGitHubActions:   isGitHubActions,
 		Stderr:            os.Stderr,
@@ -252,8 +288,8 @@ func (r *runner) action(ctx context.Context, c *cli.Command, logger *slogutil.Lo
 		Includes:          includes,
 		Excludes:          excludes,
 	}
-	if c.IsSet("fix") {
-		param.Fix = c.Bool("fix")
+	if flags.FixIsSet {
+		param.Fix = flags.Fix
 	} else if param.Check || param.Diff {
 		param.Fix = false
 	}

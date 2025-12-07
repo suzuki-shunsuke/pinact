@@ -8,6 +8,7 @@ package cli
 import (
 	"context"
 
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/initcmd"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/migrate"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/run"
@@ -30,28 +31,15 @@ import (
 //
 // Returns an error if command parsing or execution fails.
 func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
+	globalFlags := &flag.GlobalFlags{}
 	return urfave.Command(env, &cli.Command{ //nolint:wrapcheck
 		Name:  "pinact",
 		Usage: "Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:    "log-level",
-				Usage:   "log level",
-				Sources: cli.EnvVars("PINACT_LOG_LEVEL"),
-			},
-			&cli.StringFlag{
-				Name: "config",
-				Aliases: []string{
-					"c",
-				},
-				Usage:   "configuration file path",
-				Sources: cli.EnvVars("PINACT_CONFIG"),
-			},
-		},
+		Flags: globalFlags.Flags(),
 		Commands: []*cli.Command{
-			initcmd.New(logger),
-			run.New(logger),
-			migrate.New(logger),
+			initcmd.New(logger, globalFlags),
+			run.New(logger, globalFlags),
+			migrate.New(logger, globalFlags),
 			token.New(logger),
 		},
 	}).Run(ctx, env.Args)
