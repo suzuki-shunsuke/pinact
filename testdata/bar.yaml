@@ -11,5 +11,5 @@ jobs:
       # https://github.com/actions/checkout/releases/tag/v3.5.1
       # https://github.com/actions/checkout/releases/tag/v2.7.0
       # This means version annotations aren't necessarily correct.
-      # pinact run's --verify option verifies version annoations.
+      # pinact run's --verify option verifies version annotations.
       - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v3.5.1
