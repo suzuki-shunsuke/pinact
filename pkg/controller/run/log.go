@@ -7,7 +7,7 @@ import (
 	"github.com/fatih/color"
 )
 
-type colorFunc func(a ...interface{}) string
+type colorFunc func(a ...any) string
 
 type Logger struct {
 	stderr io.Writer
