@@ -19,8 +19,7 @@ import (
 )
 
 type Flags struct {
-	LogLevel string
-	Config   string
+	*flag.GlobalFlags
 	Args     []string
 	FirstArg string
 }
@@ -37,7 +36,7 @@ type runner struct{}
 // Command returns the CLI command definition for the init subcommand.
 // It defines the command name, usage, description, and action handler.
 func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command {
-	flags := &Flags{}
+	flags := &Flags{GlobalFlags: globalFlags}
 	return &cli.Command{
 		Name:  "init",
 		Usage: "Create .pinact.yaml if it doesn't exist",
@@ -52,8 +51,6 @@ e.g.
 $ pinact init .github/pinact.yaml
 `,
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			flags.LogLevel = globalFlags.LogLevel
-			flags.Config = globalFlags.Config
 			flags.Args = cmd.Args().Slice()
 			flags.FirstArg = cmd.Args().First()
 			return r.action(ctx, logger, flags)

@@ -27,8 +27,7 @@ import (
 )
 
 type Flags struct {
-	LogLevel  string
-	Config    string
+	*flag.GlobalFlags
 	Verify    bool
 	Check     bool
 	Update    bool
@@ -68,7 +67,7 @@ type runner struct{}
 //
 // Returns a pointer to the configured CLI command.
 func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command { //nolint:funlen
-	flags := &Flags{}
+	flags := &Flags{GlobalFlags: globalFlags}
 	return &cli.Command{
 		Name:  "run",
 		Usage: "Pin GitHub Actions versions",
@@ -83,8 +82,6 @@ e.g.
 $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 `,
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			flags.LogLevel = globalFlags.LogLevel
-			flags.Config = globalFlags.Config
 			flags.FixIsSet = cmd.IsSet("fix")
 			flags.Args = cmd.Args().Slice()
 			return r.action(ctx, logger, flags)
