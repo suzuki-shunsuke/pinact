@@ -10,11 +10,11 @@ import (
 	"fmt"
 
 	"github.com/spf13/afero"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/migrate"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
-	"github.com/urfave/cli/v3"
+	urfavecli "github.com/urfave/cli/v3"
 )
 
 type runner struct{}
@@ -23,9 +23,9 @@ type runner struct{}
 // It initializes a runner with the provided logger and returns
 // the configured CLI command for migrating pinact configuration files.
 // Returns a pointer to the configured CLI command.
-func New(logger *slogutil.Logger) *cli.Command {
+func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *urfavecli.Command {
 	r := runner{}
-	return r.Command(logger)
+	return r.Command(logger, globalFlags)
 }
 
 // Command builds and returns the migrate CLI command configuration.
@@ -33,15 +33,17 @@ func New(logger *slogutil.Logger) *cli.Command {
 // for the migrate subcommand.
 //
 // Returns a pointer to the configured CLI command.
-func (r *runner) Command(logger *slogutil.Logger) *cli.Command {
-	return &cli.Command{
+func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *urfavecli.Command {
+	return &urfavecli.Command{
 		Name:  "migrate",
 		Usage: "Migrate .pinact.yaml",
 		Description: `Migrate the version of .pinact.yaml
 
 $ pinact migrate
 `,
-		Action: urfave.Action(r.action, logger),
+		Action: func(_ context.Context, _ *urfavecli.Command) error {
+			return r.action(logger, globalFlags)
+		},
 	}
 }
 
@@ -49,13 +51,13 @@ $ pinact migrate
 // It configures logging, creates the filesystem interface and controller,
 // then performs the configuration file migration.
 // Returns an error if migration fails or logging configuration fails.
-func (r *runner) action(_ context.Context, c *cli.Command, logger *slogutil.Logger) error {
-	if err := logger.SetLevel(c.String("log-level")); err != nil {
+func (r *runner) action(logger *slogutil.Logger, flags *flag.GlobalFlags) error {
+	if err := logger.SetLevel(flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
 	fs := afero.NewOsFs()
 	ctrl := migrate.New(fs, config.NewFinder(fs), &migrate.Param{
-		ConfigFilePath: c.String("config"),
+		ConfigFilePath: flags.Config,
 	})
 
 	return ctrl.Migrate(logger.Logger) //nolint:wrapcheck
