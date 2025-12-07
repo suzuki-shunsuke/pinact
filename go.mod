@@ -12,7 +12,7 @@ require (
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/slog-error v0.2.1
 	github.com/suzuki-shunsuke/slog-util v0.3.0
-	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.1.1
+	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.1.2
 	github.com/urfave/cli/v3 v3.6.1
 	golang.org/x/oauth2 v0.33.0
 	gopkg.in/yaml.v3 v3.0.1

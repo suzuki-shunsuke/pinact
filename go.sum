@@ -65,8 +65,8 @@ github.com/suzuki-shunsuke/slog-error v0.2.1 h1:zcWOEo451RWmgusiONt/GueyvkTL7n4q
 github.com/suzuki-shunsuke/slog-error v0.2.1/go.mod h1:w45QyO2G0uiEuo9hhrcLqqRl3hmYon9jGgq9CrCxxOY=
 github.com/suzuki-shunsuke/slog-util v0.3.0 h1:s+Go2yZqBnJCyV4kj1MDJEITfS7ELdDAEKk/aCulBkQ=
 github.com/suzuki-shunsuke/slog-util v0.3.0/go.mod h1:PgZMd+2rC8pA9jBbXDfkI8mTuWYAiaVkKxjrbLtfN5I=
-github.com/suzuki-shunsuke/urfave-cli-v3-util v0.1.1 h1:JRaK9Z1c3VHXhyXTkFPHB3iN4ZRkcW+Wj6tz8NnntSE=
-github.com/suzuki-shunsuke/urfave-cli-v3-util v0.1.1/go.mod h1:tqv8QxCUDNTsAjDoWJpmUp8XDjco+w+MU7EA0bwOXno=
+github.com/suzuki-shunsuke/urfave-cli-v3-util v0.1.2 h1:kH/PPZR4k/maR9BZYNt/9iwHwfHy25rr6N/SVUF7DxQ=
+github.com/suzuki-shunsuke/urfave-cli-v3-util v0.1.2/go.mod h1:tqv8QxCUDNTsAjDoWJpmUp8XDjco+w+MU7EA0bwOXno=
 github.com/urfave/cli/v3 v3.6.1 h1:j8Qq8NyUawj/7rTYdBGrxcH7A/j7/G8Q5LhWEW4G3Mo=
 github.com/urfave/cli/v3 v3.6.1/go.mod h1:ysVLtOEmg2tOy6PknnYVhDoouyC/6N42TMeoMzskhso=
 github.com/wk8/go-ordered-map/v2 v2.1.8 h1:5h/BUHu93oj4gIdvHHHGsScSTMijfx5PeYkE/fJgbpc=
