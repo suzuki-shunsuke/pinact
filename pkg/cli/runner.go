@@ -7,13 +7,12 @@ package cli
 
 import (
 	"context"
-	"log/slog"
 
-	"github.com/suzuki-shunsuke/go-stdutil"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/initcmd"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/migrate"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/run"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/token"
+	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
@@ -30,8 +29,8 @@ import (
 //   - args: command line arguments to parse and execute
 //
 // Returns an error if command parsing or execution fails.
-func Run(ctx context.Context, logger *slog.Logger, logLevelVar *slog.LevelVar, ldFlags *stdutil.LDFlags, args ...string) error {
-	return urfave.Command(ldFlags, &cli.Command{ //nolint:wrapcheck
+func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
+	return urfave.Command(env, &cli.Command{ //nolint:wrapcheck
 		Name:  "pinact",
 		Usage: "Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact",
 		Flags: []cli.Flag{
@@ -50,10 +49,10 @@ func Run(ctx context.Context, logger *slog.Logger, logLevelVar *slog.LevelVar, l
 			},
 		},
 		Commands: []*cli.Command{
-			initcmd.New(logger, logLevelVar),
-			run.New(logger, logLevelVar),
-			migrate.New(logger, logLevelVar),
+			initcmd.New(logger),
+			run.New(logger),
+			migrate.New(logger),
 			token.New(logger),
 		},
-	}).Run(ctx, args)
+	}).Run(ctx, env.Args)
 }

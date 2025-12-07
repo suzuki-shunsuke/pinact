@@ -11,7 +11,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"os"
 	"regexp"
 	"strings"
@@ -23,6 +22,7 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
 
@@ -35,18 +35,12 @@ import (
 //   - logLevelVar: slog level variable for dynamic log level changes
 //
 // Returns a pointer to the configured CLI command.
-func New(logger *slog.Logger, logLevelVar *slog.LevelVar) *cli.Command {
-	r := &runner{
-		logger:      logger,
-		logLevelVar: logLevelVar,
-	}
-	return r.Command()
+func New(logger *slogutil.Logger) *cli.Command {
+	r := &runner{}
+	return r.Command(logger)
 }
 
-type runner struct {
-	logger      *slog.Logger
-	logLevelVar *slog.LevelVar
-}
+type runner struct{}
 
 // Command builds and returns the run CLI command configuration.
 // It defines all flags, options, and the action handler for the run subcommand.
@@ -54,7 +48,7 @@ type runner struct {
 // like check, diff, fix, update, and review.
 //
 // Returns a pointer to the configured CLI command.
-func (r *runner) Command() *cli.Command { //nolint:funlen
+func (r *runner) Command(logger *slogutil.Logger) *cli.Command { //nolint:funlen
 	return &cli.Command{
 		Name:  "run",
 		Usage: "Pin GitHub Actions versions",
@@ -68,7 +62,7 @@ e.g.
 
 $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 `,
-		Action: r.action,
+		Action: urfave.Action(r.action, logger),
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "verify",
@@ -200,18 +194,13 @@ type Head struct {
 // action executes the main run command logic.
 // It configures logging, processes GitHub Actions context, parses includes/excludes,
 // sets up the controller, and executes the pinning operation.
-//
-// Parameters:
-//   - ctx: context for cancellation and timeout control
-//   - c: CLI command containing parsed flags and arguments
-//
 // Returns an error if the operation fails.
-func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop,funlen
+func (r *runner) action(ctx context.Context, c *cli.Command, logger *slogutil.Logger) error { //nolint:cyclop,funlen
 	isGitHubActions := os.Getenv("GITHUB_ACTIONS") == "true"
 	if isGitHubActions {
 		color.NoColor = false
 	}
-	if err := slogutil.SetLevel(r.logLevelVar, c.String("log-level")); err != nil {
+	if err := logger.SetLevel(c.String("log-level")); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
 
@@ -220,7 +209,7 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		return fmt.Errorf("get the current directory: %w", err)
 	}
 
-	gh := github.New(ctx, r.logger)
+	gh := github.New(ctx, logger.Logger)
 	fs := afero.NewOsFs()
 	var review *run.Review
 	if c.Bool("review") {
@@ -232,11 +221,11 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		}
 		if isGitHubActions {
 			if err := r.setReview(fs, review); err != nil {
-				slogerr.WithError(r.logger, err).Error("set review information")
+				slogerr.WithError(logger.Logger, err).Error("set review information")
 			}
 		}
 		if !review.Valid() {
-			r.logger.Warn("skip creating reviews because the review information is invalid")
+			logger.Warn("skip creating reviews because the review information is invalid")
 			review = nil
 		}
 	}
@@ -274,7 +263,7 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		Commits:             map[string]*run.GetCommitSHA1Result{},
 		RepositoriesService: gh.Repositories,
 	}, gh.PullRequests, fs, config.NewFinder(fs), config.NewReader(fs), param)
-	return ctrl.Run(ctx, r.logger) //nolint:wrapcheck
+	return ctrl.Run(ctx, logger.Logger) //nolint:wrapcheck
 }
 
 // parseIncludes compiles include regular expressions from command-line options.
