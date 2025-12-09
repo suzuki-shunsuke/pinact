@@ -31,6 +31,7 @@ type ParamRun struct {
 	Review            *Review
 	Includes          []*regexp.Regexp
 	Excludes          []*regexp.Regexp
+	Cooldown          int
 }
 
 type Review struct {

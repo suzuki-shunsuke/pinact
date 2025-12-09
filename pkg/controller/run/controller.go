@@ -16,6 +16,7 @@ import (
 type Controller struct {
 	repositoriesService RepositoriesService
 	pullRequestsService PullRequestsService
+	gitService          *GitServiceImpl
 	fs                  afero.Fs
 	cfg                 *config.Config
 	param               *ParamRun
@@ -40,16 +41,18 @@ type ConfigReader interface {
 // Parameters:
 //   - repositoriesService: GitHub API service for repository operations
 //   - pullRequestsService: GitHub API service for pull request operations
+//   - gitService: GitHub API service for git operations (optional, for cooldown feature)
 //   - fs: filesystem interface for file operations
 //   - cfgFinder: service for locating configuration files
 //   - cfgReader: service for reading and parsing configuration files
 //   - param: operation parameters and settings
 //
 // Returns a pointer to the configured Controller.
-func New(repositoriesService RepositoriesService, pullRequestsService PullRequestsService, fs afero.Fs, cfgFinder ConfigFinder, cfgReader ConfigReader, param *ParamRun) *Controller {
+func New(repositoriesService RepositoriesService, pullRequestsService PullRequestsService, gitService *GitServiceImpl, fs afero.Fs, cfgFinder ConfigFinder, cfgReader ConfigReader, param *ParamRun) *Controller {
 	return &Controller{
 		repositoriesService: repositoriesService,
 		pullRequestsService: pullRequestsService,
+		gitService:          gitService,
 		param:               param,
 		fs:                  fs,
 		cfgFinder:           cfgFinder,
