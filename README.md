@@ -164,6 +164,22 @@ You can update actions using the `-update (-u)` option:
 pinact run -u
 ```
 
+#### Skip recently released versions
+
+[#1266](https://github.com/suzuki-shunsuke/pinact/pull/1266) pinact >= v3.5.0
+
+You can skip recently released versions using the `--cooldown` option.
+This helps avoid updating to potentially unstable versions that haven't had time to prove their stability.
+
+```sh
+pinact run -u --cooldown 7
+```
+
+This command skips versions released within the last 7 days.
+
+- For GitHub Releases, the `PublishedAt` date is checked
+- For tags, the commit's `Committer.Date` is checked (requires additional API call)
+
 ### Fix example codes in documents
 
 pinact can fix example codes in documents too.
