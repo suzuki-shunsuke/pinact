@@ -11,7 +11,7 @@ USAGE:
    pinact [global options] [command [command options]]
 
 VERSION:
-   3.4.6
+   3.5.0
 
 COMMANDS:
    init        Create .pinact.yaml if it doesn't exist
@@ -90,6 +90,7 @@ OPTIONS:
    --pr int                                                     GitHub pull request number (default: 0)
    --include string, -i string [ --include string, -i string ]  A regular expression to fix actions
    --exclude string, -e string [ --exclude string, -e string ]  A regular expression to exclude actions
+   --min-age int, -m int                                        Skip versions released within the specified number of days (requires -u) (default: 0)
    --help, -h                                                   show help
 ```
 
