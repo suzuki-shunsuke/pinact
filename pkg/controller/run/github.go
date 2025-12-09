@@ -282,6 +282,26 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *s
 	return latestVersion, nil
 }
 
+// checkTagCooldown checks if a tag should be skipped due to cooldown period.
+// Returns true if the tag should be skipped.
+func (c *Controller) checkTagCooldown(ctx context.Context, logger *slog.Logger, owner, repo, tagName, sha string, cutoff time.Time) bool {
+	if cutoff.IsZero() || c.gitService == nil || sha == "" {
+		return false
+	}
+	commit, _, err := c.gitService.GetCommit(ctx, owner, repo, sha)
+	if err != nil {
+		slogerr.WithError(logger, err).Warn("skip tag: failed to get commit for cooldown check", "tag", tagName, "sha", sha)
+		return true
+	}
+	if commit.GetCommitter().GetDate().After(cutoff) {
+		logger.Info("skip tag due to cooldown",
+			"tag", tagName,
+			"committed_at", commit.GetCommitter().GetDate())
+		return true
+	}
+	return false
+}
+
 // getLatestVersionFromTags finds the latest version from repository tags.
 // It retrieves tags from GitHub API and compares them to find the highest
 // version using semantic versioning when possible, falling back to string comparison.
@@ -318,21 +338,8 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.
 		}
 
 		// Skip tags within cooldown period
-		if !cutoff.IsZero() && c.gitService != nil {
-			sha := tag.GetCommit().GetSHA()
-			if sha != "" {
-				commit, _, err := c.gitService.GetCommit(ctx, owner, repo, sha)
-				if err != nil {
-					slogerr.WithError(logger, err).Warn("skip tag: failed to get commit for cooldown check", "tag", t, "sha", sha)
-					continue
-				}
-				if commit.GetCommitter().GetDate().After(cutoff) {
-					logger.Info("skip tag due to cooldown",
-						"tag", t,
-						"committed_at", commit.GetCommitter().GetDate())
-					continue
-				}
-			}
+		if c.checkTagCooldown(ctx, logger, owner, repo, t, tag.GetCommit().GetSHA(), cutoff) {
+			continue
 		}
 
 		ls, lv, err := compare(latestSemver, latestVersion, t)
