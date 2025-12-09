@@ -179,10 +179,10 @@ func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string
 func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, owner, repo, currentVersion string) (string, error) {
 	isStable := isStableVersion(currentVersion)
 
-	// Calculate cutoff once for cooldown filtering
+	// Calculate cutoff once for min-age filtering
 	var cutoff time.Time
-	if c.param.Cooldown > 0 {
-		cutoff = time.Now().AddDate(0, 0, -c.param.Cooldown)
+	if c.param.MinAge > 0 {
+		cutoff = time.Now().AddDate(0, 0, -c.param.MinAge)
 	}
 
 	lv, err := c.getLatestVersionFromReleases(ctx, logger, owner, repo, isStable, cutoff)
