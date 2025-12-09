@@ -1,27 +1,27 @@
-# Test Plan: `--cooldown` option
+# Test Plan: `--min-age` option
 
 ## Validation Tests
 
-### 1. Error when `--cooldown` is specified without `-u`
+### 1. Error when `--min-age` is specified without `-u`
 
 ```sh
-pinact run --cooldown 7
+pinact run --min-age 7
 ```
 
-**Expected**: Error message indicating `--cooldown requires --update (-u) flag`
+**Expected**: Error message indicating `--min-age requires --update (-u) flag`
 
-### 2. Error when `--cooldown` is negative
+### 2. Error when `--min-age` is negative
 
 ```sh
-pinact run -u --cooldown -1
+pinact run -u --min-age -1
 ```
 
-**Expected**: Error message indicating `--cooldown must be a non-negative integer`
+**Expected**: Error message indicating `--min-age must be a non-negative integer`
 
-### 3. `--cooldown 0` should work (no filtering)
+### 3. `--min-age 0` should work (no filtering)
 
 ```sh
-pinact run -u --cooldown 0
+pinact run -u --min-age 0
 ```
 
 **Expected**: Behaves same as `pinact run -u` (all versions eligible)
@@ -33,8 +33,10 @@ pinact run -u --cooldown 0
 Test with a repository that has GitHub Releases.
 
 ```sh
-# Use a large cooldown to skip recent releases
-pinact run -u --cooldown 9999 --log-level info
+# Use a large min-age to skip recent releases
+pinact run -u --min-age 9999 --log-level info
+# or using short alias
+pinact run -u -m 9999 --log-level info
 ```
 
 **Expected**:
@@ -46,7 +48,7 @@ pinact run -u --cooldown 9999 --log-level info
 Test with a repository that only uses tags (no releases).
 
 ```sh
-pinact run -u --cooldown 9999 --log-level info
+pinact run -u --min-age 9999 --log-level info
 ```
 
 **Expected**:
@@ -56,19 +58,19 @@ pinact run -u --cooldown 9999 --log-level info
 ### 6. Update to eligible version
 
 ```sh
-# Use small cooldown that allows some versions
-pinact run -u --cooldown 30 --log-level info
+# Use small min-age that allows some versions
+pinact run -u --min-age 30 --log-level info
 ```
 
 **Expected**:
 - Recent versions skipped (info logs)
 - Action updated to the latest eligible version (older than 30 days)
 
-### 7. No update when all versions are within cooldown
+### 7. No update when all versions are within min-age
 
 ```sh
-# Test with a very new action or large cooldown
-pinact run -u --cooldown 9999
+# Test with a very new action or large min-age
+pinact run -u --min-age 9999
 ```
 
 **Expected**: No changes to the file (current version retained)
@@ -79,21 +81,21 @@ pinact run -u --cooldown 9999
 
 Test with a repository that has both releases and tags with different dates.
 
-**Expected**: Cooldown filtering applied consistently
+**Expected**: Min-age filtering applied consistently
 
 ### 9. Commit fetch failure for tags
 
 Test scenario where commit cannot be fetched (e.g., deleted commit, API error).
 
 ```sh
-pinact run -u --cooldown 7 --log-level warn
+pinact run -u --min-age 7 --log-level warn
 ```
 
 **Expected**:
 - Warning log: `skip tag: failed to get commit for cooldown check`
 - That tag is skipped
 
-### 10. Stable version filtering combined with cooldown
+### 10. Stable version filtering combined with min-age
 
 Test with a prerelease current version and stable version:
 
@@ -102,10 +104,10 @@ Test with a prerelease current version and stable version:
 ```
 
 ```sh
-pinact run -u --cooldown 30
+pinact run -u --min-age 30
 ```
 
-**Expected**: Both prerelease filtering and cooldown filtering applied
+**Expected**: Both prerelease filtering and min-age filtering applied
 
 ## Test Workflow Files
 
@@ -130,5 +132,7 @@ jobs:
 Run:
 
 ```sh
-pinact run -u --cooldown 7 .github/workflows/test.yaml --log-level info
+pinact run -u --min-age 7 .github/workflows/test.yaml --log-level info
+# or
+pinact run -u -m 7 .github/workflows/test.yaml --log-level info
 ```

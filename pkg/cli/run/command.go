@@ -44,7 +44,7 @@ type Flags struct {
 	Include   []string
 	Exclude   []string
 	Args      []string
-	Cooldown  int
+	MinAge    int
 }
 
 // New creates a new run command for the CLI.
@@ -156,12 +156,13 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Destination: &flags.Exclude,
 			},
 			&cli.IntFlag{
-				Name:        "cooldown",
+				Name:        "min-age",
+				Aliases:     []string{"m"},
 				Usage:       "Skip versions released within the specified number of days (requires -u)",
-				Destination: &flags.Cooldown,
+				Destination: &flags.MinAge,
 				Validator: func(i int) error {
 					if i < 0 {
-						return errors.New("--cooldown must be a non-negative integer")
+						return errors.New("--min-age must be a non-negative integer")
 					}
 					return nil
 				},
@@ -278,8 +279,8 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 			review = nil
 		}
 	}
-	if flags.Cooldown > 0 && !flags.Update {
-		return errors.New("--cooldown requires --update (-u) flag")
+	if flags.MinAge > 0 && !flags.Update {
+		return errors.New("--min-age requires --update (-u) flag")
 	}
 	includes, err := parseIncludes(flags.Include)
 	if err != nil {
@@ -303,7 +304,7 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 		Review:            review,
 		Includes:          includes,
 		Excludes:          excludes,
-		Cooldown:          flags.Cooldown,
+		MinAge:            flags.MinAge,
 	}
 	if flags.FixIsSet {
 		param.Fix = flags.Fix
