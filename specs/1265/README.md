@@ -1,5 +1,9 @@
 # Spec: Add `--min-age` option to `pinact run`
 
+- [#1265](https://github.com/suzuki-shunsuke/pinact/pull/1265)
+- [#1266](https://github.com/suzuki-shunsuke/pinact/pull/1266)
+- [#1267](https://github.com/suzuki-shunsuke/pinact/pull/1267)
+
 ## Overview
 
 Add a `--min-age` (`-m`) option to `pinact run` that works in conjunction with the `-u` (update) option. This option filters update targets based on release age - only versions released more than the specified number of days ago will be considered for updates.
