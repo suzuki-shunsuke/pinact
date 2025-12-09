@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/hashicorp/go-version"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
@@ -19,6 +20,36 @@ type RepositoriesService interface {
 
 type PullRequestsService interface {
 	CreateComment(ctx context.Context, owner, repo string, number int, comment *github.PullRequestComment) (*github.PullRequestComment, *github.Response, error)
+}
+
+type GitService interface {
+	GetCommit(ctx context.Context, owner, repo, sha string) (*github.Commit, *github.Response, error)
+}
+
+type GitServiceImpl struct {
+	GitService GitService
+	Commits    map[string]*GetCommitResult
+}
+
+type GetCommitResult struct {
+	Commit   *github.Commit
+	Response *github.Response
+	err      error
+}
+
+// GetCommit retrieves a commit object with caching.
+func (g *GitServiceImpl) GetCommit(ctx context.Context, owner, repo, sha string) (*github.Commit, *github.Response, error) {
+	key := fmt.Sprintf("%s/%s/%s", owner, repo, sha)
+	if result, ok := g.Commits[key]; ok {
+		return result.Commit, result.Response, result.err
+	}
+	commit, resp, err := g.GitService.GetCommit(ctx, owner, repo, sha)
+	g.Commits[key] = &GetCommitResult{
+		Commit:   commit,
+		Response: resp,
+		err:      err,
+	}
+	return commit, resp, err //nolint:wrapcheck
 }
 
 // GetCommitSHA1 retrieves the commit SHA for a given reference with caching.
@@ -147,14 +178,21 @@ func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string
 // Returns the latest version string or an error.
 func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, owner, repo, currentVersion string) (string, error) {
 	isStable := isStableVersion(currentVersion)
-	lv, err := c.getLatestVersionFromReleases(ctx, logger, owner, repo, isStable)
+
+	// Calculate cutoff once for cooldown filtering
+	var cutoff time.Time
+	if c.param.Cooldown > 0 {
+		cutoff = time.Now().AddDate(0, 0, -c.param.Cooldown)
+	}
+
+	lv, err := c.getLatestVersionFromReleases(ctx, logger, owner, repo, isStable, cutoff)
 	if err != nil {
 		slogerr.WithError(logger, err).Debug("get the latest version from releases")
 	}
 	if lv != "" {
 		return lv, nil
 	}
-	return c.getLatestVersionFromTags(ctx, logger, owner, repo, isStable)
+	return c.getLatestVersionFromTags(ctx, logger, owner, repo, isStable, cutoff)
 }
 
 func isStableVersion(v string) bool {
@@ -201,10 +239,11 @@ func compare(latestSemver *version.Version, latestVersion, tag string) (*version
 //   - logger: slog logger for structured logging
 //   - owner: repository owner
 //   - repo: repository name
-//   - currentVersion: current version to check if stable (empty string to include all versions)
+//   - isStable: whether to filter out prerelease versions
+//   - cutoff: skip releases published after this time (zero value means no filtering)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool) (string, error) {
+func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool, cutoff time.Time) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
@@ -221,6 +260,13 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *s
 			continue
 		}
 		tag := release.GetTagName()
+		// Skip releases within cooldown period
+		if !cutoff.IsZero() && release.GetPublishedAt().After(cutoff) {
+			logger.Info("skip release due to cooldown",
+				"tag", tag,
+				"published_at", release.GetPublishedAt())
+			continue
+		}
 		ls, lv, err := compare(latestSemver, latestVersion, tag)
 		latestSemver = ls
 		latestVersion = lv
@@ -236,6 +282,26 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *s
 	return latestVersion, nil
 }
 
+// checkTagCooldown checks if a tag should be skipped due to cooldown period.
+// Returns true if the tag should be skipped.
+func (c *Controller) checkTagCooldown(ctx context.Context, logger *slog.Logger, owner, repo, tagName, sha string, cutoff time.Time) bool {
+	if cutoff.IsZero() || c.gitService == nil || sha == "" {
+		return false
+	}
+	commit, _, err := c.gitService.GetCommit(ctx, owner, repo, sha)
+	if err != nil {
+		slogerr.WithError(logger, err).Warn("skip tag: failed to get commit for cooldown check", "tag", tagName, "sha", sha)
+		return true
+	}
+	if commit.GetCommitter().GetDate().After(cutoff) {
+		logger.Info("skip tag due to cooldown",
+			"tag", tagName,
+			"committed_at", commit.GetCommitter().GetDate())
+		return true
+	}
+	return false
+}
+
 // getLatestVersionFromTags finds the latest version from repository tags.
 // It retrieves tags from GitHub API and compares them to find the highest
 // version using semantic versioning when possible, falling back to string comparison.
@@ -246,10 +312,11 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *s
 //   - logger: slog logger for structured logging
 //   - owner: repository owner
 //   - repo: repository name
-//   - currentVersion: current version to check if stable (empty string to include all versions)
+//   - isStable: whether to filter out prerelease versions
+//   - cutoff: skip tags committed after this time (zero value means no filtering)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool) (string, error) {
+func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool, cutoff time.Time) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
@@ -268,6 +335,11 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.
 			if tv, err := version.NewVersion(t); err == nil && tv.Prerelease() != "" {
 				continue
 			}
+		}
+
+		// Skip tags within cooldown period
+		if c.checkTagCooldown(ctx, logger, owner, repo, t, tag.GetCommit().GetSHA(), cutoff) {
+			continue
 		}
 
 		ls, lv, err := compare(latestSemver, latestVersion, t)

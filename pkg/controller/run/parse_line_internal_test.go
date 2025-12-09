@@ -204,7 +204,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
 					},
 				},
-			}, nil, fs, config.NewFinder(fs), config.NewReader(fs), &ParamRun{})
+			}, nil, nil, fs, config.NewFinder(fs), config.NewReader(fs), &ParamRun{})
 			line, err := ctrl.parseLine(t.Context(), logger, d.line)
 			if err != nil {
 				if d.isErr {

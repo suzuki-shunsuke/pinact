@@ -74,7 +74,7 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 		Releases:            map[string]*run.ListReleasesResult{},
 		Commits:             map[string]*run.GetCommitSHA1Result{},
 		RepositoriesService: gh.Repositories,
-	}, gh.PullRequests, afero.NewOsFs(), nil, nil, &run.ParamRun{
+	}, gh.PullRequests, nil, afero.NewOsFs(), nil, nil, &run.ParamRun{
 		WorkflowFilePaths: flags.Args,
 		ConfigFilePath:    flags.Config,
 		PWD:               pwd,
