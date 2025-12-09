@@ -15,7 +15,7 @@ Add a `--cooldown` option to `pinact run` that works in conjunction with the `-u
 
 - **Error**: If `--cooldown` is specified without `-u` option
 - **Error**: If `--cooldown` is given a negative value
-- **Default**: If `--cooldown` is not specified, all versions are eligible for update (existing behavior)
+- **Default**: If `--cooldown` is not specified or `--cooldown 0`, all versions are eligible for update (existing behavior)
 
 ## Use Case
 
