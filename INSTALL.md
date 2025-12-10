@@ -46,7 +46,7 @@ aqua g -i suzuki-shunsuke/pinact
 ## Build an executable binary from source code yourself using Go
 
 ```sh
-go install github.com/suzuki-shunsuke/pinact/cmd/pinact@latest
+go install github.com/suzuki-shunsuke/pinact/v3/cmd/pinact@latest
 ```
 
 ## GitHub Releases
