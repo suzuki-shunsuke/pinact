@@ -11,7 +11,9 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 
 	"github.com/google/go-github/v80/github"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/keyring/ghtoken"
@@ -92,4 +94,60 @@ func getHTTPClientForGitHub(ctx context.Context, logger *slog.Logger, token stri
 	return oauth2.NewClient(ctx, oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
 	))
+}
+
+// NewWithBaseURL creates a new GitHub API client with a custom base URL.
+// This is used for GitHub Enterprise Server instances.
+//
+// Parameters:
+//   - ctx: context for OAuth2 token source
+//   - logger: slog logger for structured logging
+//   - baseURL: base URL of the GHES instance (e.g., "https://ghes.example.com")
+//   - token: GitHub token for authentication
+//
+// Returns a configured GitHub API client or an error if the base URL is invalid.
+func NewWithBaseURL(ctx context.Context, logger *slog.Logger, baseURL, token string) (*Client, error) {
+	httpClient := getHTTPClientForGitHubWithToken(ctx, token)
+	client := github.NewClient(httpClient)
+	if baseURL != "" {
+		// Ensure base URL ends with /api/v3/
+		apiURL := strings.TrimSuffix(baseURL, "/") + "/api/v3/"
+		parsedURL, err := url.Parse(apiURL)
+		if err != nil {
+			return nil, err
+		}
+		client.BaseURL = parsedURL
+	}
+	return client, nil
+}
+
+// getHTTPClientForGitHubWithToken creates an HTTP client with a specific token.
+// Unlike getHTTPClientForGitHub, this does not fall back to keyring.
+//
+// Parameters:
+//   - ctx: context for OAuth2 token source
+//   - token: GitHub token for authentication (empty string for unauthenticated)
+//
+// Returns an HTTP client configured for GitHub API access.
+func getHTTPClientForGitHubWithToken(ctx context.Context, token string) *http.Client {
+	if token == "" {
+		return http.DefaultClient
+	}
+	return oauth2.NewClient(ctx, oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: token},
+	))
+}
+
+// GetGHESToken retrieves the GitHub token for a GHES instance from environment variables.
+// The environment variable name is derived from the host: GITHUB_TOKEN_<host>
+// where dots and hyphens in the host are replaced with underscores.
+//
+// Parameters:
+//   - host: hostname of the GHES instance (e.g., "ghes.example.com")
+//
+// Returns the GitHub token string or empty string if not set.
+func GetGHESToken(host string) string {
+	// Convert host to env var name: ghes.example.com -> ghes_example_com
+	envName := "GITHUB_TOKEN_" + strings.ReplaceAll(strings.ReplaceAll(host, ".", "_"), "-", "_")
+	return os.Getenv(envName)
 }

@@ -25,6 +25,13 @@
           },
           "type": "array",
           "description": "Actions and reusable workflows that pinact ignores"
+        },
+        "ghes": {
+          "items": {
+            "$ref": "#/$defs/GHES"
+          },
+          "type": "array",
+          "description": "GitHub Enterprise Server configurations"
         }
       },
       "additionalProperties": false,
@@ -40,6 +47,27 @@
       "type": "object",
       "required": [
         "pattern"
+      ]
+    },
+    "GHES": {
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "Hostname of the GHES instance"
+        },
+        "actions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Regular expression patterns to match action names (owner/repo)"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "host",
+        "actions"
       ]
     },
     "IgnoreAction": {

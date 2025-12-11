@@ -261,6 +261,19 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 
 	gh := github.New(ctx, logger.Logger)
 	fs := afero.NewOsFs()
+
+	// Read config first to get GHES settings
+	cfgFinder := config.NewFinder(fs)
+	cfgReader := config.NewReader(fs)
+	configPath, err := cfgFinder.Find(flags.Config)
+	if err != nil {
+		return fmt.Errorf("find configuration file: %w", err)
+	}
+	cfg := &config.Config{}
+	if err := cfgReader.Read(cfg, configPath); err != nil {
+		return fmt.Errorf("read configuration file: %w", err)
+	}
+
 	var review *run.Review
 	if flags.Review {
 		review = &run.Review{
@@ -319,7 +332,31 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 	}, gh.PullRequests, &run.GitServiceImpl{
 		GitService: gh.Git,
 		Commits:    map[string]*run.GetCommitResult{},
-	}, fs, config.NewFinder(fs), config.NewReader(fs), param)
+	}, fs, cfgFinder, cfgReader, param)
+
+	// Set up GHES support if configured
+	if len(cfg.GHES) > 0 {
+		registry, err := github.NewClientRegistry(ctx, logger.Logger, gh, cfg.GHES)
+		if err != nil {
+			return fmt.Errorf("create GitHub client registry: %w", err)
+		}
+		ctrl.SetClientRegistry(registry)
+
+		// Create services for each GHES host
+		for _, ghes := range cfg.GHES {
+			client := registry.GetClient(ghes.Host)
+			ctrl.SetGHESServices(ghes.Host, &run.RepositoriesServiceImpl{
+				Tags:                map[string]*run.ListTagsResult{},
+				Releases:            map[string]*run.ListReleasesResult{},
+				Commits:             map[string]*run.GetCommitSHA1Result{},
+				RepositoriesService: client.Repositories,
+			}, &run.GitServiceImpl{
+				GitService: client.Git,
+				Commits:    map[string]*run.GetCommitResult{},
+			})
+		}
+	}
+
 	return ctrl.Run(ctx, logger.Logger) //nolint:wrapcheck
 }
 

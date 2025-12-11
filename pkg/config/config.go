@@ -22,6 +22,13 @@ type Config struct {
 	Version       int             `json:"version,omitempty" jsonschema:"enum=2,enum=3"`
 	Files         []*File         `json:"files,omitempty" jsonschema:"description=Target files. If files are passed via positional command line arguments, this is ignored"`
 	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores"`
+	GHES          []*GHES         `json:"ghes,omitempty" yaml:"ghes" jsonschema:"description=GitHub Enterprise Server configurations"`
+}
+
+type GHES struct {
+	Host           string   `json:"host" jsonschema:"description=Hostname of the GHES instance"`
+	Actions        []string `json:"actions" jsonschema:"description=Regular expression patterns to match action names (owner/repo)"`
+	actionPatterns []*regexp.Regexp
 }
 
 type File struct {
@@ -198,6 +205,44 @@ func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
 	return ia.refRegexp.FindString(ref) == ref, nil
 }
 
+// Init initializes and validates a GHES configuration.
+// It validates the host and compiles action patterns as regular expressions.
+//
+// Returns an error if validation or compilation fails.
+func (g *GHES) Init() error {
+	if g.Host == "" {
+		return errors.New("ghes.host is required")
+	}
+	if len(g.Actions) == 0 {
+		return errors.New("ghes.actions is required")
+	}
+	g.actionPatterns = make([]*regexp.Regexp, len(g.Actions))
+	for i, pattern := range g.Actions {
+		r, err := regexp.Compile(pattern)
+		if err != nil {
+			return fmt.Errorf("compile ghes.actions pattern as a regular expression: %w", err)
+		}
+		g.actionPatterns[i] = r
+	}
+	return nil
+}
+
+// Match checks if an action name matches any of the GHES action patterns.
+// It evaluates the action name against all compiled patterns.
+//
+// Parameters:
+//   - actionName: action name to match (format: owner/repo)
+//
+// Returns true if the action matches any pattern, false otherwise.
+func (g *GHES) Match(actionName string) bool {
+	for _, pattern := range g.actionPatterns {
+		if pattern.FindString(actionName) == actionName {
+			return true
+		}
+	}
+	return false
+}
+
 // getConfigPath searches for a pinact configuration file in standard locations.
 // It checks for .pinact.yaml, .github/pinact.yaml, .pinact.yml, and .github/pinact.yml
 // in order of preference.
@@ -300,6 +345,11 @@ func (r *Reader) Read(cfg *Config, configFilePath string) error {
 	for _, ia := range cfg.IgnoreActions {
 		if err := ia.Init(cfg.Version); err != nil {
 			return fmt.Errorf("initialize ignore_action: %w", err)
+		}
+	}
+	for _, ghes := range cfg.GHES {
+		if err := ghes.Init(); err != nil {
+			return fmt.Errorf("initialize ghes: %w", err)
 		}
 	}
 	return nil

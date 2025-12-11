@@ -237,14 +237,15 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, ac
 	default:
 		return "", ErrCantPinned
 	}
+	repoService := c.getRepositoriesService(action.Name)
 	// @xxx
 	if c.param.Update {
 		// get the latest version
-		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.Version)
+		lv, err := c.getLatestVersion(ctx, logger, action.Name, action.RepoOwner, action.RepoName, action.Version)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
-		sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
+		sha, _, err := repoService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
 		if err != nil {
 			return "", fmt.Errorf("get a reference: %w", err)
 		}
@@ -254,7 +255,7 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, ac
 	// Get commit hash from tag
 	// https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#get-a-reference
 	// > The :ref in the URL must be formatted as heads/<branch name> for branches and tags/<tag name> for tags. If the :ref doesn't match an existing ref, a 404 is returned.
-	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Version, "")
+	sha, _, err := repoService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.Version, "")
 	if err != nil {
 		return "", fmt.Errorf("get a reference: %w", err)
 	}
@@ -307,7 +308,7 @@ func (c *Controller) parseSemverTagLine(ctx context.Context, logger *slog.Logger
 	// @xxx # v3.0.0
 	if c.param.Update { //nolint:nestif
 		// get the latest version
-		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment)
+		lv, err := c.getLatestVersion(ctx, logger, action.Name, action.RepoOwner, action.RepoName, action.VersionComment)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
@@ -322,7 +323,8 @@ func (c *Controller) parseSemverTagLine(ctx context.Context, logger *slog.Logger
 			return "", nil
 		}
 		if action.VersionComment != lv {
-			sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
+			repoService := c.getRepositoriesService(action.Name)
+			sha, _, err := repoService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
 			if err != nil {
 				return "", fmt.Errorf("get the latest version: %w", err)
 			}
@@ -361,11 +363,12 @@ func (c *Controller) parseShortSemverTagLine(ctx context.Context, logger *slog.L
 		return "", ErrCantPinned
 	}
 	if c.param.Update {
-		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment)
+		lv, err := c.getLatestVersion(ctx, logger, action.Name, action.RepoOwner, action.RepoName, action.VersionComment)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
-		sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
+		repoService := c.getRepositoriesService(action.Name)
+		sha, _, err := repoService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
@@ -415,9 +418,10 @@ func (c *Controller) getLongVersionFromSHA(ctx context.Context, action *Action, 
 	opts := &github.ListOptions{
 		PerPage: 100, //nolint:mnd
 	}
+	repoService := c.getRepositoriesService(action.Name)
 	// Get long tag from commit hash
 	for range 10 {
-		tags, resp, err := c.repositoriesService.ListTags(ctx, action.RepoOwner, action.RepoName, opts)
+		tags, resp, err := repoService.ListTags(ctx, action.RepoOwner, action.RepoName, opts)
 		if err != nil {
 			return "", fmt.Errorf("list tags: %w", err)
 		}
@@ -476,7 +480,8 @@ func (c *Controller) parseActionName(action *Action) bool {
 //
 // Returns an error if verification fails, nil if successful.
 func (c *Controller) verify(ctx context.Context, action *Action) error {
-	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.VersionComment, "")
+	repoService := c.getRepositoriesService(action.Name)
+	sha, _, err := repoService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, action.VersionComment, "")
 	if err != nil {
 		return fmt.Errorf("get a commit hash: %w", err)
 	}
