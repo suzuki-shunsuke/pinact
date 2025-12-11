@@ -12,6 +12,69 @@ import (
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
+const publicAPI = "https://api.github.com"
+
+var (
+	// Explicit errors for clarity when tokens are missing
+	ErrMissingEnterpriseToken = errors.New("GITHUB_API_SERVER is enterprise but GITHUB_TOKEN is empty: a token is required for enterprise requests")
+	ErrMissingPublicToken     = errors.New("GITHUB_API_SERVER is public but GITHUB_TOKEN is empty: a token is required for github.com requests")
+)
+
+// EnvConfig selects API servers and tokens based on environment.
+type EnvConfig struct {
+	APIServer      string // GITHUB_API_SERVER (defaults to publicAPI)
+	EnvToken       string // GITHUB_TOKEN for CURRENT environment (enterprise or public)
+	GithubComToken string // GITHUB_COM_TOKEN for github.com under enterprise
+}
+
+func loadEnvConfig() *EnvConfig {
+	api := strings.TrimSpace(os.Getenv("GITHUB_API_SERVER"))
+	if api == "" {
+		api = publicAPI
+	}
+	return &EnvConfig{
+		APIServer:      api,
+		EnvToken:       strings.TrimSpace(os.Getenv("GITHUB_TOKEN")),
+		GithubComToken: strings.TrimSpace(os.Getenv("GITHUB_COM_TOKEN")),
+	}
+}
+
+func (e *EnvConfig) isEnterprise() bool {
+	return e.APIServer != "" && e.APIServer != publicAPI
+}
+
+// httpClients bundle http clients and base URLs for enterprise/public.
+type httpClients struct {
+	enterprise        *http.Client // used when enterprise is configured
+	public            *http.Client // may be unauthenticated if GITHUB_COM_TOKEN is empty
+	baseEnterpriseURL string
+}
+
+func newHTTPClientsFromEnv() (*httpClients, error) {
+	env := loadEnvConfig()
+	if env.isEnterprise() {
+		if env.EnvToken == "" {
+			return nil, ErrMissingEnterpriseToken
+		}
+		ent := &http.Client{Timeout: 30 * time.Second}
+		pub := &http.Client{Timeout: 30 * time.Second} // fallback; auth managed downstream
+		return &httpClients{
+			enterprise:        ent,
+			public:            pub,
+			baseEnterpriseURL: strings.TrimRight(env.APIServer, "/"),
+		}, nil
+	}
+
+	// Public-only mode: require GITHUB_TOKEN for github.com
+	if env.EnvToken == "" {
+		return nil, ErrMissingPublicToken
+	}
+	pub := &http.Client{Timeout: 30 * time.Second}
+	return &httpClients{
+		public: pub,
+	}, nil
+}
+
 type RepositoriesService interface {
 	ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error)
 	GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error)
