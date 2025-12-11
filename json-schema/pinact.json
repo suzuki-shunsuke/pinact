@@ -52,6 +52,13 @@
           "type": "string",
           "description": "Base URL of the GHES instance (e.g. https://ghes.example.com)"
         },
+        "owners": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Repository owners to match (exact match)"
+        },
         "repos": {
           "items": {
             "type": "string"
@@ -63,8 +70,7 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "base_url",
-        "repos"
+        "base_url"
       ]
     },
     "IgnoreAction": {

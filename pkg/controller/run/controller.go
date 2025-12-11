@@ -38,7 +38,7 @@ type ConfigReader interface {
 }
 
 type ClientRegistry interface {
-	ResolveHost(actionName string) bool
+	ResolveHost(owner, repoFullName string) bool
 }
 
 // New creates a new Controller for running pinact operations.
@@ -89,35 +89,37 @@ func (c *Controller) SetGHESServices(repoService RepositoriesService, gitService
 	c.ghesGitService = gitService
 }
 
-// getRepositoriesService returns the appropriate repositories service for an action.
-// It resolves whether the action should use GHES and returns the corresponding service.
+// getRepositoriesService returns the appropriate repositories service for a repository.
+// It resolves whether the repository should use GHES and returns the corresponding service.
 //
 // Parameters:
-//   - actionName: action name to get service for (format: owner/repo)
+//   - owner: repository owner
+//   - repoFullName: full repository name (format: owner/repo)
 //
-// Returns the repositories service for the action's host.
-func (c *Controller) getRepositoriesService(actionName string) RepositoriesService {
+// Returns the repositories service for the repository's host.
+func (c *Controller) getRepositoriesService(owner, repoFullName string) RepositoriesService {
 	if c.clientRegistry == nil {
 		return c.repositoriesService
 	}
-	if c.clientRegistry.ResolveHost(actionName) && c.ghesRepoService != nil {
+	if c.clientRegistry.ResolveHost(owner, repoFullName) && c.ghesRepoService != nil {
 		return c.ghesRepoService
 	}
 	return c.repositoriesService
 }
 
-// getGitService returns the appropriate git service for an action.
-// It resolves whether the action should use GHES and returns the corresponding service.
+// getGitService returns the appropriate git service for a repository.
+// It resolves whether the repository should use GHES and returns the corresponding service.
 //
 // Parameters:
-//   - actionName: action name to get service for (format: owner/repo)
+//   - owner: repository owner
+//   - repoFullName: full repository name (format: owner/repo)
 //
-// Returns the git service for the action's host.
-func (c *Controller) getGitService(actionName string) *GitServiceImpl {
+// Returns the git service for the repository's host.
+func (c *Controller) getGitService(owner, repoFullName string) *GitServiceImpl {
 	if c.clientRegistry == nil {
 		return c.gitService
 	}
-	if c.clientRegistry.ResolveHost(actionName) && c.ghesGitService != nil {
+	if c.clientRegistry.ResolveHost(owner, repoFullName) && c.ghesGitService != nil {
 		return c.ghesGitService
 	}
 	return c.gitService

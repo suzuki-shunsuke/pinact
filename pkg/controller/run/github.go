@@ -186,8 +186,8 @@ func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, 
 	}
 
 	repoFullName := owner + "/" + repo
-	repoService := c.getRepositoriesService(repoFullName)
-	gitService := c.getGitService(repoFullName)
+	repoService := c.getRepositoriesService(owner, repoFullName)
+	gitService := c.getGitService(owner, repoFullName)
 
 	lv, err := c.getLatestVersionFromReleases(ctx, logger, repoService, owner, repo, isStable, cutoff)
 	if err != nil {

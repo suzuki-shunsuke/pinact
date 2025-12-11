@@ -14,7 +14,11 @@ pinact supports one GHES instance in addition to github.com:
 
 ### 2. Repository Routing
 
-Repositories are routed to GHES or github.com based on regex pattern matching in the configuration file.
+Repositories are routed to GHES or github.com based on:
+- `owners`: Exact match against the repository owner
+- `repos`: Regular expression match against `owner/repo`
+
+These are evaluated with OR logic - at least one of them must be configured.
 
 ### 3. Token Management
 
@@ -43,7 +47,8 @@ type Config struct {
 
 type GHES struct {
     BaseURL      string   `json:"base_url" yaml:"base_url"`
-    Repos        []string `json:"repos"`
+    Owners       []string `json:"owners,omitempty"`
+    Repos        []string `json:"repos,omitempty"`
     repoPatterns []*regexp.Regexp
 }
 ```
@@ -53,11 +58,13 @@ Update GHES methods:
 ```go
 func (g *GHES) Init() error {
     // Validate base_url
+    // Validate that at least one of owners or repos is configured
     // Compile repo patterns as regular expressions
 }
 
-func (g *GHES) Match(repoName string) bool {
-    // Check if repoName matches any pattern
+func (g *GHES) Match(owner, repoFullName string) bool {
+    // Check if owner matches any entry in Owners (exact match)
+    // OR if repoFullName matches any pattern in Repos (regex match)
 }
 ```
 
@@ -170,28 +177,35 @@ if cfg.GHES != nil {
       "type": "string",
       "description": "Base URL of the GHES instance"
     },
+    "owners": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Repository owners to match (exact match)"
+    },
     "repos": {
       "type": "array",
       "items": { "type": "string" },
       "description": "Regular expression patterns to match repository names"
     }
   },
-  "required": ["base_url", "repos"]
+  "required": ["base_url"]
 }
 ```
+
+Note: At least one of `owners` or `repos` must be configured (validated at runtime).
 
 ## File Change Summary
 
 | File | Change Type | Description |
 |------|-------------|-------------|
-| `pkg/config/config.go` | Modify | Change GHES to single object, actions → repos |
+| `pkg/config/config.go` | Modify | Add owners field, update Match to check both owners and repos |
 | `pkg/github/github.go` | Modify | Simplify GetGHESToken to check multiple env vars |
 | `pkg/github/registry.go` | Modify | Simplify to single GHES client |
 | `pkg/controller/run/controller.go` | Modify | Simplify to single GHES service |
 | `pkg/controller/run/github.go` | Modify | Remove actionName parameter from version methods |
 | `pkg/controller/run/parse_line.go` | Modify | Get service once per method |
 | `pkg/cli/run/command.go` | Modify | Update initialization for single GHES |
-| `json-schema/pinact.json` | Modify | Change ghes to object, actions → repos |
+| `json-schema/pinact.json` | Modify | Add owners field, make repos optional |
 
 ## Error Handling
 
@@ -199,6 +213,7 @@ if cfg.GHES != nil {
 2. **Invalid regex pattern**: Report error during config initialization with pattern details
 3. **GHES API failure**: Return error without fallback to github.com
 4. **Invalid base_url**: Validate URL format during config initialization
+5. **Missing owners and repos**: Return error if neither `owners` nor `repos` is configured
 
 ## Migration Notes
 

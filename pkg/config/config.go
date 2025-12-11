@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"path"
 	"regexp"
+	"slices"
 
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
@@ -27,7 +28,8 @@ type Config struct {
 
 type GHES struct {
 	BaseURL      string   `json:"base_url" yaml:"base_url" jsonschema:"description=Base URL of the GHES instance (e.g. https://ghes.example.com)"`
-	Repos        []string `json:"repos" jsonschema:"description=Regular expression patterns to match repository names (owner/repo)"`
+	Owners       []string `json:"owners,omitempty" jsonschema:"description=Repository owners to match (exact match)"`
+	Repos        []string `json:"repos,omitempty" jsonschema:"description=Regular expression patterns to match repository names (owner/repo)"`
 	repoPatterns []*regexp.Regexp
 }
 
@@ -207,14 +209,15 @@ func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
 
 // Init initializes and validates a GHES configuration.
 // It validates the base_url and compiles repo patterns as regular expressions.
+// At least one of owners or repos must be configured.
 //
 // Returns an error if validation or compilation fails.
 func (g *GHES) Init() error {
 	if g.BaseURL == "" {
 		return errors.New("ghes.base_url is required")
 	}
-	if len(g.Repos) == 0 {
-		return errors.New("ghes.repos is required")
+	if len(g.Owners) == 0 && len(g.Repos) == 0 {
+		return errors.New("ghes.owners or ghes.repos is required")
 	}
 	g.repoPatterns = make([]*regexp.Regexp, len(g.Repos))
 	for i, pattern := range g.Repos {
@@ -227,16 +230,23 @@ func (g *GHES) Init() error {
 	return nil
 }
 
-// Match checks if a repository name matches any of the GHES repo patterns.
-// It evaluates the repository name against all compiled patterns.
+// Match checks if a repository matches any of the GHES patterns.
+// It evaluates the owner against the owners list (exact match) OR
+// the full repository name against the repos patterns (regex match).
 //
 // Parameters:
-//   - repoName: repository name to match (format: owner/repo)
+//   - owner: repository owner to match
+//   - repoFullName: full repository name to match (format: owner/repo)
 //
-// Returns true if the repository matches any pattern, false otherwise.
-func (g *GHES) Match(repoName string) bool {
+// Returns true if the repository matches any owner or pattern, false otherwise.
+func (g *GHES) Match(owner, repoFullName string) bool {
+	// Check owners (exact match)
+	if slices.Contains(g.Owners, owner) {
+		return true
+	}
+	// Check repos (regex match)
 	for _, pattern := range g.repoPatterns {
-		if pattern.FindString(repoName) == repoName {
+		if pattern.FindString(repoFullName) == repoFullName {
 			return true
 		}
 	}
