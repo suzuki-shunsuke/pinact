@@ -99,15 +99,6 @@ func (r *RepositoriesServiceImpl) SetServices(defaultService, ghesService Reposi
 // GetCommitSHA1 retrieves the commit SHA for a given reference with caching.
 // It first checks the cache and returns cached results if available.
 // Otherwise, it calls the underlying service and caches the result.
-//
-// Parameters:
-//   - ctx: context for cancellation and timeout control
-//   - owner: repository owner
-//   - repo: repository name
-//   - ref: reference (tag, branch, or commit)
-//   - lastSHA: last known SHA for optimization
-//
-// Returns the commit SHA, GitHub response, and any error.
 func (r *RepositoriesServiceImpl) GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%s", owner, repo, ref)
 	a, ok := r.Commits[key]
@@ -133,14 +124,6 @@ type GetCommitSHA1Result struct {
 // ListTags retrieves repository tags with caching.
 // It first checks the cache and returns cached results if available.
 // Otherwise, it calls the underlying service and caches the result.
-//
-// Parameters:
-//   - ctx: context for cancellation and timeout control
-//   - owner: repository owner
-//   - repo: repository name
-//   - opts: GitHub API options for pagination and filtering
-//
-// Returns repository tags, GitHub response, and any error.
 func (r *RepositoriesServiceImpl) ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%v", owner, repo, opts.Page)
 	a, ok := r.Tags[key]
@@ -160,14 +143,6 @@ func (r *RepositoriesServiceImpl) ListTags(ctx context.Context, owner string, re
 // ListReleases retrieves repository releases with caching.
 // It first checks the cache and returns cached results if available.
 // Otherwise, it calls the underlying service and caches the result.
-//
-// Parameters:
-//   - ctx: context for cancellation and timeout control
-//   - owner: repository owner
-//   - repo: repository name
-//   - opts: GitHub API options for pagination and filtering
-//
-// Returns repository releases, GitHub response, and any error.
 func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%v", owner, repo, opts.Page)
 	a, ok := r.Releases[key]
@@ -221,15 +196,6 @@ func (p *PullRequestsServiceImpl) CreateComment(ctx context.Context, owner, repo
 // getLatestVersion determines the latest version of a repository.
 // It first tries to get the latest version from releases, and if that fails
 // or returns empty, it falls back to getting the latest version from tags.
-//
-// Parameters:
-//   - ctx: context for cancellation and timeout control
-//   - logger: slog logger for structured logging
-//   - owner: repository owner
-//   - repo: repository name
-//   - currentVersion: current version to check if stable (empty string to include all versions)
-//
-// Returns the latest version string or an error.
 func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, owner, repo, currentVersion string) (string, error) {
 	isStable := isStableVersion(currentVersion)
 
@@ -260,13 +226,6 @@ func isStableVersion(v string) bool {
 // compare evaluates a tag against the current latest version.
 // It attempts to parse the tag as semantic version and compares it.
 // If parsing fails, it falls back to string comparison.
-//
-// Parameters:
-//   - latestSemver: current latest semantic version
-//   - latestVersion: current latest version string
-//   - tag: new tag to compare
-//
-// Returns the updated latest semantic version, latest version string, and any error.
 func compare(latestSemver *version.Version, latestVersion, tag string) (*version.Version, string, error) {
 	v, err := version.NewVersion(tag)
 	if err != nil {
@@ -287,16 +246,6 @@ func compare(latestSemver *version.Version, latestVersion, tag string) (*version
 // getLatestVersionFromReleases finds the latest version from repository releases.
 // It retrieves releases from GitHub API and compares them to find the highest
 // version using semantic versioning when possible, falling back to string comparison.
-//
-// Parameters:
-//   - ctx: context for cancellation and timeout control
-//   - logger: slog logger for structured logging
-//   - owner: repository owner
-//   - repo: repository name
-//   - isStable: whether to filter out prerelease versions
-//   - cutoff: skip releases published after this time (zero value means no filtering)
-//
-// Returns the latest version string or an error.
 func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool, cutoff time.Time) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
@@ -337,7 +286,7 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *s
 }
 
 // checkTagCooldown checks if a tag should be skipped due to cooldown period.
-// Returns true if the tag should be skipped.
+// It returns true if the tag should be skipped.
 func checkTagCooldown(ctx context.Context, logger *slog.Logger, gitService *GitServiceImpl, owner, repo, tagName, sha string, cutoff time.Time) bool {
 	if cutoff.IsZero() || gitService == nil || sha == "" {
 		return false
@@ -360,16 +309,6 @@ func checkTagCooldown(ctx context.Context, logger *slog.Logger, gitService *GitS
 // It retrieves tags from GitHub API and compares them to find the highest
 // version using semantic versioning when possible, falling back to string comparison.
 // It filters out prerelease versions when currentVersion is stable.
-//
-// Parameters:
-//   - ctx: context for cancellation and timeout control
-//   - logger: slog logger for structured logging
-//   - owner: repository owner
-//   - repo: repository name
-//   - isStable: whether to filter out prerelease versions
-//   - cutoff: skip tags committed after this time (zero value means no filtering)
-//
-// Returns the latest version string or an error.
 func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool, cutoff time.Time) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
@@ -413,16 +352,6 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.
 // review creates a pull request review comment.
 // It constructs a comment with either a suggestion or error message and
 // posts it to the specified pull request using the GitHub API.
-//
-// Parameters:
-//   - ctx: context for cancellation and timeout control
-//   - filePath: path to the file being reviewed
-//   - sha: commit SHA for the review
-//   - line: line number in the file
-//   - suggestion: code suggestion text (mutually exclusive with err)
-//   - err: error to report (mutually exclusive with suggestion)
-//
-// Returns the HTTP status code and any error.
 func (c *Controller) review(ctx context.Context, filePath, sha string, line int, suggestion string, err error) (int, error) {
 	cmt := &github.PullRequestComment{
 		Body: github.Ptr(""),

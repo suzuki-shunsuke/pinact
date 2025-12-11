@@ -41,9 +41,8 @@ type Review struct {
 }
 
 // Valid checks if the review configuration has all required fields.
-// It validates that repo owner, repo name, and pull request number are set.
-//
-// Returns true if the review configuration is valid for creating reviews.
+// It validates that repo owner, repo name, and pull request number are set,
+// returning true if the review configuration is valid for creating reviews.
 func (r *Review) Valid() bool {
 	return r != nil && r.RepoOwner != "" && r.RepoName != "" && r.PullRequest > 0
 }
@@ -51,7 +50,6 @@ func (r *Review) Valid() bool {
 // Run executes the main pinact operation.
 // It searches for workflow files and processes each file
 // to pin GitHub Actions versions according to the specified parameters.
-// Returns an error if the operation fails or actions are not pinned in check mode.
 func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	workflowFilePaths, err := c.searchFiles()
 	if err != nil {
@@ -93,13 +91,6 @@ type Line struct {
 // runWorkflow processes a single workflow file.
 // It reads the file line by line, parses each line for actions,
 // applies transformations, and optionally writes changes back to the file.
-//
-// Parameters:
-//   - ctx: context for cancellation and timeout control
-//   - logger: slog logger for structured logging
-//   - workflowFilePath: path to the workflow file to process
-//
-// Returns an error if processing fails or actions are not pinned in check mode.
 func (c *Controller) runWorkflow(ctx context.Context, logger *slog.Logger, workflowFilePath string) error { //nolint:cyclop
 	lines, err := c.readWorkflow(workflowFilePath)
 	if err != nil {
@@ -155,12 +146,6 @@ func (c *Controller) runWorkflow(ctx context.Context, logger *slog.Logger, workf
 // handleParseLineError handles errors that occur during line parsing.
 // It outputs error messages, creates GitHub Actions annotations, and
 // optionally creates pull request review comments.
-//
-// Parameters:
-//   - ctx: context for cancellation and timeout control
-//   - logger: slog logger for structured logging
-//   - line: line information where the error occurred
-//   - gErr: error that occurred during parsing
 func (c *Controller) handleParseLineError(ctx context.Context, logger *slog.Logger, line *Line, gErr error) {
 	// Output error
 	c.logger.Output(levelError, "failed to handle a line: "+gErr.Error(), line, "")
@@ -193,12 +178,6 @@ func (c *Controller) handleParseLineError(ctx context.Context, logger *slog.Logg
 // handleChangedLine handles lines that have been modified.
 // It creates review comments, GitHub Actions annotations, and outputs
 // diff information depending on the operation mode.
-//
-// Parameters:
-//   - ctx: context for cancellation and timeout control
-//   - logger: slog logger for structured logging
-//   - line: original line information
-//   - newLine: modified line content
 func (c *Controller) handleChangedLine(ctx context.Context, logger *slog.Logger, line *Line, newLine string) { //nolint:cyclop
 	reviewed := false
 	if c.param.Review != nil {
@@ -240,11 +219,6 @@ func (c *Controller) handleChangedLine(ctx context.Context, logger *slog.Logger,
 // readWorkflow reads a workflow file and returns its lines.
 // It opens the file and scans it line by line, returning all lines
 // as a slice of strings.
-//
-// Parameters:
-//   - workflowFilePath: path to the workflow file to read
-//
-// Returns a slice of lines from the file and any error encountered.
 func (c *Controller) readWorkflow(workflowFilePath string) ([]string, error) {
 	workflowReadFile, err := os.Open(workflowFilePath)
 	if err != nil {

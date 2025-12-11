@@ -18,13 +18,6 @@ type ClientRegistry struct {
 
 // NewClientRegistry creates a new ClientRegistry with clients for github.com
 // and optionally a GHES instance.
-//
-// Parameters:
-//   - ctx: context for OAuth2 token source
-//   - defaultClient: pre-configured client for github.com
-//   - ghes: GHES configuration from the config file (can be nil)
-//
-// Returns a configured ClientRegistry or an error if GHES client creation fails.
 func NewClientRegistry(ctx context.Context, defaultClient *Client, ghes *config.GHES) (*ClientRegistry, error) {
 	registry := &ClientRegistry{
 		defaultClient: defaultClient,
@@ -43,20 +36,14 @@ func NewClientRegistry(ctx context.Context, defaultClient *Client, ghes *config.
 	return registry, nil
 }
 
-// GetGHESClient returns the GHES client if configured.
-//
-// Returns the GHES client or nil if not configured.
+// GetGHESClient returns the GHES client if configured, or nil if not configured.
 func (r *ClientRegistry) GetGHESClient() *Client {
 	return r.ghesClient
 }
 
 // ResolveHost determines whether a repository should use GHES.
-// It checks the owner against the GHES configuration.
-//
-// Parameters:
-//   - owner: repository owner
-//
-// Returns true if the repository should use GHES, false for github.com.
+// It checks the owner against the GHES configuration and returns true
+// if the repository should use GHES, false for github.com.
 func (r *ClientRegistry) ResolveHost(owner string) bool {
 	if r.ghesConfig == nil {
 		return false

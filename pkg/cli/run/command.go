@@ -50,12 +50,6 @@ type Flags struct {
 // New creates a new run command for the CLI.
 // It initializes a runner with the provided logger and returns
 // the configured CLI command for pinning GitHub Actions versions.
-//
-// Parameters:
-//   - logger: slog logger for structured logging
-//   - logLevelVar: slog level variable for dynamic log level changes
-//
-// Returns a pointer to the configured CLI command.
 func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command {
 	r := &runner{}
 	return r.Command(logger, globalFlags)
@@ -67,8 +61,6 @@ type runner struct{}
 // It defines all flags, options, and the action handler for the run subcommand.
 // This command handles the core pinning functionality with various modes
 // like check, diff, fix, update, and review.
-//
-// Returns a pointer to the configured CLI command.
 func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command { //nolint:funlen
 	flags := &Flags{GlobalFlags: globalFlags}
 	return &cli.Command{
@@ -178,9 +170,8 @@ type Event struct {
 }
 
 // RepoName extracts the repository name from the GitHub event.
-// It safely accesses the repository information from the event payload.
-//
-// Returns the repository name or empty string if not available.
+// It safely accesses the repository information from the event payload
+// and returns the repository name or empty string if not available.
 func (e *Event) RepoName() string {
 	if e != nil && e.Repository != nil {
 		return e.Repository.Name
@@ -189,9 +180,8 @@ func (e *Event) RepoName() string {
 }
 
 // PRNumber extracts the pull request or issue number from the GitHub event.
-// It checks both pull request and issue fields to find the number.
-//
-// Returns the PR/issue number or 0 if not available.
+// It checks both pull request and issue fields to find the number
+// and returns the PR/issue number or 0 if not available.
 func (e *Event) PRNumber() int {
 	if e == nil {
 		return 0
@@ -206,9 +196,8 @@ func (e *Event) PRNumber() int {
 }
 
 // SHA extracts the commit SHA from the GitHub event.
-// It looks for the SHA in the pull request head information.
-//
-// Returns the commit SHA or empty string if not available.
+// It looks for the SHA in the pull request head information
+// and returns the commit SHA or empty string if not available.
 func (e *Event) SHA() string {
 	if e == nil {
 		return ""
@@ -264,7 +253,6 @@ func readConfig(fs afero.Fs, configFilePath string) (*config.Config, error) {
 // action executes the main run command logic.
 // It configures logging, processes GitHub Actions context, parses includes/excludes,
 // sets up the controller, and executes the pinning operation.
-// Returns an error if the operation fails.
 func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Flags) error {
 	isGitHubActions := os.Getenv("GITHUB_ACTIONS") == "true"
 	if isGitHubActions {
@@ -312,11 +300,6 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 
 // parseIncludes compiles include regular expressions from command-line options.
 // These patterns are used to filter which actions should be processed.
-//
-// Parameters:
-//   - opts: slice of include pattern strings
-//
-// Returns compiled regular expressions or an error if compilation fails.
 func parseIncludes(opts []string) ([]*regexp.Regexp, error) {
 	includes := make([]*regexp.Regexp, len(opts))
 	for i, include := range opts {
@@ -331,11 +314,6 @@ func parseIncludes(opts []string) ([]*regexp.Regexp, error) {
 
 // parseExcludes compiles exclude regular expressions from command-line options.
 // These patterns are used to filter which actions should be skipped.
-//
-// Parameters:
-//   - opts: slice of exclude pattern strings
-//
-// Returns compiled regular expressions or an error if compilation fails.
 func parseExcludes(opts []string) ([]*regexp.Regexp, error) {
 	excludes := make([]*regexp.Regexp, len(opts))
 	for i, exclude := range opts {
@@ -351,12 +329,6 @@ func parseExcludes(opts []string) ([]*regexp.Regexp, error) {
 // setReview configures review information from GitHub Actions environment.
 // It extracts repository name, pull request number, and commit SHA from
 // environment variables and GitHub event payload.
-//
-// Parameters:
-//   - fs: filesystem interface for reading event files
-//   - review: review configuration to populate
-//
-// Returns an error if required information cannot be extracted.
 func (r *runner) setReview(fs afero.Fs, review *run.Review) error {
 	if review.RepoName == "" {
 		repo := os.Getenv("GITHUB_REPOSITORY")
@@ -396,13 +368,6 @@ func (r *runner) setReview(fs afero.Fs, review *run.Review) error {
 
 // readEvent reads and parses the GitHub event payload from file.
 // It unmarshals the JSON event data into the provided Event struct.
-//
-// Parameters:
-//   - fs: filesystem interface for file operations
-//   - ev: Event struct to populate with parsed data
-//   - eventPath: path to the GitHub event file
-//
-// Returns an error if the file cannot be read or parsed.
 func (r *runner) readEvent(fs afero.Fs, ev *Event, eventPath string) error {
 	event, err := fs.Open(eventPath)
 	if err != nil {

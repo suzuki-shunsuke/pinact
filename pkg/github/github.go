@@ -33,12 +33,6 @@ type (
 // New creates a new GitHub API client with authentication.
 // It configures the client with appropriate HTTP client based on available
 // authentication methods (environment token or keyring).
-//
-// Parameters:
-//   - ctx: context for OAuth2 token source
-//   - logger: slog logger for structured logging
-//
-// Returns a configured GitHub API client.
 func New(ctx context.Context, logger *slog.Logger) *Client {
 	return github.NewClient(getHTTPClientForGitHub(ctx, logger, getGitHubToken()))
 }
@@ -46,19 +40,12 @@ func New(ctx context.Context, logger *slog.Logger) *Client {
 // Ptr returns a pointer to the provided value.
 // This is a convenience function that delegates to github.Ptr for
 // creating pointers to values, commonly needed for GitHub API structs.
-//
-// Parameters:
-//   - v: value to get a pointer to
-//
-// Returns a pointer to the value.
 func Ptr[T any](v T) *T {
 	return github.Ptr(v)
 }
 
 // getGitHubToken retrieves the GitHub token from environment variables.
 // It reads the GITHUB_TOKEN environment variable for authentication.
-//
-// Returns the GitHub token string or empty string if not set.
 func getGitHubToken() string {
 	return os.Getenv("GITHUB_TOKEN")
 }
@@ -66,8 +53,6 @@ func getGitHubToken() string {
 // checkKeyringEnabled checks if keyring authentication is enabled.
 // It examines the PINACT_KEYRING_ENABLED environment variable to determine
 // if OS keyring should be used for token storage and retrieval.
-//
-// Returns true if keyring is enabled, false otherwise.
 func checkKeyringEnabled() bool {
 	return os.Getenv("PINACT_KEYRING_ENABLED") == "true"
 }
@@ -75,13 +60,6 @@ func checkKeyringEnabled() bool {
 // getHTTPClientForGitHub creates an HTTP client configured for GitHub API access.
 // It handles authentication using environment token, keyring, or falls back
 // to unauthenticated access. The client is configured with OAuth2 for authenticated requests.
-//
-// Parameters:
-//   - ctx: context for OAuth2 token source
-//   - logger: slog logger for structured logging
-//   - token: GitHub token for authentication (empty string for alternative auth)
-//
-// Returns an HTTP client configured for GitHub API access.
 func getHTTPClientForGitHub(ctx context.Context, logger *slog.Logger, token string) *http.Client {
 	if token == "" {
 		if checkKeyringEnabled() {
@@ -96,13 +74,6 @@ func getHTTPClientForGitHub(ctx context.Context, logger *slog.Logger, token stri
 
 // NewWithBaseURL creates a new GitHub API client with a custom base URL.
 // This is used for GitHub Enterprise Server instances.
-//
-// Parameters:
-//   - ctx: context for OAuth2 token source
-//   - baseURL: base URL of the GHES instance (e.g., "https://ghes.example.com")
-//   - token: GitHub token for authentication
-//
-// Returns a configured GitHub API client or an error if the base URL is invalid.
 func NewWithBaseURL(ctx context.Context, baseURL, token string) (*Client, error) {
 	httpClient := getHTTPClientForGitHubWithToken(ctx, token)
 	return github.NewClient(httpClient).WithEnterpriseURLs(baseURL, baseURL) //nolint:wrapcheck
@@ -110,12 +81,6 @@ func NewWithBaseURL(ctx context.Context, baseURL, token string) (*Client, error)
 
 // getHTTPClientForGitHubWithToken creates an HTTP client with a specific token.
 // Unlike getHTTPClientForGitHub, this does not fall back to keyring.
-//
-// Parameters:
-//   - ctx: context for OAuth2 token source
-//   - token: GitHub token for authentication (empty string for unauthenticated)
-//
-// Returns an HTTP client configured for GitHub API access.
 func getHTTPClientForGitHubWithToken(ctx context.Context, token string) *http.Client {
 	if token == "" {
 		return http.DefaultClient
@@ -130,8 +95,6 @@ func getHTTPClientForGitHubWithToken(ctx context.Context, token string) *http.Cl
 // 1. GHES_TOKEN
 // 2. GITHUB_TOKEN_ENTERPRISE
 // 3. GITHUB_ENTERPRISE_TOKEN
-//
-// Returns the first non-empty token found, or empty string if none are set.
 func GetGHESToken() string {
 	for _, envName := range []string{"GHES_TOKEN", "GITHUB_TOKEN_ENTERPRISE", "GITHUB_ENTERPRISE_TOKEN"} {
 		if token := os.Getenv(envName); token != "" {
