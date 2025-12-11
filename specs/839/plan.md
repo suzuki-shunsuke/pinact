@@ -16,7 +16,27 @@ pinact supports one GHES instance in addition to github.com:
 
 Repositories are routed to GHES or github.com based on `owners` (exact match against the repository owner).
 
-### 3. Token Management
+### 3. Configuration Sources
+
+GHES can be configured via:
+1. Configuration file (`.pinact.yaml`)
+2. Environment variables (when config file does not have `ghes` settings)
+
+Environment variables for GHES configuration:
+- `PINACT_GHES_BASE_URL`: GHES base URL (e.g., `https://ghes.example.com`)
+- `PINACT_GHES_OWNERS`: Comma-separated list of repository owners
+- `GITHUB_API_URL`: Alternative to `PINACT_GHES_BASE_URL` (commonly set in GitHub Actions on GHES)
+
+Resolution priority for base URL:
+1. If `PINACT_GHES_BASE_URL` is set, it is used (and `GITHUB_API_URL` is ignored)
+2. If `PINACT_GHES_BASE_URL` is not set but `GITHUB_API_URL` is set, `GITHUB_API_URL` is used
+
+Requirements:
+- If `PINACT_GHES_BASE_URL` is set, `PINACT_GHES_OWNERS` is required
+- If `PINACT_GHES_OWNERS` is set, either `PINACT_GHES_BASE_URL` or `GITHUB_API_URL` is required
+- If neither `PINACT_GHES_BASE_URL` nor `GITHUB_API_URL` is set, `PINACT_GHES_OWNERS` is optional (only github.com actions are processed)
+
+### 4. Token Management
 
 Tokens are retrieved from environment variables:
 - `GITHUB_TOKEN` for github.com
@@ -57,6 +77,37 @@ func (g *GHES) Init() error {
 
 func (g *GHES) Match(owner string) bool {
     // Check if owner matches any entry in Owners (exact match)
+}
+```
+
+Add function to create GHES config from environment variables:
+
+```go
+func GHESFromEnv() *GHES {
+    // Get base URL from PINACT_GHES_BASE_URL or GITHUB_API_URL
+    baseURL := os.Getenv("PINACT_GHES_BASE_URL")
+    if baseURL == "" {
+        baseURL = os.Getenv("GITHUB_API_URL")
+    }
+
+    // Get owners from PINACT_GHES_OWNERS
+    ownersStr := os.Getenv("PINACT_GHES_OWNERS")
+
+    // If neither base URL nor owners, return nil
+    if baseURL == "" && ownersStr == "" {
+        return nil
+    }
+
+    // Parse owners (comma-separated)
+    var owners []string
+    if ownersStr != "" {
+        owners = strings.Split(ownersStr, ",")
+    }
+
+    return &GHES{
+        BaseURL: baseURL,
+        Owners:  owners,
+    }
 }
 ```
 
@@ -165,9 +216,18 @@ These methods will receive the appropriate service as a parameter or through the
 **File:** `pkg/cli/run/command.go`
 
 ```go
+// Get GHES config from config file or environment variables
+ghesConfig := cfg.GHES
+if ghesConfig == nil {
+    ghesConfig = config.GHESFromEnv()
+}
+
 // Set up GHES support if configured
-if cfg.GHES != nil {
-    registry, err := github.NewClientRegistry(ctx, gh, cfg.GHES)
+if ghesConfig != nil {
+    if err := ghesConfig.Init(); err != nil {
+        return fmt.Errorf("initialize GHES config: %w", err)
+    }
+    registry, err := github.NewClientRegistry(ctx, gh, ghesConfig)
     if err != nil {
         return fmt.Errorf("create GitHub client registry: %w", err)
     }
@@ -202,24 +262,24 @@ if cfg.GHES != nil {
 
 | File | Change Type | Description |
 |------|-------------|-------------|
-| `pkg/config/config.go` | Modify | Add owners field, update Match to check owners |
+| `pkg/config/config.go` | Modify | Add owners field, update Match to check owners, add GHESFromEnv() |
 | `pkg/github/github.go` | Modify | Simplify GetGHESToken to check multiple env vars |
 | `pkg/github/registry.go` | Modify | Simplify to single GHES client |
 | `pkg/controller/run/controller.go` | Modify | Simplify to single GHES service, add GHES PullRequestsService for review mode |
 | `pkg/controller/run/github.go` | Modify | Remove actionName parameter from version methods, update review to use appropriate PullRequestsService |
 | `pkg/controller/run/parse_line.go` | Modify | Get service once per method |
-| `pkg/cli/run/command.go` | Modify | Update initialization for single GHES, set GHES PullRequestsService |
+| `pkg/cli/run/command.go` | Modify | Update initialization for single GHES, support env vars, set GHES PullRequestsService |
 | `json-schema/pinact.json` | Modify | Add owners field (required) |
 
 ## Error Handling
 
 1. **Missing GHES token**: Return clear error message listing expected environment variables
 2. **GHES API failure**: Return error without fallback to github.com
-3. **Missing base_url**: Return error during config initialization
-4. **Missing owners**: Return error during config initialization
+3. **Missing base_url when owners set**: Return error during config initialization
+4. **Missing owners when base_url set**: Return error during config initialization
 
 ## Migration Notes
 
 - This change is backward compatible
 - Existing configurations without `ghes` field continue to work
-- Configuration file is required only when using GHES
+- GHES can be configured via config file or environment variables

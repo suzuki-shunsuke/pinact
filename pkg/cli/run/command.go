@@ -334,9 +334,18 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 		Commits:    map[string]*run.GetCommitResult{},
 	}, fs, cfgFinder, cfgReader, param)
 
+	// Get GHES config from config file or environment variables
+	ghesConfig := cfg.GHES
+	if ghesConfig == nil {
+		ghesConfig = config.GHESFromEnv()
+	}
+
 	// Set up GHES support if configured
-	if cfg.GHES != nil {
-		registry, err := github.NewClientRegistry(ctx, gh, cfg.GHES)
+	if ghesConfig != nil {
+		if err := ghesConfig.Init(); err != nil {
+			return fmt.Errorf("initialize GHES config: %w", err)
+		}
+		registry, err := github.NewClientRegistry(ctx, gh, ghesConfig)
 		if err != nil {
 			return fmt.Errorf("create GitHub client registry: %w", err)
 		}

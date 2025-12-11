@@ -10,9 +10,11 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path"
 	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
@@ -227,6 +229,46 @@ func (g *GHES) Init() error {
 // Returns true if the owner matches any entry in owners, false otherwise.
 func (g *GHES) Match(owner string) bool {
 	return slices.Contains(g.Owners, owner)
+}
+
+// GHESFromEnv creates a GHES configuration from environment variables.
+// It reads PINACT_GHES_BASE_URL (or GITHUB_API_URL as fallback) and PINACT_GHES_OWNERS.
+//
+// Resolution priority for base URL:
+//  1. PINACT_GHES_BASE_URL - if set, it is used (and GITHUB_API_URL is ignored)
+//  2. GITHUB_API_URL - if PINACT_GHES_BASE_URL is not set
+//
+// Returns nil if neither base URL nor owners are configured.
+func GHESFromEnv() *GHES {
+	// Get base URL from PINACT_GHES_BASE_URL or GITHUB_API_URL
+	baseURL := os.Getenv("PINACT_GHES_BASE_URL")
+	if baseURL == "" {
+		baseURL = os.Getenv("GITHUB_API_URL")
+	}
+
+	// Get owners from PINACT_GHES_OWNERS
+	ownersStr := os.Getenv("PINACT_GHES_OWNERS")
+
+	// If neither base URL nor owners, return nil
+	if baseURL == "" && ownersStr == "" {
+		return nil
+	}
+
+	// Parse owners (comma-separated)
+	var owners []string
+	if ownersStr != "" {
+		for owner := range strings.SplitSeq(ownersStr, ",") {
+			owner = strings.TrimSpace(owner)
+			if owner != "" {
+				owners = append(owners, owner)
+			}
+		}
+	}
+
+	return &GHES{
+		BaseURL: baseURL,
+		Owners:  owners,
+	}
 }
 
 // getConfigPath searches for a pinact configuration file in standard locations.
