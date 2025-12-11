@@ -9,6 +9,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -106,7 +107,7 @@ func getHTTPClientForGitHub(ctx context.Context, logger *slog.Logger, token stri
 //   - token: GitHub token for authentication
 //
 // Returns a configured GitHub API client or an error if the base URL is invalid.
-func NewWithBaseURL(ctx context.Context, logger *slog.Logger, baseURL, token string) (*Client, error) {
+func NewWithBaseURL(ctx context.Context, baseURL, token string) (*Client, error) {
 	httpClient := getHTTPClientForGitHubWithToken(ctx, token)
 	client := github.NewClient(httpClient)
 	if baseURL != "" {
@@ -114,7 +115,7 @@ func NewWithBaseURL(ctx context.Context, logger *slog.Logger, baseURL, token str
 		apiURL := strings.TrimSuffix(baseURL, "/") + "/api/v3/"
 		parsedURL, err := url.Parse(apiURL)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parse base URL: %w", err)
 		}
 		client.BaseURL = parsedURL
 	}

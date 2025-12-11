@@ -334,6 +334,14 @@ func (r *Reader) Read(cfg *Config, configFilePath string) error {
 	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
 		return fmt.Errorf("decode a configuration file as YAML: %w", err)
 	}
+	return cfg.Init()
+}
+
+// Init initializes and validates the configuration.
+// It validates the schema version and initializes all configuration components.
+//
+// Returns an error if validation or initialization fails.
+func (cfg *Config) Init() error {
 	if err := validateSchemaVersion(cfg.Version); err != nil {
 		return err
 	}

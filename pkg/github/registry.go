@@ -3,7 +3,6 @@ package github
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 )
@@ -22,12 +21,11 @@ type ClientRegistry struct {
 //
 // Parameters:
 //   - ctx: context for OAuth2 token source
-//   - logger: slog logger for structured logging
 //   - defaultClient: pre-configured client for github.com
 //   - ghesConfigs: GHES configurations from the config file
 //
 // Returns a configured ClientRegistry or an error if GHES client creation fails.
-func NewClientRegistry(ctx context.Context, logger *slog.Logger, defaultClient *Client, ghesConfigs []*config.GHES) (*ClientRegistry, error) {
+func NewClientRegistry(ctx context.Context, defaultClient *Client, ghesConfigs []*config.GHES) (*ClientRegistry, error) {
 	registry := &ClientRegistry{
 		defaultClient: defaultClient,
 		ghesClients:   make(map[string]*Client),
@@ -36,10 +34,7 @@ func NewClientRegistry(ctx context.Context, logger *slog.Logger, defaultClient *
 
 	for _, ghes := range ghesConfigs {
 		token := GetGHESToken(ghes.Host)
-		if token == "" {
-			logger.Warn("GHES token not found", "host", ghes.Host, "env_var", "GITHUB_TOKEN_"+ghes.Host)
-		}
-		client, err := NewWithBaseURL(ctx, logger, "https://"+ghes.Host, token)
+		client, err := NewWithBaseURL(ctx, "https://"+ghes.Host, token)
 		if err != nil {
 			return nil, fmt.Errorf("create GHES client for %s: %w", ghes.Host, err)
 		}

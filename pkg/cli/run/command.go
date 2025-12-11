@@ -336,7 +336,7 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 
 	// Set up GHES support if configured
 	if len(cfg.GHES) > 0 {
-		registry, err := github.NewClientRegistry(ctx, logger.Logger, gh, cfg.GHES)
+		registry, err := github.NewClientRegistry(ctx, gh, cfg.GHES)
 		if err != nil {
 			return fmt.Errorf("create GitHub client registry: %w", err)
 		}
