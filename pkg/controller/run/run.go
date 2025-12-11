@@ -12,7 +12,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 )
@@ -50,13 +49,10 @@ func (r *Review) Valid() bool {
 }
 
 // Run executes the main pinact operation.
-// It reads configuration, searches for workflow files, and processes each file
+// It searches for workflow files and processes each file
 // to pin GitHub Actions versions according to the specified parameters.
 // Returns an error if the operation fails or actions are not pinned in check mode.
 func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
-	if err := c.readConfig(); err != nil {
-		return err
-	}
 	workflowFilePaths, err := c.searchFiles()
 	if err != nil {
 		return fmt.Errorf("search target files: %w", err)
@@ -80,25 +76,6 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	if failed {
 		return urfave.ErrSilent
 	}
-	return nil
-}
-
-// readConfig loads and processes the pinact configuration file.
-// It finds the configuration file path and reads the configuration,
-// updating the controller's configuration state.
-//
-// Returns an error if configuration cannot be found or read.
-func (c *Controller) readConfig() error {
-	p, err := c.cfgFinder.Find(c.param.ConfigFilePath)
-	if err != nil {
-		return fmt.Errorf("find a configurationfile: %w", err)
-	}
-	c.param.ConfigFilePath = p
-	cfg := &config.Config{}
-	if err := c.cfgReader.Read(cfg, c.param.ConfigFilePath); err != nil {
-		return fmt.Errorf("read a config file: %w", err)
-	}
-	c.cfg = cfg
 	return nil
 }
 

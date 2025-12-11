@@ -241,11 +241,31 @@ type Head struct {
 	SHA string `json:"sha"`
 }
 
+type ghesServices struct {
+	repoService *run.RepositoriesServiceImpl
+	gitService  *run.GitServiceImpl
+	prService   *run.PullRequestsServiceImpl
+}
+
+func readConfig(fs afero.Fs, configFilePath string) (*config.Config, error) {
+	cfgFinder := config.NewFinder(fs)
+	cfgReader := config.NewReader(fs)
+	configPath, err := cfgFinder.Find(configFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("find configuration file: %w", err)
+	}
+	cfg := &config.Config{}
+	if err := cfgReader.Read(cfg, configPath); err != nil {
+		return nil, fmt.Errorf("read configuration file: %w", err)
+	}
+	return cfg, nil
+}
+
 // action executes the main run command logic.
 // It configures logging, processes GitHub Actions context, parses includes/excludes,
 // sets up the controller, and executes the pinning operation.
 // Returns an error if the operation fails.
-func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Flags) error { //nolint:cyclop,funlen
+func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Flags) error {
 	isGitHubActions := os.Getenv("GITHUB_ACTIONS") == "true"
 	if isGitHubActions {
 		color.NoColor = false
@@ -262,36 +282,12 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 	gh := github.New(ctx, logger.Logger)
 	fs := afero.NewOsFs()
 
-	// Read config first to get GHES settings
-	cfgFinder := config.NewFinder(fs)
-	cfgReader := config.NewReader(fs)
-	configPath, err := cfgFinder.Find(flags.Config)
+	cfg, err := readConfig(fs, flags.Config)
 	if err != nil {
-		return fmt.Errorf("find configuration file: %w", err)
-	}
-	cfg := &config.Config{}
-	if err := cfgReader.Read(cfg, configPath); err != nil {
-		return fmt.Errorf("read configuration file: %w", err)
+		return err
 	}
 
-	var review *run.Review
-	if flags.Review {
-		review = &run.Review{
-			RepoOwner:   flags.RepoOwner,
-			RepoName:    flags.RepoName,
-			PullRequest: flags.PR,
-			SHA:         flags.SHA,
-		}
-		if isGitHubActions {
-			if err := r.setReview(fs, review); err != nil {
-				slogerr.WithError(logger.Logger, err).Error("set review information")
-			}
-		}
-		if !review.Valid() {
-			logger.Warn("skip creating reviews because the review information is invalid")
-			review = nil
-		}
-	}
+	review := r.setupReview(fs, logger, flags, isGitHubActions)
 	if flags.MinAge > 0 && !flags.Update {
 		return errors.New("--min-age requires --update (-u) flag")
 	}
@@ -303,70 +299,14 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 	if err != nil {
 		return err
 	}
-	param := &run.ParamRun{
-		WorkflowFilePaths: flags.Args,
-		ConfigFilePath:    flags.Config,
-		PWD:               pwd,
-		IsVerify:          flags.Verify,
-		Check:             flags.Check,
-		Update:            flags.Update,
-		Diff:              flags.Diff,
-		Fix:               true,
-		IsGitHubActions:   isGitHubActions,
-		Stderr:            os.Stderr,
-		Review:            review,
-		Includes:          includes,
-		Excludes:          excludes,
-		MinAge:            flags.MinAge,
-	}
-	if flags.FixIsSet {
-		param.Fix = flags.Fix
-	} else if param.Check || param.Diff {
-		param.Fix = false
-	}
-	// Get GHES config from config file or environment variables
-	ghesConfig := cfg.GHES
-	if ghesConfig == nil {
-		ghesConfig = config.GHESFromEnv()
+
+	param := buildParam(flags, pwd, isGitHubActions, review, includes, excludes)
+	services, err := setupGHESServices(ctx, gh, cfg)
+	if err != nil {
+		return err
 	}
 
-	// Prepare GHES services
-	var ghesRepoService run.RepositoriesService
-	var ghesGitService run.GitService
-	var ghesPRService run.PullRequestsService
-
-	if ghesConfig != nil {
-		if err := ghesConfig.Init(); err != nil {
-			return fmt.Errorf("initialize GHES config: %w", err)
-		}
-		registry, err := github.NewClientRegistry(ctx, gh, ghesConfig)
-		if err != nil {
-			return fmt.Errorf("create GitHub client registry: %w", err)
-		}
-		client := registry.GetGHESClient()
-		ghesRepoService = client.Repositories
-		ghesGitService = client.Git
-		ghesPRService = client.PullRequests
-	}
-
-	// Create unified services with GHES support
-	repoService := &run.RepositoriesServiceImpl{
-		Tags:     map[string]*run.ListTagsResult{},
-		Releases: map[string]*run.ListReleasesResult{},
-		Commits:  map[string]*run.GetCommitSHA1Result{},
-	}
-	repoService.SetServices(gh.Repositories, ghesRepoService, ghesConfig)
-
-	gitService := &run.GitServiceImpl{
-		Commits: map[string]*run.GetCommitResult{},
-	}
-	gitService.SetServices(gh.Git, ghesGitService, ghesConfig)
-
-	prService := &run.PullRequestsServiceImpl{}
-	prService.SetServices(gh.PullRequests, ghesPRService, ghesConfig)
-
-	ctrl := run.New(repoService, prService, gitService, fs, cfgFinder, cfgReader, param)
-
+	ctrl := run.New(services.repoService, services.prService, services.gitService, fs, cfg, param)
 	return ctrl.Run(ctx, logger.Logger) //nolint:wrapcheck
 }
 
@@ -472,4 +412,97 @@ func (r *runner) readEvent(fs afero.Fs, ev *Event, eventPath string) error {
 		return fmt.Errorf("unmarshal GITHUB_EVENT_PATH: %w", err)
 	}
 	return nil
+}
+
+func (r *runner) setupReview(fs afero.Fs, logger *slogutil.Logger, flags *Flags, isGitHubActions bool) *run.Review {
+	if !flags.Review {
+		return nil
+	}
+	review := &run.Review{
+		RepoOwner:   flags.RepoOwner,
+		RepoName:    flags.RepoName,
+		PullRequest: flags.PR,
+		SHA:         flags.SHA,
+	}
+	if isGitHubActions {
+		if err := r.setReview(fs, review); err != nil {
+			slogerr.WithError(logger.Logger, err).Error("set review information")
+		}
+	}
+	if !review.Valid() {
+		logger.Warn("skip creating reviews because the review information is invalid")
+		return nil
+	}
+	return review
+}
+
+func buildParam(flags *Flags, pwd string, isGitHubActions bool, review *run.Review, includes, excludes []*regexp.Regexp) *run.ParamRun {
+	param := &run.ParamRun{
+		WorkflowFilePaths: flags.Args,
+		ConfigFilePath:    flags.Config,
+		PWD:               pwd,
+		IsVerify:          flags.Verify,
+		Check:             flags.Check,
+		Update:            flags.Update,
+		Diff:              flags.Diff,
+		Fix:               true,
+		IsGitHubActions:   isGitHubActions,
+		Stderr:            os.Stderr,
+		Review:            review,
+		Includes:          includes,
+		Excludes:          excludes,
+		MinAge:            flags.MinAge,
+	}
+	if flags.FixIsSet {
+		param.Fix = flags.Fix
+	} else if param.Check || param.Diff {
+		param.Fix = false
+	}
+	return param
+}
+
+func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Config) (*ghesServices, error) {
+	ghesConfig := cfg.GHES
+	if ghesConfig == nil {
+		ghesConfig = config.GHESFromEnv()
+	}
+
+	var ghesRepoService run.RepositoriesService
+	var ghesGitService run.GitService
+	var ghesPRService run.PullRequestsService
+
+	if ghesConfig != nil {
+		if err := ghesConfig.Init(); err != nil {
+			return nil, fmt.Errorf("initialize GHES config: %w", err)
+		}
+		registry, err := github.NewClientRegistry(ctx, gh, ghesConfig)
+		if err != nil {
+			return nil, fmt.Errorf("create GitHub client registry: %w", err)
+		}
+		client := registry.GetGHESClient()
+		ghesRepoService = client.Repositories
+		ghesGitService = client.Git
+		ghesPRService = client.PullRequests
+	}
+
+	repoService := &run.RepositoriesServiceImpl{
+		Tags:     map[string]*run.ListTagsResult{},
+		Releases: map[string]*run.ListReleasesResult{},
+		Commits:  map[string]*run.GetCommitSHA1Result{},
+	}
+	repoService.SetServices(gh.Repositories, ghesRepoService, ghesConfig)
+
+	gitService := &run.GitServiceImpl{
+		Commits: map[string]*run.GetCommitResult{},
+	}
+	gitService.SetServices(gh.Git, ghesGitService, ghesConfig)
+
+	prService := &run.PullRequestsServiceImpl{}
+	prService.SetServices(gh.PullRequests, ghesPRService, ghesConfig)
+
+	return &ghesServices{
+		repoService: repoService,
+		gitService:  gitService,
+		prService:   prService,
+	}, nil
 }
