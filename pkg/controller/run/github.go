@@ -62,12 +62,8 @@ func (g *GitServiceImpl) GetCommit(ctx context.Context, owner, repo, sha string)
 	return commit, resp, err //nolint:wrapcheck
 }
 
-func (g *GitServiceImpl) isGHES(owner string) bool {
-	return g.ghesConfig != nil && g.ghesConfig.Match(owner)
-}
-
 func (g *GitServiceImpl) getService(owner string) GitService {
-	if g.isGHES(owner) && g.ghesGitService != nil {
+	if g.ghesConfig.Match(owner) && g.ghesGitService != nil {
 		return g.ghesGitService
 	}
 	return g.defaultGitService
@@ -196,12 +192,8 @@ func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string
 	return arr, resp, err //nolint:wrapcheck
 }
 
-func (r *RepositoriesServiceImpl) isGHES(owner string) bool {
-	return r.ghesConfig != nil && r.ghesConfig.Match(owner)
-}
-
 func (r *RepositoriesServiceImpl) getService(owner string) RepositoriesService {
-	if r.isGHES(owner) && r.ghesRepoService != nil {
+	if r.ghesConfig.Match(owner) && r.ghesRepoService != nil {
 		return r.ghesRepoService
 	}
 	return r.defaultRepoService
@@ -220,14 +212,10 @@ func (p *PullRequestsServiceImpl) SetServices(defaultService, ghesService PullRe
 }
 
 func (p *PullRequestsServiceImpl) CreateComment(ctx context.Context, owner, repo string, number int, comment *github.PullRequestComment) (*github.PullRequestComment, *github.Response, error) {
-	if p.isGHES(owner) && p.ghesPRService != nil {
+	if p.ghesConfig.Match(owner) && p.ghesPRService != nil {
 		return p.ghesPRService.CreateComment(ctx, owner, repo, number, comment) //nolint:wrapcheck
 	}
 	return p.defaultPRService.CreateComment(ctx, owner, repo, number, comment) //nolint:wrapcheck
-}
-
-func (p *PullRequestsServiceImpl) isGHES(owner string) bool {
-	return p.ghesConfig != nil && p.ghesConfig.Match(owner)
 }
 
 // getLatestVersion determines the latest version of a repository.

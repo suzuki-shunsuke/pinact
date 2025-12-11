@@ -227,7 +227,11 @@ func (g *GHES) Init() error {
 //   - owner: repository owner to match
 //
 // Returns true if the owner matches any entry in owners, false otherwise.
+// Returns false if g is nil.
 func (g *GHES) Match(owner string) bool {
+	if g == nil {
+		return false
+	}
 	return slices.Contains(g.Owners, owner)
 }
 
