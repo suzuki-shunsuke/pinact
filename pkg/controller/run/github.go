@@ -352,7 +352,8 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *s
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
-	releases, _, err := c.repositoriesService.ListReleases(ctx, owner, repo, opts)
+	releases, err := c.resolveLatestRelease(owner, repo)
+
 	if err != nil {
 		return "", fmt.Errorf("list releases: %w", err)
 	}
@@ -393,7 +394,8 @@ func (c *Controller) checkTagCooldown(ctx context.Context, logger *slog.Logger, 
 	if cutoff.IsZero() || c.gitService == nil || sha == "" {
 		return false
 	}
-	commit, _, err := c.gitService.GetCommit(ctx, owner, repo, sha)
+	commit, err := c.resolveCommit(owner, repo, sha)
+	
 	if err != nil {
 		slogerr.WithError(logger, err).Warn("skip tag: failed to get commit for cooldown check", "tag", tagName, "sha", sha)
 		return true
@@ -425,7 +427,8 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
-	tags, _, err := c.repositoriesService.ListTags(ctx, owner, repo, opts)
+	tags, err := c.resolveTags(owner, repo)
+
 	if err != nil {
 		return "", fmt.Errorf("list tags: %w", err)
 	}
