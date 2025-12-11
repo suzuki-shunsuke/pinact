@@ -9,12 +9,9 @@ package github
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"os"
-	"strings"
 
 	"github.com/google/go-github/v80/github"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/keyring/ghtoken"
@@ -102,24 +99,13 @@ func getHTTPClientForGitHub(ctx context.Context, logger *slog.Logger, token stri
 //
 // Parameters:
 //   - ctx: context for OAuth2 token source
-//   - logger: slog logger for structured logging
 //   - baseURL: base URL of the GHES instance (e.g., "https://ghes.example.com")
 //   - token: GitHub token for authentication
 //
 // Returns a configured GitHub API client or an error if the base URL is invalid.
 func NewWithBaseURL(ctx context.Context, baseURL, token string) (*Client, error) {
 	httpClient := getHTTPClientForGitHubWithToken(ctx, token)
-	client := github.NewClient(httpClient)
-	if baseURL != "" {
-		// Ensure base URL ends with /api/v3/
-		apiURL := strings.TrimSuffix(baseURL, "/") + "/api/v3/"
-		parsedURL, err := url.Parse(apiURL)
-		if err != nil {
-			return nil, fmt.Errorf("parse base URL: %w", err)
-		}
-		client.BaseURL = parsedURL
-	}
-	return client, nil
+	return github.NewClient(httpClient).WithEnterpriseURLs(baseURL, baseURL) //nolint:wrapcheck
 }
 
 // getHTTPClientForGitHubWithToken creates an HTTP client with a specific token.
