@@ -324,23 +324,17 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 	} else if param.Check || param.Diff {
 		param.Fix = false
 	}
-	ctrl := run.New(&run.RepositoriesServiceImpl{
-		Tags:                map[string]*run.ListTagsResult{},
-		Releases:            map[string]*run.ListReleasesResult{},
-		Commits:             map[string]*run.GetCommitSHA1Result{},
-		RepositoriesService: gh.Repositories,
-	}, gh.PullRequests, &run.GitServiceImpl{
-		GitService: gh.Git,
-		Commits:    map[string]*run.GetCommitResult{},
-	}, fs, cfgFinder, cfgReader, param)
-
 	// Get GHES config from config file or environment variables
 	ghesConfig := cfg.GHES
 	if ghesConfig == nil {
 		ghesConfig = config.GHESFromEnv()
 	}
 
-	// Set up GHES support if configured
+	// Prepare GHES services
+	var ghesRepoService run.RepositoriesService
+	var ghesGitService run.GitService
+	var ghesPRService run.PullRequestsService
+
 	if ghesConfig != nil {
 		if err := ghesConfig.Init(); err != nil {
 			return fmt.Errorf("initialize GHES config: %w", err)
@@ -349,20 +343,29 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 		if err != nil {
 			return fmt.Errorf("create GitHub client registry: %w", err)
 		}
-		ctrl.SetClientRegistry(registry)
-
-		// Create services for GHES
 		client := registry.GetGHESClient()
-		ctrl.SetGHESServices(&run.RepositoriesServiceImpl{
-			Tags:                map[string]*run.ListTagsResult{},
-			Releases:            map[string]*run.ListReleasesResult{},
-			Commits:             map[string]*run.GetCommitSHA1Result{},
-			RepositoriesService: client.Repositories,
-		}, &run.GitServiceImpl{
-			GitService: client.Git,
-			Commits:    map[string]*run.GetCommitResult{},
-		}, client.PullRequests)
+		ghesRepoService = client.Repositories
+		ghesGitService = client.Git
+		ghesPRService = client.PullRequests
 	}
+
+	// Create unified services with GHES support
+	repoService := &run.RepositoriesServiceImpl{
+		Tags:     map[string]*run.ListTagsResult{},
+		Releases: map[string]*run.ListReleasesResult{},
+		Commits:  map[string]*run.GetCommitSHA1Result{},
+	}
+	repoService.SetServices(gh.Repositories, ghesRepoService, ghesConfig)
+
+	gitService := &run.GitServiceImpl{
+		Commits: map[string]*run.GetCommitResult{},
+	}
+	gitService.SetServices(gh.Git, ghesGitService, ghesConfig)
+
+	prService := &run.PullRequestsServiceImpl{}
+	prService.SetServices(gh.PullRequests, ghesPRService, ghesConfig)
+
+	ctrl := run.New(repoService, prService, gitService, fs, cfgFinder, cfgReader, param)
 
 	return ctrl.Run(ctx, logger.Logger) //nolint:wrapcheck
 }

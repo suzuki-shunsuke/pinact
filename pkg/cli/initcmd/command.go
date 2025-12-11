@@ -69,12 +69,15 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 		return fmt.Errorf("get the current directory: %w", err)
 	}
 	gh := github.New(ctx, logger.Logger)
-	ctrl := run.New(&run.RepositoriesServiceImpl{
-		Tags:                map[string]*run.ListTagsResult{},
-		Releases:            map[string]*run.ListReleasesResult{},
-		Commits:             map[string]*run.GetCommitSHA1Result{},
-		RepositoriesService: gh.Repositories,
-	}, gh.PullRequests, nil, afero.NewOsFs(), nil, nil, &run.ParamRun{
+	repoService := &run.RepositoriesServiceImpl{
+		Tags:     map[string]*run.ListTagsResult{},
+		Releases: map[string]*run.ListReleasesResult{},
+		Commits:  map[string]*run.GetCommitSHA1Result{},
+	}
+	repoService.SetServices(gh.Repositories, nil, nil)
+	prService := &run.PullRequestsServiceImpl{}
+	prService.SetServices(gh.PullRequests, nil, nil)
+	ctrl := run.New(repoService, prService, nil, afero.NewOsFs(), nil, nil, &run.ParamRun{
 		WorkflowFilePaths: flags.Args,
 		ConfigFilePath:    flags.Config,
 		PWD:               pwd,

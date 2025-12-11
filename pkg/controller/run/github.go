@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
@@ -27,8 +28,10 @@ type GitService interface {
 }
 
 type GitServiceImpl struct {
-	GitService GitService
-	Commits    map[string]*GetCommitResult
+	defaultGitService GitService
+	ghesGitService    GitService
+	ghesConfig        *config.GHES
+	Commits           map[string]*GetCommitResult
 }
 
 type GetCommitResult struct {
@@ -37,19 +40,64 @@ type GetCommitResult struct {
 	err      error
 }
 
+func (g *GitServiceImpl) SetServices(defaultService, ghesService GitService, ghesConfig *config.GHES) {
+	g.defaultGitService = defaultService
+	g.ghesGitService = ghesService
+	g.ghesConfig = ghesConfig
+}
+
 // GetCommit retrieves a commit object with caching.
 func (g *GitServiceImpl) GetCommit(ctx context.Context, owner, repo, sha string) (*github.Commit, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%s", owner, repo, sha)
 	if result, ok := g.Commits[key]; ok {
 		return result.Commit, result.Response, result.err
 	}
-	commit, resp, err := g.GitService.GetCommit(ctx, owner, repo, sha)
+	service := g.getService(owner)
+	commit, resp, err := service.GetCommit(ctx, owner, repo, sha)
 	g.Commits[key] = &GetCommitResult{
 		Commit:   commit,
 		Response: resp,
 		err:      err,
 	}
 	return commit, resp, err //nolint:wrapcheck
+}
+
+func (g *GitServiceImpl) isGHES(owner string) bool {
+	return g.ghesConfig != nil && g.ghesConfig.Match(owner)
+}
+
+func (g *GitServiceImpl) getService(owner string) GitService {
+	if g.isGHES(owner) && g.ghesGitService != nil {
+		return g.ghesGitService
+	}
+	return g.defaultGitService
+}
+
+type ListTagsResult struct {
+	Tags     []*github.RepositoryTag
+	Response *github.Response
+	err      error
+}
+
+type ListReleasesResult struct {
+	Releases []*github.RepositoryRelease
+	Response *github.Response
+	err      error
+}
+
+type RepositoriesServiceImpl struct {
+	defaultRepoService RepositoriesService
+	ghesRepoService    RepositoriesService
+	ghesConfig         *config.GHES
+	Tags               map[string]*ListTagsResult
+	Commits            map[string]*GetCommitSHA1Result
+	Releases           map[string]*ListReleasesResult
+}
+
+func (r *RepositoriesServiceImpl) SetServices(defaultService, ghesService RepositoriesService, ghesConfig *config.GHES) {
+	r.defaultRepoService = defaultService
+	r.ghesRepoService = ghesService
+	r.ghesConfig = ghesConfig
 }
 
 // GetCommitSHA1 retrieves the commit SHA for a given reference with caching.
@@ -70,32 +118,14 @@ func (r *RepositoriesServiceImpl) GetCommitSHA1(ctx context.Context, owner, repo
 	if ok {
 		return a.SHA, a.Response, a.err
 	}
-	sha, resp, err := r.RepositoriesService.GetCommitSHA1(ctx, owner, repo, ref, lastSHA)
+	service := r.getService(owner)
+	sha, resp, err := service.GetCommitSHA1(ctx, owner, repo, ref, lastSHA)
 	r.Commits[key] = &GetCommitSHA1Result{
 		SHA:      sha,
 		Response: resp,
 		err:      err,
 	}
 	return sha, resp, err //nolint:wrapcheck
-}
-
-type ListTagsResult struct {
-	Tags     []*github.RepositoryTag
-	Response *github.Response
-	err      error
-}
-
-type ListReleasesResult struct {
-	Releases []*github.RepositoryRelease
-	Response *github.Response
-	err      error
-}
-
-type RepositoriesServiceImpl struct {
-	RepositoriesService RepositoriesService
-	Tags                map[string]*ListTagsResult
-	Commits             map[string]*GetCommitSHA1Result
-	Releases            map[string]*ListReleasesResult
 }
 
 type GetCommitSHA1Result struct {
@@ -121,7 +151,8 @@ func (r *RepositoriesServiceImpl) ListTags(ctx context.Context, owner string, re
 	if ok {
 		return a.Tags, a.Response, a.err
 	}
-	tags, resp, err := r.RepositoriesService.ListTags(ctx, owner, repo, opts)
+	service := r.getService(owner)
+	tags, resp, err := service.ListTags(ctx, owner, repo, opts)
 	r.Tags[key] = &ListTagsResult{
 		Tags:     tags,
 		Response: resp,
@@ -147,14 +178,15 @@ func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string
 	if ok {
 		return a.Releases, a.Response, a.err
 	}
-	releases, resp, err := r.RepositoriesService.ListReleases(ctx, owner, repo, opts)
+	service := r.getService(owner)
+	releases, resp, err := service.ListReleases(ctx, owner, repo, opts)
 	arr := make([]*github.RepositoryRelease, 0, len(releases))
-	for _, r := range releases {
+	for _, release := range releases {
 		// Ignore draft releases
-		if r.GetDraft() {
+		if release.GetDraft() {
 			continue
 		}
-		arr = append(arr, r)
+		arr = append(arr, release)
 	}
 	r.Releases[key] = &ListReleasesResult{
 		Releases: arr,
@@ -162,6 +194,40 @@ func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string
 		err:      err,
 	}
 	return arr, resp, err //nolint:wrapcheck
+}
+
+func (r *RepositoriesServiceImpl) isGHES(owner string) bool {
+	return r.ghesConfig != nil && r.ghesConfig.Match(owner)
+}
+
+func (r *RepositoriesServiceImpl) getService(owner string) RepositoriesService {
+	if r.isGHES(owner) && r.ghesRepoService != nil {
+		return r.ghesRepoService
+	}
+	return r.defaultRepoService
+}
+
+type PullRequestsServiceImpl struct {
+	defaultPRService PullRequestsService
+	ghesPRService    PullRequestsService
+	ghesConfig       *config.GHES
+}
+
+func (p *PullRequestsServiceImpl) SetServices(defaultService, ghesService PullRequestsService, ghesConfig *config.GHES) {
+	p.defaultPRService = defaultService
+	p.ghesPRService = ghesService
+	p.ghesConfig = ghesConfig
+}
+
+func (p *PullRequestsServiceImpl) CreateComment(ctx context.Context, owner, repo string, number int, comment *github.PullRequestComment) (*github.PullRequestComment, *github.Response, error) {
+	if p.isGHES(owner) && p.ghesPRService != nil {
+		return p.ghesPRService.CreateComment(ctx, owner, repo, number, comment) //nolint:wrapcheck
+	}
+	return p.defaultPRService.CreateComment(ctx, owner, repo, number, comment) //nolint:wrapcheck
+}
+
+func (p *PullRequestsServiceImpl) isGHES(owner string) bool {
+	return p.ghesConfig != nil && p.ghesConfig.Match(owner)
 }
 
 // getLatestVersion determines the latest version of a repository.
@@ -185,17 +251,14 @@ func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, 
 		cutoff = time.Now().AddDate(0, 0, -c.param.MinAge)
 	}
 
-	repoService := c.getRepositoriesService(owner)
-	gitService := c.getGitService(owner)
-
-	lv, err := c.getLatestVersionFromReleases(ctx, logger, repoService, owner, repo, isStable, cutoff)
+	lv, err := c.getLatestVersionFromReleases(ctx, logger, owner, repo, isStable, cutoff)
 	if err != nil {
 		slogerr.WithError(logger, err).Debug("get the latest version from releases")
 	}
 	if lv != "" {
 		return lv, nil
 	}
-	return c.getLatestVersionFromTags(ctx, logger, repoService, gitService, owner, repo, isStable, cutoff)
+	return c.getLatestVersionFromTags(ctx, logger, owner, repo, isStable, cutoff)
 }
 
 func isStableVersion(v string) bool {
@@ -240,18 +303,17 @@ func compare(latestSemver *version.Version, latestVersion, tag string) (*version
 // Parameters:
 //   - ctx: context for cancellation and timeout control
 //   - logger: slog logger for structured logging
-//   - repoService: repository service for API calls
 //   - owner: repository owner
 //   - repo: repository name
 //   - isStable: whether to filter out prerelease versions
 //   - cutoff: skip releases published after this time (zero value means no filtering)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *slog.Logger, repoService RepositoriesService, owner, repo string, isStable bool, cutoff time.Time) (string, error) {
+func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool, cutoff time.Time) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
-	releases, _, err := repoService.ListReleases(ctx, owner, repo, opts)
+	releases, _, err := c.repositoriesService.ListReleases(ctx, owner, repo, opts)
 	if err != nil {
 		return "", fmt.Errorf("list releases: %w", err)
 	}
@@ -314,19 +376,17 @@ func checkTagCooldown(ctx context.Context, logger *slog.Logger, gitService *GitS
 // Parameters:
 //   - ctx: context for cancellation and timeout control
 //   - logger: slog logger for structured logging
-//   - repoService: repository service for API calls
-//   - gitService: git service for commit lookups (can be nil)
 //   - owner: repository owner
 //   - repo: repository name
 //   - isStable: whether to filter out prerelease versions
 //   - cutoff: skip tags committed after this time (zero value means no filtering)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.Logger, repoService RepositoriesService, gitService *GitServiceImpl, owner, repo string, isStable bool, cutoff time.Time) (string, error) {
+func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool, cutoff time.Time) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
-	tags, _, err := repoService.ListTags(ctx, owner, repo, opts)
+	tags, _, err := c.repositoriesService.ListTags(ctx, owner, repo, opts)
 	if err != nil {
 		return "", fmt.Errorf("list tags: %w", err)
 	}
@@ -344,7 +404,7 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.
 		}
 
 		// Skip tags within cooldown period
-		if checkTagCooldown(ctx, logger, gitService, owner, repo, t, tag.GetCommit().GetSHA(), cutoff) {
+		if checkTagCooldown(ctx, logger, c.gitService, owner, repo, t, tag.GetCommit().GetSHA(), cutoff) {
 			continue
 		}
 
@@ -393,8 +453,7 @@ func (c *Controller) review(ctx context.Context, filePath, sha string, line int,
 	default:
 		return 0, errors.New("either suggestion or error must be provided")
 	}
-	prService := c.getPullRequestsService(c.param.Review.RepoOwner)
-	_, resp, e := prService.CreateComment(ctx, c.param.Review.RepoOwner, c.param.Review.RepoName, c.param.Review.PullRequest, cmt)
+	_, resp, e := c.pullRequestsService.CreateComment(ctx, c.param.Review.RepoOwner, c.param.Review.RepoName, c.param.Review.PullRequest, cmt)
 	code := 0
 	if resp != nil {
 		code = resp.StatusCode
