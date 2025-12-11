@@ -89,6 +89,7 @@ If you use linters such as [ghalint](https://github.com/suzuki-shunsuke/ghalint)
 pinact calls GitHub REST API to get commit hashes and tags.
 You can pass GitHub Access token via environment variable `GITHUB_TOKEN`.
 If no GitHub Access token is passed, pinact calls GitHub REST API without access token.
+About GitHub Enterprise Server, see also [GitHub Access Token for GHES](#github-access-token-for-ghes).
 
 ### Manage GitHub Access token using Keyring
 
@@ -362,6 +363,12 @@ ignore_actions:
     ref: "v\\d+\\.\\d+\\.\\d+"
   - name: suzuki-shunsuke/.*
     ref: main
+
+# GitHub Enterprise Server Support
+ghes:
+  base_url: https://ghes.example.com
+  owners:
+    - your-org
 ```
 
 #### `files`
@@ -415,6 +422,10 @@ A regular expression of ignored action versions (branch, tag, or commit hash).
 > [!WARNING]
 > Regular expressions must match with action names exactly.
 > For instance, `ref: main` doesn't match with `malicious-main`
+
+#### `ghes`
+
+[See GitHub Enterprise Support](#github-enterprise-server-ghes-support).
 
 ### Old Schemas
 
@@ -488,6 +499,65 @@ pinact doesn't check if a version is a tag or a branch because we would like to 
 If a version isn't semver, pinact judges it may be a branch so pinact doesn't pin it.
 
 Please see also [#926](https://github.com/suzuki-shunsuke/pinact/issues/926).
+
+## GitHub Enterprise Server (GHES) Support
+
+v3.6.0 [#839](https://github.com/suzuki-shunsuke/pinact/issues/839) [#1274](https://github.com/suzuki-shunsuke/pinact/pull/1274)
+
+pinact also supports pinning versions of GitHub Actions hosted on GitHub Enterprise Server (GHES).
+GHES configuration is required via configuration file or environment variables.
+
+### GitHub Access Token for GHES
+
+Set a GitHub Access Token for GHES using one of the following environment variables (checked in order):
+
+1. `GHES_TOKEN`
+2. `GITHUB_TOKEN_ENTERPRISE`
+3. `GITHUB_ENTERPRISE_TOKEN`
+
+```sh
+export GHES_TOKEN=xxx
+```
+
+### Configuration File For GHES
+
+```yaml
+ghes:
+  base_url: https://ghes.example.com
+  owners:
+    - your-org
+```
+
+- `base_url`: (required) Base URL of the GHES instance
+- `owners`: (required) List of owner names (usernames or organization names) hosted on GHES
+
+When configuring `ghes`, both `base_url` and `owners` are required.
+
+### Environment Variables For GHES
+
+You can also configure GHES using environment variables instead of a configuration file.
+Note that the configuration file takes precedence over environment variables.
+
+- `PINACT_GHES_BASE_URL`
+- `PINACT_GHES_OWNERS`
+
+```sh
+export PINACT_GHES_BASE_URL=https://ghes.example.com
+export PINACT_GHES_OWNERS=your-org,your-other-org
+```
+
+If `PINACT_GHES_BASE_URL` is not set, `GITHUB_API_URL` will be used instead.
+This is convenient when running on GitHub Actions hosted on GHES.
+
+### How GHES Support works
+
+pinact retrieves action version information via GitHub API.
+When GHES is configured, pinact checks if the action's owner is included in `ghes.owners (PINACT_GHES_OWNERS)`.
+If matched, API requests are sent to the GHES instance.
+Otherwise, API requests are sent to github.com as usual.
+
+pinact does not automatically fall back to github.com like [Enabling automatic access to GitHub.com actions using GitHub Connect](https://docs.github.com/en/enterprise-server@3.19/admin/managing-github-actions-for-your-enterprise/managing-access-to-actions-from-githubcom/enabling-automatic-access-to-githubcom-actions-using-github-connect).
+This is to avoid unnecessary API requests.
 
 ## See also
 
