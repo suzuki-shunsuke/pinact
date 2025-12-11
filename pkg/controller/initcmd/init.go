@@ -1,4 +1,4 @@
-package run
+package initcmd
 
 import (
 	"fmt"

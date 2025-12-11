@@ -8,12 +8,10 @@ package initcmd
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/flag"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/initcmd"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/urfave/cli/v3"
 )
@@ -63,26 +61,7 @@ $ pinact init .github/pinact.yaml
 // It creates a default .pinact.yaml configuration file in the specified location.
 // The function sets up the necessary controllers and services, determines the output
 // path for the configuration file, and delegates to the controller's Init method.
-func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Flags) error {
-	pwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("get the current directory: %w", err)
-	}
-	gh := github.New(ctx, logger.Logger)
-	repoService := &run.RepositoriesServiceImpl{
-		Tags:     map[string]*run.ListTagsResult{},
-		Releases: map[string]*run.ListReleasesResult{},
-		Commits:  map[string]*run.GetCommitSHA1Result{},
-	}
-	repoService.SetServices(gh.Repositories, nil, nil)
-	prService := &run.PullRequestsServiceImpl{}
-	prService.SetServices(gh.PullRequests, nil, nil)
-	ctrl := run.New(repoService, prService, nil, afero.NewOsFs(), nil, nil, &run.ParamRun{
-		WorkflowFilePaths: flags.Args,
-		ConfigFilePath:    flags.Config,
-		PWD:               pwd,
-	})
-
+func (r *runner) action(_ context.Context, logger *slogutil.Logger, flags *Flags) error {
 	if err := logger.SetLevel(flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
@@ -93,5 +72,6 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 	if configFilePath == "" {
 		configFilePath = ".pinact.yaml"
 	}
+	ctrl := initcmd.New(afero.NewOsFs())
 	return ctrl.Init(configFilePath) //nolint:wrapcheck
 }
