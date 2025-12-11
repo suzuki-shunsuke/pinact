@@ -75,6 +75,48 @@ func newHTTPClientsFromEnv() (*httpClients, error) {
 	}, nil
 }
 
+func (c *Controller) resolveLatestRelease(owner, repo string) (*github.Release, error) {
+	clients, err := newHTTPClientsFromEnv()
+	if err != nil {
+		return nil, err
+	}
+	// Enterprise first
+	if clients.enterprise != nil {
+		if rel, err := c.repositoriesService.GetLatestRelease(clients.enterprise, clients.baseEnterpriseURL, owner, repo); err == nil && rel != nil {
+			return rel, nil
+		}
+	}
+	// Fallback to public
+	return c.repositoriesService.GetLatestRelease(clients.public, publicAPI, owner, repo)
+}
+
+func (c *Controller) resolveTags(owner, repo string) ([]*github.Tag, error) {
+	clients, err := newHTTPClientsFromEnv()
+	if err != nil {
+		return nil, err
+	}
+	if clients.enterprise != nil {
+		if tags, err := c.repositoriesService.ListTags(clients.enterprise, clients.baseEnterpriseURL, owner, repo); err == nil && tags != nil {
+			return tags, nil
+		}
+	}
+	return c.repositoriesService.ListTags(clients.public, publicAPI, owner, repo)
+}
+
+func (c *Controller) resolveCommit(owner, repo, ref string) (*github.Commit, error) {
+	clients, err := newHTTPClientsFromEnv()
+	if err != nil {
+		return nil, err
+	}
+	if clients.enterprise != nil {
+		if cm, err := c.gitService.GetCommit(clients.enterprise, clients.baseEnterpriseURL, owner, repo, ref); err == nil && cm != nil {
+			return cm, nil
+		}
+	}
+	return c.gitService.GetCommit(clients.public, publicAPI, owner, repo, ref)
+}
+
+
 type RepositoriesService interface {
 	ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error)
 	GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error)
