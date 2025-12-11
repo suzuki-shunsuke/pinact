@@ -16,13 +16,13 @@ GHES settings are defined in the configuration file (`.pinact.yaml`):
 ```yaml
 ghes:
   base_url: https://ghes.example.com  # /api/v3/ is appended if not present
-  actions:
+  repos:
     - foo/.*
     - suzuki-shunsuke/enterprise-action
 ```
 
 - `base_url`: The base URL of the GHES instance (e.g., `https://ghes.example.com`)
-- `actions`: List of regular expression patterns to match action names (format: `owner/repo`)
+- `repos`: List of regular expression patterns to match repository names (format: `owner/repo`)
 
 The configuration file is required when using GHES.
 
@@ -39,13 +39,13 @@ GitHub Access Tokens are specified via environment variables:
 ## Behavior
 
 1. pinact parses workflow files and extracts actions (existing behavior)
-2. For each extracted action, check if it matches any pattern in `ghes.actions`
+2. For each extracted action, check if it matches any pattern in `ghes.repos`
 3. If matched, search for the action on the GHES instance
 4. If not matched, search for the action on github.com (existing behavior)
 
-### Action Matching
+### Repository Matching
 
-- Actions are matched using regular expressions against the `owner/repo` portion
+- Repositories are matched using regular expressions against the `owner/repo` portion
 - If no GHES pattern matches, the action defaults to github.com
 
 ## Constraints
@@ -64,7 +64,7 @@ GitHub Access Tokens are specified via environment variables:
 # .pinact.yaml
 ghes:
   base_url: https://ghes.example.com
-  actions:
+  repos:
     - my-org/.*
     - shared-actions/common-.*
 ```
@@ -84,10 +84,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # This action matches "my-org/.*" pattern -> searched on ghes.example.com
+      # This repo matches "my-org/.*" pattern -> searched on ghes.example.com
       - uses: my-org/build-action@v1
 
-      # This action doesn't match any GHES pattern -> searched on github.com
+      # This repo doesn't match any GHES pattern -> searched on github.com
       - uses: actions/checkout@v4
 ```
 

@@ -52,19 +52,19 @@
           "type": "string",
           "description": "Base URL of the GHES instance (e.g. https://ghes.example.com)"
         },
-        "actions": {
+        "repos": {
           "items": {
             "type": "string"
           },
           "type": "array",
-          "description": "Regular expression patterns to match action names (owner/repo)"
+          "description": "Regular expression patterns to match repository names (owner/repo)"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
         "base_url",
-        "actions"
+        "repos"
       ]
     },
     "IgnoreAction": {

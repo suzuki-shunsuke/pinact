@@ -237,11 +237,11 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, ac
 	default:
 		return "", ErrCantPinned
 	}
-	repoService := c.getRepositoriesService(action.Name)
+	repoService := c.getRepositoriesService(action.RepoOwner + "/" + action.RepoName)
 	// @xxx
 	if c.param.Update {
 		// get the latest version
-		lv, err := c.getLatestVersion(ctx, logger, action.Name, action.RepoOwner, action.RepoName, action.Version)
+		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.Version)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
@@ -308,7 +308,7 @@ func (c *Controller) parseSemverTagLine(ctx context.Context, logger *slog.Logger
 	// @xxx # v3.0.0
 	if c.param.Update { //nolint:nestif
 		// get the latest version
-		lv, err := c.getLatestVersion(ctx, logger, action.Name, action.RepoOwner, action.RepoName, action.VersionComment)
+		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
@@ -323,7 +323,7 @@ func (c *Controller) parseSemverTagLine(ctx context.Context, logger *slog.Logger
 			return "", nil
 		}
 		if action.VersionComment != lv {
-			repoService := c.getRepositoriesService(action.Name)
+			repoService := c.getRepositoriesService(action.RepoOwner + "/" + action.RepoName)
 			sha, _, err := repoService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
 			if err != nil {
 				return "", fmt.Errorf("get the latest version: %w", err)
@@ -363,11 +363,11 @@ func (c *Controller) parseShortSemverTagLine(ctx context.Context, logger *slog.L
 		return "", ErrCantPinned
 	}
 	if c.param.Update {
-		lv, err := c.getLatestVersion(ctx, logger, action.Name, action.RepoOwner, action.RepoName, action.VersionComment)
+		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
-		repoService := c.getRepositoriesService(action.Name)
+		repoService := c.getRepositoriesService(action.RepoOwner + "/" + action.RepoName)
 		sha, _, err := repoService.GetCommitSHA1(ctx, action.RepoOwner, action.RepoName, lv, "")
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)

@@ -171,13 +171,12 @@ func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string
 // Parameters:
 //   - ctx: context for cancellation and timeout control
 //   - logger: slog logger for structured logging
-//   - actionName: full action name for GHES host resolution (format: owner/repo)
 //   - owner: repository owner
 //   - repo: repository name
 //   - currentVersion: current version to check if stable (empty string to include all versions)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, actionName, owner, repo, currentVersion string) (string, error) {
+func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, owner, repo, currentVersion string) (string, error) {
 	isStable := isStableVersion(currentVersion)
 
 	// Calculate cutoff once for min-age filtering
@@ -186,14 +185,18 @@ func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, 
 		cutoff = time.Now().AddDate(0, 0, -c.param.MinAge)
 	}
 
-	lv, err := c.getLatestVersionFromReleases(ctx, logger, actionName, owner, repo, isStable, cutoff)
+	repoFullName := owner + "/" + repo
+	repoService := c.getRepositoriesService(repoFullName)
+	gitService := c.getGitService(repoFullName)
+
+	lv, err := c.getLatestVersionFromReleases(ctx, logger, repoService, owner, repo, isStable, cutoff)
 	if err != nil {
 		slogerr.WithError(logger, err).Debug("get the latest version from releases")
 	}
 	if lv != "" {
 		return lv, nil
 	}
-	return c.getLatestVersionFromTags(ctx, logger, actionName, owner, repo, isStable, cutoff)
+	return c.getLatestVersionFromTags(ctx, logger, repoService, gitService, owner, repo, isStable, cutoff)
 }
 
 func isStableVersion(v string) bool {
@@ -238,18 +241,17 @@ func compare(latestSemver *version.Version, latestVersion, tag string) (*version
 // Parameters:
 //   - ctx: context for cancellation and timeout control
 //   - logger: slog logger for structured logging
-//   - actionName: full action name for GHES host resolution (format: owner/repo)
+//   - repoService: repository service for API calls
 //   - owner: repository owner
 //   - repo: repository name
 //   - isStable: whether to filter out prerelease versions
 //   - cutoff: skip releases published after this time (zero value means no filtering)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *slog.Logger, actionName, owner, repo string, isStable bool, cutoff time.Time) (string, error) {
+func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *slog.Logger, repoService RepositoriesService, owner, repo string, isStable bool, cutoff time.Time) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
-	repoService := c.getRepositoriesService(actionName)
 	releases, _, err := repoService.ListReleases(ctx, owner, repo, opts)
 	if err != nil {
 		return "", fmt.Errorf("list releases: %w", err)
@@ -287,8 +289,7 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *s
 
 // checkTagCooldown checks if a tag should be skipped due to cooldown period.
 // Returns true if the tag should be skipped.
-func (c *Controller) checkTagCooldown(ctx context.Context, logger *slog.Logger, actionName, owner, repo, tagName, sha string, cutoff time.Time) bool {
-	gitService := c.getGitService(actionName)
+func checkTagCooldown(ctx context.Context, logger *slog.Logger, gitService *GitServiceImpl, owner, repo, tagName, sha string, cutoff time.Time) bool {
 	if cutoff.IsZero() || gitService == nil || sha == "" {
 		return false
 	}
@@ -314,18 +315,18 @@ func (c *Controller) checkTagCooldown(ctx context.Context, logger *slog.Logger, 
 // Parameters:
 //   - ctx: context for cancellation and timeout control
 //   - logger: slog logger for structured logging
-//   - actionName: full action name for GHES host resolution (format: owner/repo)
+//   - repoService: repository service for API calls
+//   - gitService: git service for commit lookups (can be nil)
 //   - owner: repository owner
 //   - repo: repository name
 //   - isStable: whether to filter out prerelease versions
 //   - cutoff: skip tags committed after this time (zero value means no filtering)
 //
 // Returns the latest version string or an error.
-func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.Logger, actionName, owner, repo string, isStable bool, cutoff time.Time) (string, error) {
+func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.Logger, repoService RepositoriesService, gitService *GitServiceImpl, owner, repo string, isStable bool, cutoff time.Time) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
-	repoService := c.getRepositoriesService(actionName)
 	tags, _, err := repoService.ListTags(ctx, owner, repo, opts)
 	if err != nil {
 		return "", fmt.Errorf("list tags: %w", err)
@@ -344,7 +345,7 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.
 		}
 
 		// Skip tags within cooldown period
-		if c.checkTagCooldown(ctx, logger, actionName, owner, repo, t, tag.GetCommit().GetSHA(), cutoff) {
+		if checkTagCooldown(ctx, logger, gitService, owner, repo, t, tag.GetCommit().GetSHA(), cutoff) {
 			continue
 		}
 

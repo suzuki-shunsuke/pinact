@@ -12,9 +12,9 @@ pinact supports one GHES instance in addition to github.com:
 - One client for github.com (default)
 - One client for the configured GHES instance
 
-### 2. Action Routing
+### 2. Repository Routing
 
-Actions are routed to GHES or github.com based on regex pattern matching in the configuration file.
+Repositories are routed to GHES or github.com based on regex pattern matching in the configuration file.
 
 ### 3. Token Management
 
@@ -38,13 +38,13 @@ type Config struct {
     Version       int             `json:"version,omitempty" jsonschema:"enum=2,enum=3"`
     Files         []*File         `json:"files,omitempty"`
     IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions"`
-    GHES          *GHES           `json:"ghes,omitempty" yaml:"ghes"`  // Changed from []*GHES
+    GHES          *GHES           `json:"ghes,omitempty" yaml:"ghes"`
 }
 
 type GHES struct {
-    BaseURL        string   `json:"base_url" yaml:"base_url"`  // Changed from Host
-    Actions        []string `json:"actions"`
-    actionPatterns []*regexp.Regexp
+    BaseURL      string   `json:"base_url" yaml:"base_url"`
+    Repos        []string `json:"repos"`
+    repoPatterns []*regexp.Regexp
 }
 ```
 
@@ -53,19 +53,17 @@ Update GHES methods:
 ```go
 func (g *GHES) Init() error {
     // Validate base_url
-    // Compile action patterns as regular expressions
+    // Compile repo patterns as regular expressions
 }
 
-func (g *GHES) Match(actionName string) bool {
-    // Check if actionName matches any pattern
+func (g *GHES) Match(repoName string) bool {
+    // Check if repoName matches any pattern
 }
 ```
 
 ### Step 2: Update Token Retrieval
 
 **File:** `pkg/github/github.go`
-
-Replace `GetGHESToken(host string)` with `GetGHESToken()`:
 
 ```go
 func GetGHESToken() string {
@@ -83,12 +81,10 @@ func GetGHESToken() string {
 
 **File:** `pkg/github/registry.go`
 
-Simplify to support single GHES:
-
 ```go
 type ClientRegistry struct {
     defaultClient *Client
-    ghesClient    *Client  // Changed from map[string]*Client
+    ghesClient    *Client
     ghesConfig    *config.GHES
 }
 
@@ -96,8 +92,8 @@ func NewClientRegistry(ctx context.Context, defaultClient *Client, ghes *config.
     // Create GHES client if config exists
 }
 
-func (r *ClientRegistry) ResolveHost(actionName string) bool {
-    // Returns true if action should use GHES
+func (r *ClientRegistry) ResolveHost(repoName string) bool {
+    // Returns true if repo should use GHES
 }
 ```
 
@@ -105,29 +101,50 @@ func (r *ClientRegistry) ResolveHost(actionName string) bool {
 
 **File:** `pkg/controller/run/controller.go`
 
-Simplify GHES service fields:
-
 ```go
 type Controller struct {
     // Existing fields...
-    ghesRepoService RepositoriesService  // Changed from map
-    ghesGitService  *GitServiceImpl      // Changed from map
+    ghesRepoService RepositoriesService
+    ghesGitService  *GitServiceImpl
     clientRegistry  ClientRegistry
 }
 
-func (c *Controller) getRepositoriesService(actionName string) RepositoriesService {
-    if c.clientRegistry != nil && c.clientRegistry.ResolveHost(actionName) {
+func (c *Controller) getRepositoriesService(repoName string) RepositoriesService {
+    if c.clientRegistry != nil && c.clientRegistry.ResolveHost(repoName) {
         return c.ghesRepoService
     }
     return c.repositoriesService
 }
 ```
 
-### Step 5: Update CLI Integration
+### Step 5: Update parse_line.go
+
+**File:** `pkg/controller/run/parse_line.go`
+
+Remove `actionName` parameter from `getLatestVersion` and related methods. Instead, get the appropriate service once at the beginning of each method using the action's repository name.
+
+```go
+func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
+    repoService := c.getRepositoriesService(action.Name)
+    // Use repoService for all API calls in this method
+}
+```
+
+### Step 6: Update github.go
+
+**File:** `pkg/controller/run/github.go`
+
+Remove `actionName` parameter from:
+- `getLatestVersion`
+- `getLatestVersionFromReleases`
+- `getLatestVersionFromTags`
+- `checkTagCooldown`
+
+These methods will receive the appropriate service as a parameter or through the controller.
+
+### Step 7: Update CLI Integration
 
 **File:** `pkg/cli/run/command.go`
-
-Update GHES initialization:
 
 ```go
 // Set up GHES support if configured
@@ -141,11 +158,9 @@ if cfg.GHES != nil {
 }
 ```
 
-### Step 6: Update JSON Schema
+### Step 8: Update JSON Schema
 
 **File:** `json-schema/pinact.json`
-
-Change `ghes` from array to object:
 
 ```json
 "ghes": {
@@ -155,13 +170,13 @@ Change `ghes` from array to object:
       "type": "string",
       "description": "Base URL of the GHES instance"
     },
-    "actions": {
+    "repos": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Regular expression patterns to match action names"
+      "description": "Regular expression patterns to match repository names"
     }
   },
-  "required": ["base_url", "actions"]
+  "required": ["base_url", "repos"]
 }
 ```
 
@@ -169,12 +184,14 @@ Change `ghes` from array to object:
 
 | File | Change Type | Description |
 |------|-------------|-------------|
-| `pkg/config/config.go` | Modify | Change GHES from array to single object, host → base_url |
+| `pkg/config/config.go` | Modify | Change GHES to single object, actions → repos |
 | `pkg/github/github.go` | Modify | Simplify GetGHESToken to check multiple env vars |
 | `pkg/github/registry.go` | Modify | Simplify to single GHES client |
 | `pkg/controller/run/controller.go` | Modify | Simplify to single GHES service |
+| `pkg/controller/run/github.go` | Modify | Remove actionName parameter from version methods |
+| `pkg/controller/run/parse_line.go` | Modify | Get service once per method |
 | `pkg/cli/run/command.go` | Modify | Update initialization for single GHES |
-| `json-schema/pinact.json` | Modify | Change ghes from array to object |
+| `json-schema/pinact.json` | Modify | Change ghes to object, actions → repos |
 
 ## Error Handling
 

@@ -26,9 +26,9 @@ type Config struct {
 }
 
 type GHES struct {
-	BaseURL        string   `json:"base_url" yaml:"base_url" jsonschema:"description=Base URL of the GHES instance (e.g. https://ghes.example.com)"`
-	Actions        []string `json:"actions" jsonschema:"description=Regular expression patterns to match action names (owner/repo)"`
-	actionPatterns []*regexp.Regexp
+	BaseURL      string   `json:"base_url" yaml:"base_url" jsonschema:"description=Base URL of the GHES instance (e.g. https://ghes.example.com)"`
+	Repos        []string `json:"repos" jsonschema:"description=Regular expression patterns to match repository names (owner/repo)"`
+	repoPatterns []*regexp.Regexp
 }
 
 type File struct {
@@ -206,37 +206,37 @@ func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
 }
 
 // Init initializes and validates a GHES configuration.
-// It validates the base_url and compiles action patterns as regular expressions.
+// It validates the base_url and compiles repo patterns as regular expressions.
 //
 // Returns an error if validation or compilation fails.
 func (g *GHES) Init() error {
 	if g.BaseURL == "" {
 		return errors.New("ghes.base_url is required")
 	}
-	if len(g.Actions) == 0 {
-		return errors.New("ghes.actions is required")
+	if len(g.Repos) == 0 {
+		return errors.New("ghes.repos is required")
 	}
-	g.actionPatterns = make([]*regexp.Regexp, len(g.Actions))
-	for i, pattern := range g.Actions {
+	g.repoPatterns = make([]*regexp.Regexp, len(g.Repos))
+	for i, pattern := range g.Repos {
 		r, err := regexp.Compile(pattern)
 		if err != nil {
-			return fmt.Errorf("compile ghes.actions pattern as a regular expression: %w", err)
+			return fmt.Errorf("compile ghes.repos pattern as a regular expression: %w", err)
 		}
-		g.actionPatterns[i] = r
+		g.repoPatterns[i] = r
 	}
 	return nil
 }
 
-// Match checks if an action name matches any of the GHES action patterns.
-// It evaluates the action name against all compiled patterns.
+// Match checks if a repository name matches any of the GHES repo patterns.
+// It evaluates the repository name against all compiled patterns.
 //
 // Parameters:
-//   - actionName: action name to match (format: owner/repo)
+//   - repoName: repository name to match (format: owner/repo)
 //
-// Returns true if the action matches any pattern, false otherwise.
-func (g *GHES) Match(actionName string) bool {
-	for _, pattern := range g.actionPatterns {
-		if pattern.FindString(actionName) == actionName {
+// Returns true if the repository matches any pattern, false otherwise.
+func (g *GHES) Match(repoName string) bool {
+	for _, pattern := range g.repoPatterns {
+		if pattern.FindString(repoName) == repoName {
 			return true
 		}
 	}
