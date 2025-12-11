@@ -236,32 +236,33 @@ func (g *GHES) Match(owner string) bool {
 //
 // Resolution priority for base URL:
 //  1. PINACT_GHES_BASE_URL - if set, it is used (and GITHUB_API_URL is ignored)
-//  2. GITHUB_API_URL - if PINACT_GHES_BASE_URL is not set
+//  2. GITHUB_API_URL - if PINACT_GHES_BASE_URL is not set but PINACT_GHES_OWNERS is set
 //
-// Returns nil if neither base URL nor owners are configured.
+// Returns nil if:
+//   - PINACT_GHES_OWNERS is not set (even if GITHUB_API_URL is set)
+//   - Both PINACT_GHES_BASE_URL and PINACT_GHES_OWNERS are not set
 func GHESFromEnv() *GHES {
+	// Get owners from PINACT_GHES_OWNERS
+	ownersStr := os.Getenv("PINACT_GHES_OWNERS")
+
+	// If owners is not set, return nil (GHES is not configured via env vars)
+	// This prevents GITHUB_API_URL alone from triggering GHES mode
+	if ownersStr == "" {
+		return nil
+	}
+
 	// Get base URL from PINACT_GHES_BASE_URL or GITHUB_API_URL
 	baseURL := os.Getenv("PINACT_GHES_BASE_URL")
 	if baseURL == "" {
 		baseURL = os.Getenv("GITHUB_API_URL")
 	}
 
-	// Get owners from PINACT_GHES_OWNERS
-	ownersStr := os.Getenv("PINACT_GHES_OWNERS")
-
-	// If neither base URL nor owners, return nil
-	if baseURL == "" && ownersStr == "" {
-		return nil
-	}
-
 	// Parse owners (comma-separated)
 	var owners []string
-	if ownersStr != "" {
-		for owner := range strings.SplitSeq(ownersStr, ",") {
-			owner = strings.TrimSpace(owner)
-			if owner != "" {
-				owners = append(owners, owner)
-			}
+	for owner := range strings.SplitSeq(ownersStr, ",") {
+		owner = strings.TrimSpace(owner)
+		if owner != "" {
+			owners = append(owners, owner)
 		}
 	}
 
