@@ -366,7 +366,7 @@ ignore_actions:
 
 # GitHub Enterprise Server Support
 ghes:
-  base_url: https://ghes.example.com
+  api_url: https://ghes.example.com
   owners:
     - your-org
 ```
@@ -523,30 +523,30 @@ export GHES_TOKEN=xxx
 
 ```yaml
 ghes:
-  base_url: https://ghes.example.com
+  api_url: https://ghes.example.com
   owners:
     - your-org
 ```
 
-- `base_url`: (required) Base URL of the GHES instance
+- `api_url`: (required) API URL of the GHES instance
 - `owners`: (required) List of owner names (usernames or organization names) hosted on GHES
 
-When configuring `ghes`, both `base_url` and `owners` are required.
+When configuring `ghes`, both `api_url` and `owners` are required.
 
 ### Environment Variables For GHES
 
 You can also configure GHES using environment variables instead of a configuration file.
 Note that the configuration file takes precedence over environment variables.
 
-- `PINACT_GHES_BASE_URL`
+- `PINACT_GHES_API_URL`
 - `PINACT_GHES_OWNERS`
 
 ```sh
-export PINACT_GHES_BASE_URL=https://ghes.example.com
+export PINACT_GHES_API_URL=https://ghes.example.com
 export PINACT_GHES_OWNERS=your-org,your-other-org
 ```
 
-If `PINACT_GHES_BASE_URL` is not set, `GITHUB_API_URL` will be used instead.
+If `PINACT_GHES_API_URL` is not set, `GITHUB_API_URL` will be used instead.
 This is convenient when running on GitHub Actions hosted on GHES.
 
 ### How GHES Support works

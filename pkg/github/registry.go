@@ -26,9 +26,9 @@ func NewClientRegistry(ctx context.Context, defaultClient *Client, ghes *config.
 
 	if ghes != nil {
 		token := GetGHESToken()
-		client, err := NewWithBaseURL(ctx, ghes.BaseURL, token)
+		client, err := NewWithBaseURL(ctx, ghes.APIURL, token)
 		if err != nil {
-			return nil, fmt.Errorf("create GHES client for %s: %w", ghes.BaseURL, err)
+			return nil, fmt.Errorf("create GHES client for %s: %w", ghes.APIURL, err)
 		}
 		registry.ghesClient = client
 	}

@@ -48,9 +48,9 @@
     },
     "GHES": {
       "properties": {
-        "base_url": {
+        "api_url": {
           "type": "string",
-          "description": "Base URL of the GHES instance (e.g. https://ghes.example.com)"
+          "description": "API URL of the GHES instance (e.g. https://ghes.example.com)"
         },
         "owners": {
           "items": {
@@ -63,7 +63,7 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "base_url",
+        "api_url",
         "owners"
       ]
     },

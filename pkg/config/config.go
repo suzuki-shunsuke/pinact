@@ -29,8 +29,8 @@ type Config struct {
 }
 
 type GHES struct {
-	BaseURL string   `json:"base_url" yaml:"base_url" jsonschema:"description=Base URL of the GHES instance (e.g. https://ghes.example.com)"`
-	Owners  []string `json:"owners" jsonschema:"description=Repository owners to match (exact match)"`
+	APIURL string   `json:"api_url" yaml:"api_url" jsonschema:"description=API URL of the GHES instance (e.g. https://ghes.example.com)"`
+	Owners []string `json:"owners" jsonschema:"description=Repository owners to match (exact match)"`
 }
 
 type File struct {
@@ -208,12 +208,10 @@ func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
 }
 
 // Init initializes and validates a GHES configuration.
-// It validates that base_url and owners are configured.
-//
-// Returns an error if validation fails.
+// It validates that api_url and owners are configured.
 func (g *GHES) Init() error {
-	if g.BaseURL == "" {
-		return errors.New("ghes.base_url is required")
+	if g.APIURL == "" {
+		return errors.New("ghes.api_url is required")
 	}
 	if len(g.Owners) == 0 {
 		return errors.New("ghes.owners is required")
@@ -236,15 +234,15 @@ func (g *GHES) Match(owner string) bool {
 }
 
 // GHESFromEnv creates a GHES configuration from environment variables.
-// It reads PINACT_GHES_BASE_URL (or GITHUB_API_URL as fallback) and PINACT_GHES_OWNERS.
+// It reads PINACT_GHES_API_URL (or GITHUB_API_URL as fallback) and PINACT_GHES_OWNERS.
 //
-// Resolution priority for base URL:
-//  1. PINACT_GHES_BASE_URL - if set, it is used (and GITHUB_API_URL is ignored)
-//  2. GITHUB_API_URL - if PINACT_GHES_BASE_URL is not set but PINACT_GHES_OWNERS is set
+// Resolution priority for API URL:
+//  1. PINACT_GHES_API_URL - if set, it is used (and GITHUB_API_URL is ignored)
+//  2. GITHUB_API_URL - if PINACT_GHES_API_URL is not set but PINACT_GHES_OWNERS is set
 //
 // Returns nil if:
 //   - PINACT_GHES_OWNERS is not set (even if GITHUB_API_URL is set)
-//   - Both PINACT_GHES_BASE_URL and PINACT_GHES_OWNERS are not set
+//   - Both PINACT_GHES_API_URL and PINACT_GHES_OWNERS are not set
 func GHESFromEnv() *GHES {
 	// Get owners from PINACT_GHES_OWNERS
 	ownersStr := os.Getenv("PINACT_GHES_OWNERS")
@@ -255,10 +253,10 @@ func GHESFromEnv() *GHES {
 		return nil
 	}
 
-	// Get base URL from PINACT_GHES_BASE_URL or GITHUB_API_URL
-	baseURL := os.Getenv("PINACT_GHES_BASE_URL")
-	if baseURL == "" {
-		baseURL = os.Getenv("GITHUB_API_URL")
+	// Get API URL from PINACT_GHES_API_URL or GITHUB_API_URL
+	apiURL := os.Getenv("PINACT_GHES_API_URL")
+	if apiURL == "" {
+		apiURL = os.Getenv("GITHUB_API_URL")
 	}
 
 	// Parse owners (comma-separated)
@@ -271,8 +269,8 @@ func GHESFromEnv() *GHES {
 	}
 
 	return &GHES{
-		BaseURL: baseURL,
-		Owners:  owners,
+		APIURL: apiURL,
+		Owners: owners,
 	}
 }
 

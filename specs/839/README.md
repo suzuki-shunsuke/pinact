@@ -15,13 +15,13 @@ GHES settings are defined in the configuration file (`.pinact.yaml`):
 
 ```yaml
 ghes:
-  base_url: https://ghes.example.com  # /api/v3/ is appended if not present
+  api_url: https://ghes.example.com  # /api/v3/ is appended if not present
   owners:
     - my-org
     - shared-actions
 ```
 
-- `base_url` (required): The base URL of the GHES instance (e.g., `https://ghes.example.com`)
+- `api_url` (required): The API URL of the GHES instance (e.g., `https://ghes.example.com`)
 - `owners` (required): List of repository owners to match (exact match)
 
 ### Environment Variables
@@ -30,23 +30,23 @@ ghes:
 
 GHES can also be configured via environment variables (used when `.pinact.yaml` does not have `ghes` settings):
 
-- `PINACT_GHES_BASE_URL`: GHES base URL (e.g., `https://ghes.example.com`)
+- `PINACT_GHES_API_URL`: GHES API URL (e.g., `https://ghes.example.com`)
 - `PINACT_GHES_OWNERS`: Comma-separated list of repository owners
-- `GITHUB_API_URL`: Alternative to `PINACT_GHES_BASE_URL` (commonly set in GitHub Actions on GHES)
+- `GITHUB_API_URL`: Alternative to `PINACT_GHES_API_URL` (commonly set in GitHub Actions on GHES)
 
 ```bash
-export PINACT_GHES_BASE_URL="https://ghes.example.com"
+export PINACT_GHES_API_URL="https://ghes.example.com"
 export PINACT_GHES_OWNERS="my-org-1,my-org-2"
 ```
 
-Resolution priority for base URL:
-1. If `PINACT_GHES_BASE_URL` is set, it is used (and `GITHUB_API_URL` is ignored)
-2. If `PINACT_GHES_BASE_URL` is not set but `GITHUB_API_URL` is set, `GITHUB_API_URL` is used
+Resolution priority for API URL:
+1. If `PINACT_GHES_API_URL` is set, it is used (and `GITHUB_API_URL` is ignored)
+2. If `PINACT_GHES_API_URL` is not set but `GITHUB_API_URL` is set, `GITHUB_API_URL` is used
 
 Requirements:
-- If `PINACT_GHES_BASE_URL` is set, `PINACT_GHES_OWNERS` is required
-- If `PINACT_GHES_OWNERS` is set, either `PINACT_GHES_BASE_URL` or `GITHUB_API_URL` is required
-- If neither `PINACT_GHES_BASE_URL` nor `GITHUB_API_URL` is set, `PINACT_GHES_OWNERS` is optional (only github.com actions are processed)
+- If `PINACT_GHES_API_URL` is set, `PINACT_GHES_OWNERS` is required
+- If `PINACT_GHES_OWNERS` is set, either `PINACT_GHES_API_URL` or `GITHUB_API_URL` is required
+- If neither `PINACT_GHES_API_URL` nor `GITHUB_API_URL` is set, `PINACT_GHES_OWNERS` is optional (only github.com actions are processed)
 
 This allows using GHES without a configuration file.
 
@@ -93,7 +93,7 @@ When using `pinact run -review`, the review comment is created on the appropriat
 ```yaml
 # .pinact.yaml
 ghes:
-  base_url: https://ghes.example.com
+  api_url: https://ghes.example.com
   owners:
     - my-org
     - shared-actions
@@ -109,13 +109,13 @@ export GHES_TOKEN="ghp_yyyy"    # for GHES
 ```bash
 export GITHUB_TOKEN="ghp_xxxx"  # for github.com
 export GHES_TOKEN="ghp_yyyy"    # for GHES
-export PINACT_GHES_BASE_URL="https://ghes.example.com"
+export PINACT_GHES_API_URL="https://ghes.example.com"
 export PINACT_GHES_OWNERS="my-org,shared-actions"
 ```
 
 ### Using GITHUB_API_URL (GitHub Actions on GHES)
 
-[When running on GitHub Actions hosted on GHES, `GITHUB_API_URL` is automatically set](https://docs.github.com/en/enterprise-server@3.19/actions/reference/workflows-and-actions/variables), so `PINACT_GHES_BASE_URL` is not required:
+[When running on GitHub Actions hosted on GHES, `GITHUB_API_URL` is automatically set](https://docs.github.com/en/enterprise-server@3.19/actions/reference/workflows-and-actions/variables), so `PINACT_GHES_API_URL` is not required:
 
 ```bash
 # GITHUB_API_URL is automatically set by GitHub Actions on GHES
@@ -146,13 +146,13 @@ jobs:
 
 ## API Integration
 
-For GHES instances, pinact uses the same GitHub API endpoints but with the GHES base URL:
+For GHES instances, pinact uses the same GitHub API endpoints but with the GHES API URL:
 
-- Base URL: `<base_url>/api/v3/` (appended automatically if not present)
+- API URL: `<api_url>/api/v3/` (appended automatically if not present)
 - Authentication: Bearer token via GHES token environment variables
 
 ## Error Handling
 
 - If a matching GHES token is not found, return an error with a clear message
 - If the GHES API request fails, return the error without fallback to github.com
-- Missing `base_url` or `owners` should be reported at startup
+- Missing `api_url` or `owners` should be reported at startup
