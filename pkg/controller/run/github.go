@@ -185,9 +185,8 @@ func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, 
 		cutoff = time.Now().AddDate(0, 0, -c.param.MinAge)
 	}
 
-	repoFullName := owner + "/" + repo
-	repoService := c.getRepositoriesService(owner, repoFullName)
-	gitService := c.getGitService(owner, repoFullName)
+	repoService := c.getRepositoriesService(owner)
+	gitService := c.getGitService(owner)
 
 	lv, err := c.getLatestVersionFromReleases(ctx, logger, repoService, owner, repo, isStable, cutoff)
 	if err != nil {

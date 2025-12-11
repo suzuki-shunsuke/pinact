@@ -51,16 +51,15 @@ func (r *ClientRegistry) GetGHESClient() *Client {
 }
 
 // ResolveHost determines whether a repository should use GHES.
-// It checks the owner and full repository name against the GHES configuration.
+// It checks the owner against the GHES configuration.
 //
 // Parameters:
 //   - owner: repository owner
-//   - repoFullName: full repository name (format: owner/repo)
 //
 // Returns true if the repository should use GHES, false for github.com.
-func (r *ClientRegistry) ResolveHost(owner, repoFullName string) bool {
+func (r *ClientRegistry) ResolveHost(owner string) bool {
 	if r.ghesConfig == nil {
 		return false
 	}
-	return r.ghesConfig.Match(owner, repoFullName)
+	return r.ghesConfig.Match(owner)
 }

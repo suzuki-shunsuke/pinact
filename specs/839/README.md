@@ -19,16 +19,10 @@ ghes:
   owners:
     - my-org
     - shared-actions
-  repos:
-    - foo/.*
-    - suzuki-shunsuke/enterprise-action
 ```
 
-- `base_url`: The base URL of the GHES instance (e.g., `https://ghes.example.com`)
-- `owners`: List of repository owners to match (exact match)
-- `repos`: List of regular expression patterns to match repository names (format: `owner/repo`)
-
-`owners` and `repos` are evaluated with OR logic - a repository matches if it matches **any** owner in `owners` OR **any** pattern in `repos`.
+- `base_url` (required): The base URL of the GHES instance (e.g., `https://ghes.example.com`)
+- `owners` (required): List of repository owners to match (exact match)
 
 The configuration file is required when using GHES.
 
@@ -45,16 +39,14 @@ GitHub Access Tokens are specified via environment variables:
 ## Behavior
 
 1. pinact parses workflow files and extracts actions (existing behavior)
-2. For each extracted action, check if it matches any owner in `ghes.owners` or any pattern in `ghes.repos`
+2. For each extracted action, check if its owner matches any entry in `ghes.owners`
 3. If matched, search for the action on the GHES instance
 4. If not matched, search for the action on github.com (existing behavior)
 
 ### Repository Matching
 
 - `owners`: Exact match against the repository owner
-- `repos`: Regular expression match against the full `owner/repo` name
-- `owners` and `repos` are evaluated with OR logic - at least one of them must be configured
-- If no GHES pattern matches, the action defaults to github.com
+- If no owner matches, the action defaults to github.com
 
 ## Constraints
 
@@ -74,8 +66,7 @@ ghes:
   base_url: https://ghes.example.com
   owners:
     - my-org
-  repos:
-    - shared-actions/common-.*
+    - shared-actions
 ```
 
 ### Environment
@@ -96,10 +87,10 @@ jobs:
       # This repo matches "my-org" owner -> searched on ghes.example.com
       - uses: my-org/build-action@v1
 
-      # This repo matches "shared-actions/common-.*" pattern -> searched on ghes.example.com
+      # This repo matches "shared-actions" owner -> searched on ghes.example.com
       - uses: shared-actions/common-lint@v1
 
-      # This repo doesn't match any GHES pattern -> searched on github.com
+      # This repo doesn't match any GHES owner -> searched on github.com
       - uses: actions/checkout@v4
 ```
 
@@ -114,4 +105,4 @@ For GHES instances, pinact uses the same GitHub API endpoints but with the GHES 
 
 - If a matching GHES token is not found, return an error with a clear message
 - If the GHES API request fails, return the error without fallback to github.com
-- Invalid regex patterns in configuration should be reported at startup
+- Missing `base_url` or `owners` should be reported at startup

@@ -38,7 +38,7 @@ type ConfigReader interface {
 }
 
 type ClientRegistry interface {
-	ResolveHost(owner, repoFullName string) bool
+	ResolveHost(owner string) bool
 }
 
 // New creates a new Controller for running pinact operations.
@@ -94,14 +94,13 @@ func (c *Controller) SetGHESServices(repoService RepositoriesService, gitService
 //
 // Parameters:
 //   - owner: repository owner
-//   - repoFullName: full repository name (format: owner/repo)
 //
 // Returns the repositories service for the repository's host.
-func (c *Controller) getRepositoriesService(owner, repoFullName string) RepositoriesService {
+func (c *Controller) getRepositoriesService(owner string) RepositoriesService {
 	if c.clientRegistry == nil {
 		return c.repositoriesService
 	}
-	if c.clientRegistry.ResolveHost(owner, repoFullName) && c.ghesRepoService != nil {
+	if c.clientRegistry.ResolveHost(owner) && c.ghesRepoService != nil {
 		return c.ghesRepoService
 	}
 	return c.repositoriesService
@@ -112,14 +111,13 @@ func (c *Controller) getRepositoriesService(owner, repoFullName string) Reposito
 //
 // Parameters:
 //   - owner: repository owner
-//   - repoFullName: full repository name (format: owner/repo)
 //
 // Returns the git service for the repository's host.
-func (c *Controller) getGitService(owner, repoFullName string) *GitServiceImpl {
+func (c *Controller) getGitService(owner string) *GitServiceImpl {
 	if c.clientRegistry == nil {
 		return c.gitService
 	}
-	if c.clientRegistry.ResolveHost(owner, repoFullName) && c.ghesGitService != nil {
+	if c.clientRegistry.ResolveHost(owner) && c.ghesGitService != nil {
 		return c.ghesGitService
 	}
 	return c.gitService

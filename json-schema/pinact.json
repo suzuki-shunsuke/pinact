@@ -58,19 +58,13 @@
           },
           "type": "array",
           "description": "Repository owners to match (exact match)"
-        },
-        "repos": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "description": "Regular expression patterns to match repository names (owner/repo)"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "base_url"
+        "base_url",
+        "owners"
       ]
     },
     "IgnoreAction": {
