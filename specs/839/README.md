@@ -48,6 +48,13 @@ GitHub Access Tokens are specified via environment variables:
 - `owners`: Exact match against the repository owner
 - If no owner matches, the action defaults to github.com
 
+### Review Mode (`pinact run -review`)
+
+When using `pinact run -review`, the review comment is created on the appropriate GitHub instance:
+
+- If `-repo-owner` matches any entry in `ghes.owners`, the review is created on the GHES instance
+- Otherwise, the review is created on github.com
+
 ## Constraints
 
 - Configuration file is required when using GHES

@@ -352,7 +352,7 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 		}, &run.GitServiceImpl{
 			GitService: client.Git,
 			Commits:    map[string]*run.GetCommitResult{},
-		})
+		}, client.PullRequests)
 	}
 
 	return ctrl.Run(ctx, logger.Logger) //nolint:wrapcheck

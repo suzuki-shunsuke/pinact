@@ -103,9 +103,14 @@ func (r *ClientRegistry) ResolveHost(owner string) bool {
 ```go
 type Controller struct {
     // Existing fields...
-    ghesRepoService RepositoriesService
-    ghesGitService  *GitServiceImpl
-    clientRegistry  ClientRegistry
+    ghesRepoService         RepositoriesService
+    ghesGitService          *GitServiceImpl
+    ghesPullRequestsService PullRequestsService
+    clientRegistry          ClientRegistry
+}
+
+type ClientRegistry interface {
+    ResolveHost(owner string) bool
 }
 
 func (c *Controller) getRepositoriesService(owner string) RepositoriesService {
@@ -113,6 +118,20 @@ func (c *Controller) getRepositoriesService(owner string) RepositoriesService {
         return c.ghesRepoService
     }
     return c.repositoriesService
+}
+
+func (c *Controller) getGitService(owner string) *GitServiceImpl {
+    if c.clientRegistry != nil && c.clientRegistry.ResolveHost(owner) {
+        return c.ghesGitService
+    }
+    return c.gitService
+}
+
+func (c *Controller) getPullRequestsService(owner string) PullRequestsService {
+    if c.clientRegistry != nil && c.clientRegistry.ResolveHost(owner) {
+        return c.ghesPullRequestsService
+    }
+    return c.pullRequestsService
 }
 ```
 
@@ -186,10 +205,10 @@ if cfg.GHES != nil {
 | `pkg/config/config.go` | Modify | Add owners field, update Match to check owners |
 | `pkg/github/github.go` | Modify | Simplify GetGHESToken to check multiple env vars |
 | `pkg/github/registry.go` | Modify | Simplify to single GHES client |
-| `pkg/controller/run/controller.go` | Modify | Simplify to single GHES service |
-| `pkg/controller/run/github.go` | Modify | Remove actionName parameter from version methods |
+| `pkg/controller/run/controller.go` | Modify | Simplify to single GHES service, add GHES PullRequestsService for review mode |
+| `pkg/controller/run/github.go` | Modify | Remove actionName parameter from version methods, update review to use appropriate PullRequestsService |
 | `pkg/controller/run/parse_line.go` | Modify | Get service once per method |
-| `pkg/cli/run/command.go` | Modify | Update initialization for single GHES |
+| `pkg/cli/run/command.go` | Modify | Update initialization for single GHES, set GHES PullRequestsService |
 | `json-schema/pinact.json` | Modify | Add owners field (required) |
 
 ## Error Handling

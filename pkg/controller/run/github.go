@@ -393,7 +393,8 @@ func (c *Controller) review(ctx context.Context, filePath, sha string, line int,
 	default:
 		return 0, errors.New("either suggestion or error must be provided")
 	}
-	_, resp, e := c.pullRequestsService.CreateComment(ctx, c.param.Review.RepoOwner, c.param.Review.RepoName, c.param.Review.PullRequest, cmt)
+	prService := c.getPullRequestsService(c.param.Review.RepoOwner)
+	_, resp, e := prService.CreateComment(ctx, c.param.Review.RepoOwner, c.param.Review.RepoName, c.param.Review.PullRequest, cmt)
 	code := 0
 	if resp != nil {
 		code = resp.StatusCode

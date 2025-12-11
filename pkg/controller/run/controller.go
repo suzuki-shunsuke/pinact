@@ -24,9 +24,10 @@ type Controller struct {
 	cfgReader           ConfigReader
 	logger              *Logger
 	// GHES support
-	ghesRepoService RepositoriesService
-	ghesGitService  *GitServiceImpl
-	clientRegistry  ClientRegistry
+	ghesRepoService         RepositoriesService
+	ghesGitService          *GitServiceImpl
+	ghesPullRequestsService PullRequestsService
+	clientRegistry          ClientRegistry
 }
 
 type ConfigFinder interface {
@@ -84,9 +85,11 @@ func (c *Controller) SetClientRegistry(registry ClientRegistry) {
 // Parameters:
 //   - repoService: repository service for the GHES instance
 //   - gitService: git service for the GHES instance
-func (c *Controller) SetGHESServices(repoService RepositoriesService, gitService *GitServiceImpl) {
+//   - prService: pull requests service for the GHES instance
+func (c *Controller) SetGHESServices(repoService RepositoriesService, gitService *GitServiceImpl, prService PullRequestsService) {
 	c.ghesRepoService = repoService
 	c.ghesGitService = gitService
+	c.ghesPullRequestsService = prService
 }
 
 // getRepositoriesService returns the appropriate repositories service for a repository.
@@ -121,4 +124,21 @@ func (c *Controller) getGitService(owner string) *GitServiceImpl {
 		return c.ghesGitService
 	}
 	return c.gitService
+}
+
+// getPullRequestsService returns the appropriate pull requests service for a repository.
+// It resolves whether the repository should use GHES and returns the corresponding service.
+//
+// Parameters:
+//   - owner: repository owner
+//
+// Returns the pull requests service for the repository's host.
+func (c *Controller) getPullRequestsService(owner string) PullRequestsService {
+	if c.clientRegistry == nil {
+		return c.pullRequestsService
+	}
+	if c.clientRegistry.ResolveHost(owner) && c.ghesPullRequestsService != nil {
+		return c.ghesPullRequestsService
+	}
+	return c.pullRequestsService
 }
