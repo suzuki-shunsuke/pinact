@@ -15,13 +15,13 @@ GHES settings are defined in the configuration file (`.pinact.yaml`):
 
 ```yaml
 ghes:
-  - host: ghes.example.com
-    actions:
-      - foo/.*
-      - suzuki-shunsuke/enterprise-action
+  base_url: https://ghes.example.com  # /api/v3/ is appended if not present
+  actions:
+    - foo/.*
+    - suzuki-shunsuke/enterprise-action
 ```
 
-- `host`: The hostname of the GHES instance
+- `base_url`: The base URL of the GHES instance (e.g., `https://ghes.example.com`)
 - `actions`: List of regular expression patterns to match action names (format: `owner/repo`)
 
 The configuration file is required when using GHES.
@@ -31,31 +31,27 @@ The configuration file is required when using GHES.
 GitHub Access Tokens are specified via environment variables:
 
 - `GITHUB_TOKEN`: Token for github.com (existing behavior)
-- `GITHUB_TOKEN_<host>`: Token for GHES instance
-  - The host name is lowercase and dots/hyphens are replaced with underscores
-  - Example: For `ghes.example.com`, the environment variable is `GITHUB_TOKEN_ghes_example_com`
-
-This naming convention is inspired by:
-
-- [Terraform CLI Environment Variable Credentials](https://developer.hashicorp.com/terraform/cli/config/config-file#environment-variable-credentials)
-- [tflint discussion on GHES support](https://github.com/terraform-linters/tflint/issues/2005#issuecomment-2002166525)
+- GHES token (checked in order, first non-empty value is used):
+  1. `GHES_TOKEN`
+  2. `GITHUB_TOKEN_ENTERPRISE`
+  3. `GITHUB_ENTERPRISE_TOKEN`
 
 ## Behavior
 
 1. pinact parses workflow files and extracts actions (existing behavior)
-2. For each extracted action, check if it matches any pattern in `ghes[].actions`
-3. If matched, search for the action on the corresponding GHES instance
+2. For each extracted action, check if it matches any pattern in `ghes.actions`
+3. If matched, search for the action on the GHES instance
 4. If not matched, search for the action on github.com (existing behavior)
 
 ### Action Matching
 
 - Actions are matched using regular expressions against the `owner/repo` portion
-- The first matching GHES configuration is used
 - If no GHES pattern matches, the action defaults to github.com
 
 ## Constraints
 
 - Configuration file is required when using GHES
+- Only one GHES instance is supported
 - Actions are NOT searched on GHES first and then fallback to github.com
   - This prevents unnecessary API requests to GHES instances
   - Users must explicitly configure which actions are hosted on GHES
@@ -67,17 +63,17 @@ This naming convention is inspired by:
 ```yaml
 # .pinact.yaml
 ghes:
-  - host: ghes.example.com
-    actions:
-      - my-org/.*
-      - shared-actions/common-.*
+  base_url: https://ghes.example.com
+  actions:
+    - my-org/.*
+    - shared-actions/common-.*
 ```
 
 ### Environment
 
 ```bash
 export GITHUB_TOKEN="ghp_xxxx"  # for github.com
-export GITHUB_TOKEN_ghes_example_com="ghp_yyyy"  # for ghes.example.com
+export GHES_TOKEN="ghp_yyyy"    # for GHES
 ```
 
 ### Workflow
@@ -99,8 +95,8 @@ jobs:
 
 For GHES instances, pinact uses the same GitHub API endpoints but with the GHES base URL:
 
-- Base URL: `https://<host>/api/v3`
-- Authentication: Bearer token via `GITHUB_TOKEN_<host>` environment variable
+- Base URL: `<base_url>/api/v3/` (appended automatically if not present)
+- Authentication: Bearer token via GHES token environment variables
 
 ## Error Handling
 

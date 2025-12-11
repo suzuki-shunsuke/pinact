@@ -27,11 +27,8 @@
           "description": "Actions and reusable workflows that pinact ignores"
         },
         "ghes": {
-          "items": {
-            "$ref": "#/$defs/GHES"
-          },
-          "type": "array",
-          "description": "GitHub Enterprise Server configurations"
+          "$ref": "#/$defs/GHES",
+          "description": "GitHub Enterprise Server configuration"
         }
       },
       "additionalProperties": false,
@@ -51,9 +48,9 @@
     },
     "GHES": {
       "properties": {
-        "host": {
+        "base_url": {
           "type": "string",
-          "description": "Hostname of the GHES instance"
+          "description": "Base URL of the GHES instance (e.g. https://ghes.example.com)"
         },
         "actions": {
           "items": {
@@ -66,7 +63,7 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "host",
+        "base_url",
         "actions"
       ]
     },

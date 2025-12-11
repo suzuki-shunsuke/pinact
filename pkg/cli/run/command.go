@@ -335,26 +335,24 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 	}, fs, cfgFinder, cfgReader, param)
 
 	// Set up GHES support if configured
-	if len(cfg.GHES) > 0 {
+	if cfg.GHES != nil {
 		registry, err := github.NewClientRegistry(ctx, gh, cfg.GHES)
 		if err != nil {
 			return fmt.Errorf("create GitHub client registry: %w", err)
 		}
 		ctrl.SetClientRegistry(registry)
 
-		// Create services for each GHES host
-		for _, ghes := range cfg.GHES {
-			client := registry.GetClient(ghes.Host)
-			ctrl.SetGHESServices(ghes.Host, &run.RepositoriesServiceImpl{
-				Tags:                map[string]*run.ListTagsResult{},
-				Releases:            map[string]*run.ListReleasesResult{},
-				Commits:             map[string]*run.GetCommitSHA1Result{},
-				RepositoriesService: client.Repositories,
-			}, &run.GitServiceImpl{
-				GitService: client.Git,
-				Commits:    map[string]*run.GetCommitResult{},
-			})
-		}
+		// Create services for GHES
+		client := registry.GetGHESClient()
+		ctrl.SetGHESServices(&run.RepositoriesServiceImpl{
+			Tags:                map[string]*run.ListTagsResult{},
+			Releases:            map[string]*run.ListReleasesResult{},
+			Commits:             map[string]*run.GetCommitSHA1Result{},
+			RepositoriesService: client.Repositories,
+		}, &run.GitServiceImpl{
+			GitService: client.Git,
+			Commits:    map[string]*run.GetCommitResult{},
+		})
 	}
 
 	return ctrl.Run(ctx, logger.Logger) //nolint:wrapcheck

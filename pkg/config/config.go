@@ -22,11 +22,11 @@ type Config struct {
 	Version       int             `json:"version,omitempty" jsonschema:"enum=2,enum=3"`
 	Files         []*File         `json:"files,omitempty" jsonschema:"description=Target files. If files are passed via positional command line arguments, this is ignored"`
 	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores"`
-	GHES          []*GHES         `json:"ghes,omitempty" yaml:"ghes" jsonschema:"description=GitHub Enterprise Server configurations"`
+	GHES          *GHES           `json:"ghes,omitempty" yaml:"ghes" jsonschema:"description=GitHub Enterprise Server configuration"`
 }
 
 type GHES struct {
-	Host           string   `json:"host" jsonschema:"description=Hostname of the GHES instance"`
+	BaseURL        string   `json:"base_url" yaml:"base_url" jsonschema:"description=Base URL of the GHES instance (e.g. https://ghes.example.com)"`
 	Actions        []string `json:"actions" jsonschema:"description=Regular expression patterns to match action names (owner/repo)"`
 	actionPatterns []*regexp.Regexp
 }
@@ -206,12 +206,12 @@ func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
 }
 
 // Init initializes and validates a GHES configuration.
-// It validates the host and compiles action patterns as regular expressions.
+// It validates the base_url and compiles action patterns as regular expressions.
 //
 // Returns an error if validation or compilation fails.
 func (g *GHES) Init() error {
-	if g.Host == "" {
-		return errors.New("ghes.host is required")
+	if g.BaseURL == "" {
+		return errors.New("ghes.base_url is required")
 	}
 	if len(g.Actions) == 0 {
 		return errors.New("ghes.actions is required")
@@ -355,8 +355,8 @@ func (cfg *Config) Init() error {
 			return fmt.Errorf("initialize ignore_action: %w", err)
 		}
 	}
-	for _, ghes := range cfg.GHES {
-		if err := ghes.Init(); err != nil {
+	if cfg.GHES != nil {
+		if err := cfg.GHES.Init(); err != nil {
 			return fmt.Errorf("initialize ghes: %w", err)
 		}
 	}

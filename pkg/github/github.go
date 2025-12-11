@@ -140,15 +140,17 @@ func getHTTPClientForGitHubWithToken(ctx context.Context, token string) *http.Cl
 }
 
 // GetGHESToken retrieves the GitHub token for a GHES instance from environment variables.
-// The environment variable name is derived from the host: GITHUB_TOKEN_<host>
-// where dots and hyphens in the host are replaced with underscores.
+// It checks multiple environment variable names in order:
+// 1. GHES_TOKEN
+// 2. GITHUB_TOKEN_ENTERPRISE
+// 3. GITHUB_ENTERPRISE_TOKEN
 //
-// Parameters:
-//   - host: hostname of the GHES instance (e.g., "ghes.example.com")
-//
-// Returns the GitHub token string or empty string if not set.
-func GetGHESToken(host string) string {
-	// Convert host to env var name: ghes.example.com -> ghes_example_com
-	envName := "GITHUB_TOKEN_" + strings.ReplaceAll(strings.ReplaceAll(host, ".", "_"), "-", "_")
-	return os.Getenv(envName)
+// Returns the first non-empty token found, or empty string if none are set.
+func GetGHESToken() string {
+	for _, envName := range []string{"GHES_TOKEN", "GITHUB_TOKEN_ENTERPRISE", "GITHUB_ENTERPRISE_TOKEN"} {
+		if token := os.Getenv(envName); token != "" {
+			return token
+		}
+	}
+	return ""
 }
