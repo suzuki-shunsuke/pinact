@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/hashicorp/go-version"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
@@ -30,7 +30,7 @@ type GitService interface {
 type GitServiceImpl struct {
 	defaultGitService GitService
 	ghesGitService    GitService
-	ghesConfig        *config.GHES
+	logger            *slog.Logger
 	Commits           map[string]*GetCommitResult
 }
 
@@ -40,20 +40,20 @@ type GetCommitResult struct {
 	err      error
 }
 
-func (g *GitServiceImpl) SetServices(defaultService, ghesService GitService, ghesConfig *config.GHES) {
+func (g *GitServiceImpl) SetServices(defaultService, ghesService GitService, logger *slog.Logger) {
 	g.defaultGitService = defaultService
 	g.ghesGitService = ghesService
-	g.ghesConfig = ghesConfig
+	g.logger = logger
 }
 
-// GetCommit retrieves a commit object with caching.
+// GetCommit retrieves a commit object with caching and GHES fallback.
 func (g *GitServiceImpl) GetCommit(ctx context.Context, owner, repo, sha string) (*github.Commit, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%s", owner, repo, sha)
 	if result, ok := g.Commits[key]; ok {
 		return result.Commit, result.Response, result.err
 	}
-	service := g.getService(owner)
-	commit, resp, err := service.GetCommit(ctx, owner, repo, sha)
+
+	commit, resp, err := g.getCommit(ctx, owner, repo, sha)
 	g.Commits[key] = &GetCommitResult{
 		Commit:   commit,
 		Response: resp,
@@ -62,11 +62,24 @@ func (g *GitServiceImpl) GetCommit(ctx context.Context, owner, repo, sha string)
 	return commit, resp, err //nolint:wrapcheck
 }
 
-func (g *GitServiceImpl) getService(owner string) GitService {
-	if g.ghesConfig.Match(owner) && g.ghesGitService != nil {
-		return g.ghesGitService
+// getCommit calls the API with GHES fallback logic.
+// If GHES is enabled, it first tries GHES and falls back to github.com on 404.
+func (g *GitServiceImpl) getCommit(ctx context.Context, owner, repo, sha string) (*github.Commit, *github.Response, error) {
+	if g.ghesGitService == nil {
+		return g.defaultGitService.GetCommit(ctx, owner, repo, sha) //nolint:wrapcheck
 	}
-	return g.defaultGitService
+
+	commit, resp, err := g.ghesGitService.GetCommit(ctx, owner, repo, sha)
+	if err == nil {
+		return commit, resp, nil
+	}
+	// Fallback to github.com only on 404
+	if resp != nil && resp.StatusCode == http.StatusNotFound {
+		g.logger.Debug("GHES returned 404, falling back to github.com", "owner", owner, "repo", repo, "sha", sha)
+		return g.defaultGitService.GetCommit(ctx, owner, repo, sha) //nolint:wrapcheck
+	}
+	// For other errors (401, 403, 500, etc.), return the error without fallback
+	return commit, resp, err //nolint:wrapcheck
 }
 
 type ListTagsResult struct {
@@ -84,34 +97,51 @@ type ListReleasesResult struct {
 type RepositoriesServiceImpl struct {
 	defaultRepoService RepositoriesService
 	ghesRepoService    RepositoriesService
-	ghesConfig         *config.GHES
+	logger             *slog.Logger
 	Tags               map[string]*ListTagsResult
 	Commits            map[string]*GetCommitSHA1Result
 	Releases           map[string]*ListReleasesResult
 }
 
-func (r *RepositoriesServiceImpl) SetServices(defaultService, ghesService RepositoriesService, ghesConfig *config.GHES) {
+func (r *RepositoriesServiceImpl) SetServices(defaultService, ghesService RepositoriesService, logger *slog.Logger) {
 	r.defaultRepoService = defaultService
 	r.ghesRepoService = ghesService
-	r.ghesConfig = ghesConfig
+	r.logger = logger
 }
 
-// GetCommitSHA1 retrieves the commit SHA for a given reference with caching.
-// It first checks the cache and returns cached results if available.
-// Otherwise, it calls the underlying service and caches the result.
+// GetCommitSHA1 retrieves the commit SHA for a given reference with caching and GHES fallback.
 func (r *RepositoriesServiceImpl) GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%s", owner, repo, ref)
-	a, ok := r.Commits[key]
-	if ok {
-		return a.SHA, a.Response, a.err
+	if result, ok := r.Commits[key]; ok {
+		return result.SHA, result.Response, result.err
 	}
-	service := r.getService(owner)
-	sha, resp, err := service.GetCommitSHA1(ctx, owner, repo, ref, lastSHA)
+
+	sha, resp, err := r.getCommitSHA1(ctx, owner, repo, ref, lastSHA)
 	r.Commits[key] = &GetCommitSHA1Result{
 		SHA:      sha,
 		Response: resp,
 		err:      err,
 	}
+	return sha, resp, err //nolint:wrapcheck
+}
+
+// getCommitSHA1 calls the API with GHES fallback logic.
+// If GHES is enabled, it first tries GHES and falls back to github.com on 404.
+func (r *RepositoriesServiceImpl) getCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error) {
+	if r.ghesRepoService == nil {
+		return r.defaultRepoService.GetCommitSHA1(ctx, owner, repo, ref, lastSHA) //nolint:wrapcheck
+	}
+
+	sha, resp, err := r.ghesRepoService.GetCommitSHA1(ctx, owner, repo, ref, lastSHA)
+	if err == nil {
+		return sha, resp, nil
+	}
+	// Fallback to github.com only on 404
+	if resp != nil && resp.StatusCode == http.StatusNotFound {
+		r.logger.Debug("GHES returned 404, falling back to github.com", "owner", owner, "repo", repo, "ref", ref)
+		return r.defaultRepoService.GetCommitSHA1(ctx, owner, repo, ref, lastSHA) //nolint:wrapcheck
+	}
+	// For other errors (401, 403, 500, etc.), return the error without fallback
 	return sha, resp, err //nolint:wrapcheck
 }
 
@@ -121,17 +151,14 @@ type GetCommitSHA1Result struct {
 	err      error
 }
 
-// ListTags retrieves repository tags with caching.
-// It first checks the cache and returns cached results if available.
-// Otherwise, it calls the underlying service and caches the result.
+// ListTags retrieves repository tags with caching and GHES fallback.
 func (r *RepositoriesServiceImpl) ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%v", owner, repo, opts.Page)
-	a, ok := r.Tags[key]
-	if ok {
-		return a.Tags, a.Response, a.err
+	if result, ok := r.Tags[key]; ok {
+		return result.Tags, result.Response, result.err
 	}
-	service := r.getService(owner)
-	tags, resp, err := service.ListTags(ctx, owner, repo, opts)
+
+	tags, resp, err := r.listTags(ctx, owner, repo, opts)
 	r.Tags[key] = &ListTagsResult{
 		Tags:     tags,
 		Response: resp,
@@ -140,25 +167,35 @@ func (r *RepositoriesServiceImpl) ListTags(ctx context.Context, owner string, re
 	return tags, resp, err //nolint:wrapcheck
 }
 
-// ListReleases retrieves repository releases with caching.
-// It first checks the cache and returns cached results if available.
-// Otherwise, it calls the underlying service and caches the result.
+// listTags calls the API with GHES fallback logic.
+// If GHES is enabled, it first tries GHES and falls back to github.com on 404.
+func (r *RepositoriesServiceImpl) listTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
+	if r.ghesRepoService == nil {
+		return r.defaultRepoService.ListTags(ctx, owner, repo, opts) //nolint:wrapcheck
+	}
+
+	tags, resp, err := r.ghesRepoService.ListTags(ctx, owner, repo, opts)
+	if err == nil {
+		return tags, resp, nil
+	}
+	// Fallback to github.com only on 404
+	if resp != nil && resp.StatusCode == http.StatusNotFound {
+		r.logger.Debug("GHES returned 404, falling back to github.com", "owner", owner, "repo", repo)
+		return r.defaultRepoService.ListTags(ctx, owner, repo, opts) //nolint:wrapcheck
+	}
+	// For other errors (401, 403, 500, etc.), return the error without fallback
+	return tags, resp, err //nolint:wrapcheck
+}
+
+// ListReleases retrieves repository releases with caching and GHES fallback.
 func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%v", owner, repo, opts.Page)
-	a, ok := r.Releases[key]
-	if ok {
-		return a.Releases, a.Response, a.err
+	if result, ok := r.Releases[key]; ok {
+		return result.Releases, result.Response, result.err
 	}
-	service := r.getService(owner)
-	releases, resp, err := service.ListReleases(ctx, owner, repo, opts)
-	arr := make([]*github.RepositoryRelease, 0, len(releases))
-	for _, release := range releases {
-		// Ignore draft releases
-		if release.GetDraft() {
-			continue
-		}
-		arr = append(arr, release)
-	}
+
+	releases, resp, err := r.listReleases(ctx, owner, repo, opts)
+	arr := filterDraftReleases(releases)
 	r.Releases[key] = &ListReleasesResult{
 		Releases: arr,
 		Response: resp,
@@ -167,27 +204,52 @@ func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string
 	return arr, resp, err //nolint:wrapcheck
 }
 
-func (r *RepositoriesServiceImpl) getService(owner string) RepositoriesService {
-	if r.ghesConfig.Match(owner) && r.ghesRepoService != nil {
-		return r.ghesRepoService
+// listReleases calls the API with GHES fallback logic.
+// If GHES is enabled, it first tries GHES and falls back to github.com on 404.
+func (r *RepositoriesServiceImpl) listReleases(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
+	if r.ghesRepoService == nil {
+		return r.defaultRepoService.ListReleases(ctx, owner, repo, opts) //nolint:wrapcheck
 	}
-	return r.defaultRepoService
+
+	releases, resp, err := r.ghesRepoService.ListReleases(ctx, owner, repo, opts)
+	if err == nil {
+		return releases, resp, nil
+	}
+	// Fallback to github.com only on 404
+	if resp != nil && resp.StatusCode == http.StatusNotFound {
+		r.logger.Debug("GHES returned 404, falling back to github.com", "owner", owner, "repo", repo)
+		return r.defaultRepoService.ListReleases(ctx, owner, repo, opts) //nolint:wrapcheck
+	}
+	// For other errors (401, 403, 500, etc.), return the error without fallback
+	return releases, resp, err //nolint:wrapcheck
+}
+
+func filterDraftReleases(releases []*github.RepositoryRelease) []*github.RepositoryRelease {
+	arr := make([]*github.RepositoryRelease, 0, len(releases))
+	for _, release := range releases {
+		// Ignore draft releases
+		if release.GetDraft() {
+			continue
+		}
+		arr = append(arr, release)
+	}
+	return arr
 }
 
 type PullRequestsServiceImpl struct {
 	defaultPRService PullRequestsService
 	ghesPRService    PullRequestsService
-	ghesConfig       *config.GHES
 }
 
-func (p *PullRequestsServiceImpl) SetServices(defaultService, ghesService PullRequestsService, ghesConfig *config.GHES) {
+func (p *PullRequestsServiceImpl) SetServices(defaultService, ghesService PullRequestsService) {
 	p.defaultPRService = defaultService
 	p.ghesPRService = ghesService
-	p.ghesConfig = ghesConfig
 }
 
+// CreateComment creates a pull request comment.
+// If GHES is enabled, it always uses GHES (no fallback).
 func (p *PullRequestsServiceImpl) CreateComment(ctx context.Context, owner, repo string, number int, comment *github.PullRequestComment) (*github.PullRequestComment, *github.Response, error) {
-	if p.ghesConfig.Match(owner) && p.ghesPRService != nil {
+	if p.ghesPRService != nil {
 		return p.ghesPRService.CreateComment(ctx, owner, repo, number, comment) //nolint:wrapcheck
 	}
 	return p.defaultPRService.CreateComment(ctx, owner, repo, number, comment) //nolint:wrapcheck

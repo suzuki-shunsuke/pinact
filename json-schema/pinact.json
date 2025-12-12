@@ -51,13 +51,6 @@
         "api_url": {
           "type": "string",
           "description": "API URL of the GHES instance (e.g. https://ghes.example.com)"
-        },
-        "owners": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "description": "Repository owners to match (exact match)"
         }
       },
       "additionalProperties": false,

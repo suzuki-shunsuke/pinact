@@ -16,13 +16,9 @@ GHES settings are defined in the configuration file (`.pinact.yaml`):
 ```yaml
 ghes:
   api_url: https://ghes.example.com  # /api/v3/ is appended if not present
-  owners:
-    - my-org
-    - shared-actions
 ```
 
 - `api_url` (required): The API URL of the GHES instance (e.g., `https://ghes.example.com`)
-- `owners` (required): List of repository owners to match (exact match)
 
 ### Environment Variables
 
@@ -31,26 +27,28 @@ ghes:
 GHES can also be configured via environment variables:
 
 - `PINACT_GHES_API_URL`: GHES API URL (e.g., `https://ghes.example.com`)
-- `PINACT_GHES_OWNERS`: Comma-separated list of repository owners
 - `GITHUB_API_URL`: Alternative to `PINACT_GHES_API_URL` (commonly set in GitHub Actions on GHES)
 
 ```bash
 export PINACT_GHES_API_URL="https://ghes.example.com"
-export PINACT_GHES_OWNERS="my-org-1,my-org-2"
 ```
 
 Resolution priority for API URL:
 1. If `PINACT_GHES_API_URL` is set, it is used (and `GITHUB_API_URL` is ignored)
-2. If `PINACT_GHES_API_URL` is not set but `GITHUB_API_URL` is set, `GITHUB_API_URL` is used
+2. If `PINACT_GHES_API_URL` is not set but `GITHUB_API_URL` is set and is not `https://api.github.com`, `GITHUB_API_URL` is used
 
-GHES mode is enabled if either `PINACT_GHES_API_URL` or `PINACT_GHES_OWNERS` is set.
-Note: `GITHUB_API_URL` alone does not trigger GHES mode.
+#### Conditions for Enabling GHES
+
+GHES mode is enabled when any of the following conditions are met:
+
+1. `ghes.api_url` is configured in the configuration file
+2. `PINACT_GHES_API_URL` environment variable is set
+3. `GITHUB_API_URL` environment variable is set and is not `https://api.github.com`
 
 Environment variables can also complement missing values in the configuration file:
 - If `ghes.api_url` is empty in the config file, it is filled from `PINACT_GHES_API_URL` or `GITHUB_API_URL`
-- If `ghes.owners` is empty in the config file, it is filled from `PINACT_GHES_OWNERS`
 
-This allows using GHES without a configuration file or with partial configuration.
+This allows using GHES without a configuration file.
 
 #### GitHub Access Tokens
 
@@ -65,28 +63,28 @@ GitHub Access Tokens are specified via environment variables:
 ## Behavior
 
 1. pinact parses workflow files and extracts actions (existing behavior)
-2. For each extracted action, check if its owner matches any entry in `ghes.owners`
-3. If matched, search for the action on the GHES instance
-4. If not matched, search for the action on github.com (existing behavior)
+2. For each extracted action:
+   - If GHES is enabled, first attempt to find the action on the GHES instance
+   - If the action is not found on GHES (404 response), fallback to github.com
+   - If GHES is not enabled, search on github.com (existing behavior)
 
-### Repository Matching
+### Fallback Behavior
 
-- `owners`: Exact match against the repository owner
-- If no owner matches, the action defaults to github.com
+When GHES is enabled:
+- Actions are first searched on the GHES instance
+- If GHES returns 404 (not found), the action is searched on github.com
+- Other errors from GHES are returned without fallback
+
+This approach eliminates the need to maintain a list of owners and simplifies configuration. Users only need to configure the GHES API URL.
 
 ### Review Mode (`pinact run -review`)
 
-When using `pinact run -review`, the review comment is created on the appropriate GitHub instance:
-
-- If `-repo-owner` matches any entry in `ghes.owners`, the review is created on the GHES instance
-- Otherwise, the review is created on github.com
+When using `pinact run -review`, the review comment is created on the GHES instance if GHES is enabled, otherwise on github.com. There is no fallback for PR comments - if GHES is enabled but the comment creation fails, an error is returned.
 
 ## Constraints
 
 - Only one GHES instance is supported
-- Actions are NOT searched on GHES first and then fallback to github.com
-  - This prevents unnecessary API requests to GHES instances
-  - Users must explicitly configure which actions are hosted on GHES
+- Fallback only applies to action searches, not to PR comment creation
 
 ## Example
 
@@ -96,9 +94,6 @@ When using `pinact run -review`, the review comment is created on the appropriat
 # .pinact.yaml
 ghes:
   api_url: https://ghes.example.com
-  owners:
-    - my-org
-    - shared-actions
 ```
 
 ```bash
@@ -112,7 +107,6 @@ export GHES_TOKEN="ghp_yyyy"    # for GHES
 export GITHUB_TOKEN="ghp_xxxx"  # for github.com
 export GHES_TOKEN="ghp_yyyy"    # for GHES
 export PINACT_GHES_API_URL="https://ghes.example.com"
-export PINACT_GHES_OWNERS="my-org,shared-actions"
 ```
 
 ### Using GITHUB_API_URL (GitHub Actions on GHES)
@@ -125,7 +119,6 @@ export PINACT_GHES_OWNERS="my-org,shared-actions"
 
 export GITHUB_TOKEN="ghp_xxxx"  # for github.com
 export GHES_TOKEN="ghp_yyyy"    # for GHES
-export PINACT_GHES_OWNERS="$GITHUB_REPOSITORY_OWNER"
 ```
 
 ### Workflow
@@ -136,13 +129,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # This repo matches "my-org" owner -> searched on ghes.example.com
+      # This action is first searched on GHES.
+      # If found, GHES is used. If not found (404), fallback to github.com.
       - uses: my-org/build-action@v1
 
-      # This repo matches "shared-actions" owner -> searched on ghes.example.com
-      - uses: shared-actions/common-lint@v1
-
-      # This repo doesn't match any GHES owner -> searched on github.com
+      # Same behavior for all actions
       - uses: actions/checkout@v4
 ```
 
@@ -155,6 +146,11 @@ For GHES instances, pinact uses the same GitHub API endpoints but with the GHES 
 
 ## Error Handling
 
-- If a matching GHES token is not found, return an error with a clear message
-- If the GHES API request fails, return the error without fallback to github.com
-- Missing `api_url` or `owners` should be reported at startup
+- If GHES is enabled but the GHES token is not found, return an error with a clear message
+- If the GHES API request fails with non-404 error, return the error without fallback to github.com
+- Missing `api_url` when GHES is enabled should be reported at startup
+
+## Logging
+
+- Fallback from GHES to github.com is logged at debug level to avoid noisy output
+- This allows users to understand the behavior without being overwhelmed by logs

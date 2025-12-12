@@ -13,8 +13,6 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"slices"
-	"strings"
 
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
@@ -29,8 +27,7 @@ type Config struct {
 }
 
 type GHES struct {
-	APIURL string   `json:"api_url,omitempty" yaml:"api_url" jsonschema:"description=API URL of the GHES instance (e.g. https://ghes.example.com)"`
-	Owners []string `json:"owners,omitempty" jsonschema:"description=Repository owners to match (exact match)"`
+	APIURL string `json:"api_url,omitempty" yaml:"api_url" jsonschema:"description=API URL of the GHES instance (e.g. https://ghes.example.com)"`
 }
 
 type File struct {
@@ -207,41 +204,33 @@ func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
 	return ia.refRegexp.FindString(ref) == ref, nil
 }
 
-// Match checks if a repository owner matches any of the GHES owners.
-//
-// Parameters:
-//   - owner: repository owner to match
-//
-// Returns true if the owner matches any entry in owners, false otherwise.
-// Returns false if g is nil.
-func (g *GHES) Match(owner string) bool {
-	if g == nil {
-		return false
-	}
-	return slices.Contains(g.Owners, owner)
+// IsEnabled checks if GHES is enabled.
+// GHES is enabled if the APIURL is set.
+func (g *GHES) IsEnabled() bool {
+	return g != nil && g.APIURL != ""
 }
 
+const githubAPIURL = "https://api.github.com"
+
 // GHESFromEnv creates a GHES configuration from environment variables.
-// It reads PINACT_GHES_API_URL (or GITHUB_API_URL as fallback) and PINACT_GHES_OWNERS.
 //
 // Resolution priority for API URL:
 //  1. PINACT_GHES_API_URL - if set, it is used (and GITHUB_API_URL is ignored)
-//  2. GITHUB_API_URL - used as fallback
+//  2. GITHUB_API_URL - used as fallback if it's not https://api.github.com
 //
-// Returns nil if neither PINACT_GHES_API_URL nor PINACT_GHES_OWNERS is set.
+// Returns nil if no GHES API URL is found.
 func GHESFromEnv() *GHES {
 	apiURL := os.Getenv("PINACT_GHES_API_URL")
-	ownersStr := os.Getenv("PINACT_GHES_OWNERS")
 	if apiURL == "" {
-		if ownersStr == "" {
+		githubURL := os.Getenv("GITHUB_API_URL")
+		if githubURL == "" || githubURL == githubAPIURL {
 			return nil
 		}
-		apiURL = os.Getenv("GITHUB_API_URL")
+		apiURL = githubURL
 	}
 
 	return &GHES{
 		APIURL: apiURL,
-		Owners: strings.Split(ownersStr, ","),
 	}
 }
 
@@ -256,7 +245,7 @@ func (g *GHES) Validate() error {
 }
 
 // MergeFromEnv merges environment variable values into GHES configuration.
-// If api_url or owners is empty in the config, it fills them from environment variables.
+// If api_url is empty in the config, it fills it from environment variables.
 func (g *GHES) MergeFromEnv() {
 	if g == nil {
 		return
@@ -264,11 +253,11 @@ func (g *GHES) MergeFromEnv() {
 	if g.APIURL == "" {
 		g.APIURL = os.Getenv("PINACT_GHES_API_URL")
 		if g.APIURL == "" {
-			g.APIURL = os.Getenv("GITHUB_API_URL")
+			githubURL := os.Getenv("GITHUB_API_URL")
+			if githubURL != githubAPIURL {
+				g.APIURL = githubURL
+			}
 		}
-	}
-	if len(g.Owners) == 0 {
-		g.Owners = strings.Split(os.Getenv("PINACT_GHES_OWNERS"), ",")
 	}
 }
 

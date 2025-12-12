@@ -40,13 +40,3 @@ func NewClientRegistry(ctx context.Context, defaultClient *Client, ghes *config.
 func (r *ClientRegistry) GetGHESClient() *Client {
 	return r.ghesClient
 }
-
-// ResolveHost determines whether a repository should use GHES.
-// It checks the owner against the GHES configuration and returns true
-// if the repository should use GHES, false for github.com.
-func (r *ClientRegistry) ResolveHost(owner string) bool {
-	if r.ghesConfig == nil {
-		return false
-	}
-	return r.ghesConfig.Match(owner)
-}

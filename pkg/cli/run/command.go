@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"regexp"
 	"strings"
@@ -289,7 +290,7 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 	}
 
 	param := buildParam(flags, pwd, isGitHubActions, review, includes, excludes)
-	services, err := setupGHESServices(ctx, gh, cfg)
+	services, err := setupGHESServices(ctx, gh, cfg, logger.Logger)
 	if err != nil {
 		return err
 	}
@@ -426,7 +427,7 @@ func buildParam(flags *Flags, pwd string, isGitHubActions bool, review *run.Revi
 	return param
 }
 
-func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Config) (*ghesServices, error) {
+func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Config, logger *slog.Logger) (*ghesServices, error) {
 	ghesConfig := cfg.GHES
 	if ghesConfig == nil {
 		ghesConfig = config.GHESFromEnv()
@@ -442,7 +443,7 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 	var ghesGitService run.GitService
 	var ghesPRService run.PullRequestsService
 
-	if ghesConfig != nil {
+	if ghesConfig.IsEnabled() {
 		registry, err := github.NewClientRegistry(ctx, gh, ghesConfig)
 		if err != nil {
 			return nil, fmt.Errorf("create GitHub client registry: %w", err)
@@ -458,15 +459,15 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 		Releases: map[string]*run.ListReleasesResult{},
 		Commits:  map[string]*run.GetCommitSHA1Result{},
 	}
-	repoService.SetServices(gh.Repositories, ghesRepoService, ghesConfig)
+	repoService.SetServices(gh.Repositories, ghesRepoService, logger)
 
 	gitService := &run.GitServiceImpl{
 		Commits: map[string]*run.GetCommitResult{},
 	}
-	gitService.SetServices(gh.Git, ghesGitService, ghesConfig)
+	gitService.SetServices(gh.Git, ghesGitService, logger)
 
 	prService := &run.PullRequestsServiceImpl{}
-	prService.SetServices(gh.PullRequests, ghesPRService, ghesConfig)
+	prService.SetServices(gh.PullRequests, ghesPRService)
 
 	return &ghesServices{
 		repoService: repoService,
