@@ -29,8 +29,8 @@ type Config struct {
 }
 
 type GHES struct {
-	APIURL string   `json:"api_url" yaml:"api_url" jsonschema:"description=API URL of the GHES instance (e.g. https://ghes.example.com)"`
-	Owners []string `json:"owners" jsonschema:"description=Repository owners to match (exact match)"`
+	APIURL string   `json:"api_url,omitempty" yaml:"api_url" jsonschema:"description=API URL of the GHES instance (e.g. https://ghes.example.com)"`
+	Owners []string `json:"owners,omitempty" jsonschema:"description=Repository owners to match (exact match)"`
 }
 
 type File struct {
