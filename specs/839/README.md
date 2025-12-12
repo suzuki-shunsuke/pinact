@@ -28,7 +28,7 @@ ghes:
 
 #### GHES Configuration
 
-GHES can also be configured via environment variables (used when `.pinact.yaml` does not have `ghes` settings):
+GHES can also be configured via environment variables:
 
 - `PINACT_GHES_API_URL`: GHES API URL (e.g., `https://ghes.example.com`)
 - `PINACT_GHES_OWNERS`: Comma-separated list of repository owners
@@ -43,12 +43,14 @@ Resolution priority for API URL:
 1. If `PINACT_GHES_API_URL` is set, it is used (and `GITHUB_API_URL` is ignored)
 2. If `PINACT_GHES_API_URL` is not set but `GITHUB_API_URL` is set, `GITHUB_API_URL` is used
 
-Requirements:
-- If `PINACT_GHES_API_URL` is set, `PINACT_GHES_OWNERS` is required
-- If `PINACT_GHES_OWNERS` is set, either `PINACT_GHES_API_URL` or `GITHUB_API_URL` is required
-- If neither `PINACT_GHES_API_URL` nor `GITHUB_API_URL` is set, `PINACT_GHES_OWNERS` is optional (only github.com actions are processed)
+GHES mode is enabled if either `PINACT_GHES_API_URL` or `PINACT_GHES_OWNERS` is set.
+Note: `GITHUB_API_URL` alone does not trigger GHES mode.
 
-This allows using GHES without a configuration file.
+Environment variables can also complement missing values in the configuration file:
+- If `ghes.api_url` is empty in the config file, it is filled from `PINACT_GHES_API_URL` or `GITHUB_API_URL`
+- If `ghes.owners` is empty in the config file, it is filled from `PINACT_GHES_OWNERS`
+
+This allows using GHES without a configuration file or with partial configuration.
 
 #### GitHub Access Tokens
 

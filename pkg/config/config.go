@@ -238,49 +238,45 @@ func (g *GHES) Match(owner string) bool {
 //
 // Resolution priority for API URL:
 //  1. PINACT_GHES_API_URL - if set, it is used (and GITHUB_API_URL is ignored)
-//  2. GITHUB_API_URL - if PINACT_GHES_API_URL is not set but PINACT_GHES_OWNERS is set
+//  2. GITHUB_API_URL - used as fallback
 //
-// Returns nil if:
-//   - PINACT_GHES_OWNERS is not set (even if GITHUB_API_URL is set)
-//   - Both PINACT_GHES_API_URL and PINACT_GHES_OWNERS are not set
+// Returns nil if neither PINACT_GHES_API_URL nor PINACT_GHES_OWNERS is set.
 func GHESFromEnv() *GHES {
-	// Get owners from PINACT_GHES_OWNERS
-	ownersStr := os.Getenv("PINACT_GHES_OWNERS")
-
-	// If owners is not set, return nil (GHES is not configured via env vars)
-	// This prevents GITHUB_API_URL alone from triggering GHES mode
-	if ownersStr == "" {
-		return nil
-	}
-
-	// Get API URL from PINACT_GHES_API_URL or GITHUB_API_URL
 	apiURL := os.Getenv("PINACT_GHES_API_URL")
+	ownersStr := os.Getenv("PINACT_GHES_OWNERS")
 	if apiURL == "" {
-		apiURL = os.Getenv("GITHUB_API_URL")
-	}
-
-	// Parse owners (comma-separated)
-	var owners []string
-	for owner := range strings.SplitSeq(ownersStr, ",") {
-		owner = strings.TrimSpace(owner)
-		if owner != "" {
-			owners = append(owners, owner)
+		if ownersStr == "" {
+			return nil
 		}
+		apiURL = os.Getenv("GITHUB_API_URL")
 	}
 
 	return &GHES{
 		APIURL: apiURL,
-		Owners: owners,
+		Owners: strings.Split(ownersStr, ","),
+	}
+}
+
+// MergeFromEnv merges environment variable values into GHES configuration.
+// If api_url or owners is empty in the config, it fills them from environment variables.
+func (g *GHES) MergeFromEnv() {
+	if g == nil {
+		return
+	}
+	if g.APIURL == "" {
+		g.APIURL = os.Getenv("PINACT_GHES_API_URL")
+		if g.APIURL == "" {
+			g.APIURL = os.Getenv("GITHUB_API_URL")
+		}
+	}
+	if len(g.Owners) == 0 {
+		g.Owners = strings.Split(os.Getenv("PINACT_GHES_OWNERS"), ",")
 	}
 }
 
 // getConfigPath searches for a pinact configuration file in standard locations.
 // It checks for .pinact.yaml, .github/pinact.yaml, .pinact.yml, and .github/pinact.yml
 // in order of preference.
-//
-// Parameters:
-//   - fs: filesystem interface for file operations
-//
 // Returns the path to the first found configuration file, empty string if none found, or an error.
 func getConfigPath(fs afero.Fs) (string, error) {
 	for _, path := range []string{".pinact.yaml", ".github/pinact.yaml", ".pinact.yml", ".github/pinact.yml"} {

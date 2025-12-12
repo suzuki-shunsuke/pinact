@@ -506,6 +506,7 @@ v3.6.0 [#839](https://github.com/suzuki-shunsuke/pinact/issues/839) [#1274](http
 
 pinact also supports pinning versions of GitHub Actions hosted on GitHub Enterprise Server (GHES).
 GHES configuration is required via configuration file or environment variables.
+The configuration file takes precedence over the environment variables.
 
 ### GitHub Access Token for GHES
 
@@ -519,6 +520,8 @@ Set a GitHub Access Token for GHES using one of the following environment variab
 export GHES_TOKEN=xxx
 ```
 
+`GITHUB_TOKEN` is used for github.com.
+
 ### Configuration File For GHES
 
 ```yaml
@@ -528,15 +531,12 @@ ghes:
     - your-org
 ```
 
-- `api_url`: (required) API URL of the GHES instance
-- `owners`: (required) List of owner names (usernames or organization names) hosted on GHES
-
-When configuring `ghes`, both `api_url` and `owners` are required.
+- `api_url`: API URL of the GHES instance
+- `owners`: List of owner names (usernames or organization names) hosted on GHES
 
 ### Environment Variables For GHES
 
 You can also configure GHES using environment variables instead of a configuration file.
-Note that the configuration file takes precedence over environment variables.
 
 - `PINACT_GHES_API_URL`
 - `PINACT_GHES_OWNERS`

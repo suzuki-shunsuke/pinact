@@ -430,6 +430,9 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 	ghesConfig := cfg.GHES
 	if ghesConfig == nil {
 		ghesConfig = config.GHESFromEnv()
+	} else {
+		// Merge environment variables into config file settings
+		ghesConfig.MergeFromEnv()
 	}
 
 	var ghesRepoService run.RepositoriesService
