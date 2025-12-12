@@ -245,6 +245,16 @@ func GHESFromEnv() *GHES {
 	}
 }
 
+func (g *GHES) Validate() error {
+	if g == nil {
+		return nil
+	}
+	if g.APIURL == "" {
+		return errors.New("GHES api_url is required")
+	}
+	return nil
+}
+
 // MergeFromEnv merges environment variable values into GHES configuration.
 // If api_url or owners is empty in the config, it fills them from environment variables.
 func (g *GHES) MergeFromEnv() {

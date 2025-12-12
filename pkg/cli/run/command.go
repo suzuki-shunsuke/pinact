@@ -434,6 +434,9 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 		// Merge environment variables into config file settings
 		ghesConfig.MergeFromEnv()
 	}
+	if err := ghesConfig.Validate(); err != nil {
+		return nil, fmt.Errorf("validate GHES configuration: %w", err)
+	}
 
 	var ghesRepoService run.RepositoriesService
 	var ghesGitService run.GitService
