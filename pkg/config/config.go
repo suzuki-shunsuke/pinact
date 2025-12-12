@@ -27,7 +27,8 @@ type Config struct {
 }
 
 type GHES struct {
-	APIURL string `json:"api_url,omitempty" yaml:"api_url" jsonschema:"description=API URL of the GHES instance (e.g. https://ghes.example.com)"`
+	APIURL   string `json:"api_url,omitempty" yaml:"api_url" jsonschema:"description=API URL of the GHES instance (e.g. https://ghes.example.com)"`
+	Fallback bool   `json:"fallback,omitempty" yaml:"fallback" jsonschema:"description=Whether to fallback to github.com when a repository is not found on GHES. Default is false"`
 }
 
 type File struct {
@@ -218,6 +219,8 @@ const githubAPIURL = "https://api.github.com"
 //  1. PINACT_GHES_API_URL - if set, it is used (and GITHUB_API_URL is ignored)
 //  2. GITHUB_API_URL - used as fallback if it's not https://api.github.com
 //
+// Fallback is controlled by PINACT_GHES_FALLBACK environment variable.
+//
 // Returns nil if no GHES API URL is found.
 func GHESFromEnv() *GHES {
 	apiURL := os.Getenv("PINACT_GHES_API_URL")
@@ -230,7 +233,8 @@ func GHESFromEnv() *GHES {
 	}
 
 	return &GHES{
-		APIURL: apiURL,
+		APIURL:   apiURL,
+		Fallback: os.Getenv("PINACT_GHES_FALLBACK") == "true",
 	}
 }
 
@@ -246,6 +250,7 @@ func (g *GHES) Validate() error {
 
 // MergeFromEnv merges environment variable values into GHES configuration.
 // If api_url is empty in the config, it fills it from environment variables.
+// Fallback can be enabled via PINACT_GHES_FALLBACK=true environment variable.
 func (g *GHES) MergeFromEnv() {
 	if g == nil {
 		return
@@ -258,6 +263,10 @@ func (g *GHES) MergeFromEnv() {
 				g.APIURL = githubURL
 			}
 		}
+	}
+	// Environment variable can enable fallback (but not disable it if already set in config)
+	if !g.Fallback && os.Getenv("PINACT_GHES_FALLBACK") == "true" {
+		g.Fallback = true
 	}
 }
 

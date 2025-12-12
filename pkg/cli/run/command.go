@@ -442,6 +442,7 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 	var ghesRepoService run.RepositoriesService
 	var ghesGitService run.GitService
 	var ghesPRService run.PullRequestsService
+	var ghesFallback bool
 
 	if ghesConfig.IsEnabled() {
 		registry, err := github.NewClientRegistry(ctx, gh, ghesConfig)
@@ -452,11 +453,13 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 		ghesRepoService = client.Repositories
 		ghesGitService = client.Git
 		ghesPRService = client.PullRequests
+		ghesFallback = ghesConfig.Fallback
 	}
 
 	resolver := run.NewClientResolver(
 		gh.Repositories, gh.Git,
 		ghesRepoService, ghesGitService,
+		ghesFallback,
 		logger,
 	)
 

@@ -48,6 +48,8 @@ type ClientResolver struct {
 	logger             *slog.Logger
 	// repoHosts caches which host a repository belongs to
 	repoHosts map[string]repoHost
+	// fallback controls whether to fallback to github.com when a repository is not found on GHES
+	fallback bool
 }
 
 // NewClientResolver creates a new ClientResolver with the given services.
@@ -56,6 +58,7 @@ func NewClientResolver(
 	defaultGitService GitService,
 	ghesRepoService RepositoriesService,
 	ghesGitService GitService,
+	fallback bool,
 	logger *slog.Logger,
 ) *ClientResolver {
 	return &ClientResolver{
@@ -63,6 +66,7 @@ func NewClientResolver(
 		defaultGitService:  defaultGitService,
 		ghesRepoService:    ghesRepoService,
 		ghesGitService:     ghesGitService,
+		fallback:           fallback,
 		logger:             logger,
 		repoHosts:          map[string]repoHost{},
 	}
@@ -93,8 +97,19 @@ func (r *ClientResolver) GetGitService(ctx context.Context, owner, repo string) 
 }
 
 // resolveRepoHost determines which host a repository belongs to using the Get a Repository API.
-// It checks GHES first, then falls back to github.com if the repository is not found on GHES.
+// If fallback is disabled, it always uses GHES without checking repository existence.
+// If fallback is enabled, it checks GHES first and falls back to github.com if not found.
 func (r *ClientResolver) resolveRepoHost(ctx context.Context, owner, repo string) (repoHost, error) {
+	// If GHES is not configured, use github.com
+	if r.ghesRepoService == nil {
+		return repoHostGitHubDotCom, nil
+	}
+
+	// If fallback is disabled, always use GHES without checking
+	if !r.fallback {
+		return repoHostGHES, nil
+	}
+
 	key := owner + "/" + repo
 
 	// Check cache first
@@ -102,13 +117,7 @@ func (r *ClientResolver) resolveRepoHost(ctx context.Context, owner, repo string
 		return host, nil
 	}
 
-	// If GHES is not configured, use github.com
-	if r.ghesRepoService == nil {
-		r.repoHosts[key] = repoHostGitHubDotCom
-		return repoHostGitHubDotCom, nil
-	}
-
-	// Check if repository exists on GHES
+	// Fallback is enabled: check if repository exists on GHES
 	_, resp, err := r.ghesRepoService.Get(ctx, owner, repo)
 	if err == nil {
 		r.logger.Debug("repository found on GHES", "owner", owner, "repo", repo)
@@ -120,7 +129,7 @@ func (r *ClientResolver) resolveRepoHost(ctx context.Context, owner, repo string
 	if resp != nil && resp.StatusCode == http.StatusNotFound {
 		_, resp, err = r.defaultRepoService.Get(ctx, owner, repo)
 		if err == nil {
-			r.logger.Debug("repository found on github.com", "owner", owner, "repo", repo)
+			r.logger.Debug("repository found on github.com (fallback)", "owner", owner, "repo", repo)
 			r.repoHosts[key] = repoHostGitHubDotCom
 			return repoHostGitHubDotCom, nil
 		}
