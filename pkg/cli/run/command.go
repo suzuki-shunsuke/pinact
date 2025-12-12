@@ -36,7 +36,7 @@ type Flags struct {
 	Update    bool
 	Review    bool
 	Fix       bool
-	FixIsSet  bool
+	FixCount  int
 	Diff      bool
 	RepoOwner string
 	RepoName  string
@@ -78,7 +78,6 @@ e.g.
 $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 `,
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			flags.FixIsSet = cmd.IsSet("fix")
 			flags.Args = cmd.Args().Slice()
 			return r.action(ctx, logger, flags)
 		},
@@ -109,6 +108,9 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Name:        "fix",
 				Usage:       "Fix code. By default, this is true. If -check or -diff is true, this is false by default",
 				Destination: &flags.Fix,
+				Config: cli.BoolConfig{
+					Count: &flags.FixCount,
+				},
 			},
 			&cli.BoolFlag{
 				Name:        "diff",
@@ -419,7 +421,7 @@ func buildParam(flags *Flags, pwd string, isGitHubActions bool, review *run.Revi
 		Excludes:          excludes,
 		MinAge:            flags.MinAge,
 	}
-	if flags.FixIsSet {
+	if flags.FixCount > 0 {
 		param.Fix = flags.Fix
 	} else if param.Check || param.Diff {
 		param.Fix = false
