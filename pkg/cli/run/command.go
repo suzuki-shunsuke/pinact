@@ -440,9 +440,6 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 	var ghesPRService run.PullRequestsService
 
 	if ghesConfig != nil {
-		if err := ghesConfig.Init(); err != nil {
-			return nil, fmt.Errorf("initialize GHES config: %w", err)
-		}
 		registry, err := github.NewClientRegistry(ctx, gh, ghesConfig)
 		if err != nil {
 			return nil, fmt.Errorf("create GitHub client registry: %w", err)

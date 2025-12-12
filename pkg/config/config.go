@@ -207,18 +207,6 @@ func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
 	return ia.refRegexp.FindString(ref) == ref, nil
 }
 
-// Init initializes and validates a GHES configuration.
-// It validates that api_url and owners are configured.
-func (g *GHES) Init() error {
-	if g.APIURL == "" {
-		return errors.New("ghes.api_url is required")
-	}
-	if len(g.Owners) == 0 {
-		return errors.New("ghes.owners is required")
-	}
-	return nil
-}
-
 // Match checks if a repository owner matches any of the GHES owners.
 //
 // Parameters:
@@ -380,11 +368,6 @@ func (cfg *Config) Init() error {
 	for _, ia := range cfg.IgnoreActions {
 		if err := ia.Init(cfg.Version); err != nil {
 			return fmt.Errorf("initialize ignore_action: %w", err)
-		}
-	}
-	if cfg.GHES != nil {
-		if err := cfg.GHES.Init(); err != nil {
-			return fmt.Errorf("initialize ghes: %w", err)
 		}
 	}
 	return nil
