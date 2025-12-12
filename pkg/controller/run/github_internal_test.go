@@ -178,6 +178,10 @@ func (m *mockRepositoriesService) ListReleases(ctx context.Context, owner, repo 
 	return nil, nil, errors.New("not implemented")
 }
 
+func (m *mockRepositoriesService) Get(_ context.Context, _, _ string) (*github.Repository, *github.Response, error) {
+	return nil, nil, nil
+}
+
 func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	tests := []struct {

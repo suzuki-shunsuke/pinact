@@ -22,6 +22,7 @@ type (
 	ListOptions        = github.ListOptions
 	Reference          = github.Reference
 	Response           = github.Response
+	Repository         = github.Repository
 	RepositoryTag      = github.RepositoryTag
 	RepositoryRelease  = github.RepositoryRelease
 	Client             = github.Client

@@ -454,17 +454,23 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 		ghesPRService = client.PullRequests
 	}
 
+	resolver := run.NewClientResolver(
+		gh.Repositories, gh.Git,
+		ghesRepoService, ghesGitService,
+		logger,
+	)
+
 	repoService := &run.RepositoriesServiceImpl{
 		Tags:     map[string]*run.ListTagsResult{},
 		Releases: map[string]*run.ListReleasesResult{},
 		Commits:  map[string]*run.GetCommitSHA1Result{},
 	}
-	repoService.SetServices(gh.Repositories, ghesRepoService, logger)
+	repoService.SetResolver(resolver)
 
 	gitService := &run.GitServiceImpl{
 		Commits: map[string]*run.GetCommitResult{},
 	}
-	gitService.SetServices(gh.Git, ghesGitService, logger)
+	gitService.SetResolver(resolver)
 
 	prService := &run.PullRequestsServiceImpl{}
 	prService.SetServices(gh.PullRequests, ghesPRService)
