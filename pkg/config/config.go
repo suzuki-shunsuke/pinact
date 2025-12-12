@@ -10,7 +10,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path"
 	"regexp"
 
@@ -211,33 +210,6 @@ func (g *GHES) IsEnabled() bool {
 	return g != nil && g.APIURL != ""
 }
 
-const githubAPIURL = "https://api.github.com"
-
-// GHESFromEnv creates a GHES configuration from environment variables.
-//
-// Resolution priority for API URL:
-//  1. PINACT_GHES_API_URL - if set, it is used (and GITHUB_API_URL is ignored)
-//  2. GITHUB_API_URL - used as fallback if it's not https://api.github.com
-//
-// Fallback is controlled by PINACT_GHES_FALLBACK environment variable.
-//
-// Returns nil if no GHES API URL is found.
-func GHESFromEnv() *GHES {
-	apiURL := os.Getenv("PINACT_GHES_API_URL")
-	if apiURL == "" {
-		githubURL := os.Getenv("GITHUB_API_URL")
-		if githubURL == "" || githubURL == githubAPIURL {
-			return nil
-		}
-		apiURL = githubURL
-	}
-
-	return &GHES{
-		APIURL:   apiURL,
-		Fallback: os.Getenv("PINACT_GHES_FALLBACK") == "true",
-	}
-}
-
 func (g *GHES) Validate() error {
 	if g == nil {
 		return nil
@@ -246,28 +218,6 @@ func (g *GHES) Validate() error {
 		return errors.New("GHES api_url is required")
 	}
 	return nil
-}
-
-// MergeFromEnv merges environment variable values into GHES configuration.
-// If api_url is empty in the config, it fills it from environment variables.
-// Fallback can be enabled via PINACT_GHES_FALLBACK=true environment variable.
-func (g *GHES) MergeFromEnv() {
-	if g == nil {
-		return
-	}
-	if g.APIURL == "" {
-		g.APIURL = os.Getenv("PINACT_GHES_API_URL")
-		if g.APIURL == "" {
-			githubURL := os.Getenv("GITHUB_API_URL")
-			if githubURL != githubAPIURL {
-				g.APIURL = githubURL
-			}
-		}
-	}
-	// Environment variable can enable fallback (but not disable it if already set in config)
-	if !g.Fallback && os.Getenv("PINACT_GHES_FALLBACK") == "true" {
-		g.Fallback = true
-	}
 }
 
 // getConfigPath searches for a pinact configuration file in standard locations.

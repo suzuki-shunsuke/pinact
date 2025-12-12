@@ -11,7 +11,6 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/google/go-github/v80/github"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/keyring/ghtoken"
@@ -34,8 +33,8 @@ type (
 // New creates a new GitHub API client with authentication.
 // It configures the client with appropriate HTTP client based on available
 // authentication methods (environment token or keyring).
-func New(ctx context.Context, logger *slog.Logger) *Client {
-	return github.NewClient(getHTTPClientForGitHub(ctx, logger, getGitHubToken()))
+func New(ctx context.Context, logger *slog.Logger, token string, keyringEnabled bool) *Client {
+	return github.NewClient(getHTTPClientForGitHub(ctx, logger, token, keyringEnabled))
 }
 
 // Ptr returns a pointer to the provided value.
@@ -45,25 +44,12 @@ func Ptr[T any](v T) *T {
 	return github.Ptr(v)
 }
 
-// getGitHubToken retrieves the GitHub token from environment variables.
-// It reads the GITHUB_TOKEN environment variable for authentication.
-func getGitHubToken() string {
-	return os.Getenv("GITHUB_TOKEN")
-}
-
-// checkKeyringEnabled checks if keyring authentication is enabled.
-// It examines the PINACT_KEYRING_ENABLED environment variable to determine
-// if OS keyring should be used for token storage and retrieval.
-func checkKeyringEnabled() bool {
-	return os.Getenv("PINACT_KEYRING_ENABLED") == "true"
-}
-
 // getHTTPClientForGitHub creates an HTTP client configured for GitHub API access.
 // It handles authentication using environment token, keyring, or falls back
 // to unauthenticated access. The client is configured with OAuth2 for authenticated requests.
-func getHTTPClientForGitHub(ctx context.Context, logger *slog.Logger, token string) *http.Client {
+func getHTTPClientForGitHub(ctx context.Context, logger *slog.Logger, token string, keyringEnabled bool) *http.Client {
 	if token == "" {
-		if checkKeyringEnabled() {
+		if keyringEnabled {
 			return oauth2.NewClient(ctx, ghtoken.NewTokenSource(logger, KeyService))
 		}
 		return http.DefaultClient
@@ -89,18 +75,4 @@ func getHTTPClientForGitHubWithToken(ctx context.Context, token string) *http.Cl
 	return oauth2.NewClient(ctx, oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
 	))
-}
-
-// GetGHESToken retrieves the GitHub token for a GHES instance from environment variables.
-// It checks multiple environment variable names in order:
-// 1. GHES_TOKEN
-// 2. GITHUB_TOKEN_ENTERPRISE
-// 3. GITHUB_ENTERPRISE_TOKEN
-func GetGHESToken() string {
-	for _, envName := range []string{"GHES_TOKEN", "GITHUB_TOKEN_ENTERPRISE", "GITHUB_ENTERPRISE_TOKEN"} {
-		if token := os.Getenv(envName); token != "" {
-			return token
-		}
-	}
-	return ""
 }

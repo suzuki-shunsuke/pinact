@@ -25,35 +25,108 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
 
 type Flags struct {
 	*flag.GlobalFlags
 
-	Verify    bool
-	Check     bool
-	Update    bool
-	Review    bool
-	Fix       bool
-	FixCount  int
-	Diff      bool
+	Verify bool
+	Check  bool
+	Update bool
+	Review bool
+	Fix    bool
+	Diff   bool
+
+	IsGitHubActions bool
+	FallbackEnabled bool
+	KeyringEnabled  bool
+
 	RepoOwner string
 	RepoName  string
 	SHA       string
-	PR        int
-	Include   []string
-	Exclude   []string
-	Args      []string
-	MinAge    int
+
+	GitHubRepository string
+	GitHubAPIURL     string
+	GitHubEventPath  string
+	GHESAPIURL       string
+
+	FixCount int
+	PR       int
+	MinAge   int
+	Include  []string
+	Exclude  []string
+	Args     []string
+}
+
+const defaultGitHubAPIURL = "https://api.github.com"
+
+func (f *Flags) GetAPIURL() string {
+	if f.GHESAPIURL != "" {
+		return f.GHESAPIURL
+	}
+	if f.GitHubAPIURL == "" || f.GitHubAPIURL == defaultGitHubAPIURL {
+		return ""
+	}
+	return f.GitHubAPIURL
+}
+
+func (f *Flags) GHESFromEnv() *config.GHES {
+	apiURL := f.GetAPIURL()
+	if apiURL == "" {
+		return nil
+	}
+	return &config.GHES{
+		APIURL:   apiURL,
+		Fallback: f.FallbackEnabled,
+	}
+}
+
+func (f *Flags) MergeFromEnv(g *config.GHES) {
+	if g == nil {
+		return
+	}
+	if g.APIURL == "" {
+		g.APIURL = f.GetAPIURL()
+	}
+	// Environment variable can enable fallback (but not disable it if already set in config)
+	if !g.Fallback && f.FallbackEnabled {
+		g.Fallback = true
+	}
+}
+
+type Secrets struct {
+	GitHubToken string
+	GHESToken   string
+}
+
+func (s *Secrets) SetFromEnv(getEnv func(string) string) {
+	s.GitHubToken = getEnv("GITHUB_TOKEN")
+	for _, envName := range []string{"GHES_TOKEN", "GITHUB_TOKEN_ENTERPRISE", "GITHUB_ENTERPRISE_TOKEN"} {
+		if token := getEnv(envName); token != "" {
+			s.GHESToken = token
+		}
+	}
+}
+
+func setEnv(flags *Flags, getEnv func(string) string) {
+	flags.GitHubRepository = getEnv("GITHUB_REPOSITORY")
+	flags.GitHubAPIURL = getEnv("GITHUB_API_URL")
+	flags.GitHubEventPath = getEnv("GITHUB_EVENT_PATH")
+	flags.GHESAPIURL = getEnv("GHES_API_URL")
+	trueS := "true"
+	flags.IsGitHubActions = getEnv("GITHUB_ACTIONS") == trueS
+	flags.FallbackEnabled = getEnv("PINACT_GHES_FALLBACK") == trueS
+	flags.KeyringEnabled = getEnv("PINACT_KEYRING_ENABLED") == trueS
 }
 
 // New creates a new run command for the CLI.
 // It initializes a runner with the provided logger and returns
 // the configured CLI command for pinning GitHub Actions versions.
-func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command {
+func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags, env *urfave.Env) *cli.Command {
 	r := &runner{}
-	return r.Command(logger, globalFlags)
+	return r.Command(logger, globalFlags, env)
 }
 
 type runner struct{}
@@ -62,7 +135,7 @@ type runner struct{}
 // It defines all flags, options, and the action handler for the run subcommand.
 // This command handles the core pinning functionality with various modes
 // like check, diff, fix, update, and review.
-func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command { //nolint:funlen
+func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags, env *urfave.Env) *cli.Command { //nolint:funlen
 	flags := &Flags{GlobalFlags: globalFlags}
 	return &cli.Command{
 		Name:  "run",
@@ -77,9 +150,11 @@ e.g.
 
 $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 `,
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			flags.Args = cmd.Args().Slice()
-			return r.action(ctx, logger, flags)
+		Action: func(ctx context.Context, _ *cli.Command) error {
+			setEnv(flags, env.Getenv)
+			secrets := &Secrets{}
+			secrets.SetFromEnv(env.Getenv)
+			return r.action(ctx, logger, flags, secrets)
 		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
@@ -161,6 +236,13 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 					}
 					return nil
 				},
+			},
+		},
+		Arguments: []cli.Argument{
+			&cli.StringArgs{
+				Name:        "files",
+				Max:         -1,
+				Destination: &flags.Args,
 			},
 		},
 	}
@@ -256,9 +338,8 @@ func readConfig(fs afero.Fs, configFilePath string) (*config.Config, error) {
 // action executes the main run command logic.
 // It configures logging, processes GitHub Actions context, parses includes/excludes,
 // sets up the controller, and executes the pinning operation.
-func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Flags) error {
-	isGitHubActions := os.Getenv("GITHUB_ACTIONS") == "true"
-	if isGitHubActions {
+func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Secrets) error {
+	if flags.IsGitHubActions {
 		color.NoColor = false
 	}
 	if err := logger.SetLevel(flags.LogLevel); err != nil {
@@ -270,7 +351,7 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 		return fmt.Errorf("get the current directory: %w", err)
 	}
 
-	gh := github.New(ctx, logger.Logger)
+	gh := github.New(ctx, logger.Logger, secrets.GitHubToken, flags.KeyringEnabled)
 	fs := afero.NewOsFs()
 
 	cfg, err := readConfig(fs, flags.Config)
@@ -278,7 +359,7 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 		return err
 	}
 
-	review := r.setupReview(fs, logger, flags, isGitHubActions)
+	review := r.setupReview(fs, logger, flags)
 	if flags.MinAge > 0 && !flags.Update {
 		return errors.New("--min-age requires --update (-u) flag")
 	}
@@ -291,8 +372,8 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 		return err
 	}
 
-	param := buildParam(flags, pwd, isGitHubActions, review, includes, excludes)
-	services, err := setupGHESServices(ctx, gh, cfg, logger.Logger)
+	param := buildParam(flags, pwd, flags.IsGitHubActions, review, includes, excludes)
+	services, err := setupGHESServices(ctx, gh, cfg, logger.Logger, flags, secrets.GHESToken)
 	if err != nil {
 		return err
 	}
@@ -332,9 +413,9 @@ func parseExcludes(opts []string) ([]*regexp.Regexp, error) {
 // setReview configures review information from GitHub Actions environment.
 // It extracts repository name, pull request number, and commit SHA from
 // environment variables and GitHub event payload.
-func (r *runner) setReview(fs afero.Fs, review *run.Review) error {
+func (r *runner) setReview(fs afero.Fs, review *run.Review, flags *Flags) error {
 	if review.RepoName == "" {
-		repo := os.Getenv("GITHUB_REPOSITORY")
+		repo := flags.GitHubRepository
 		_, repoName, ok := strings.Cut(repo, "/")
 		if !ok {
 			return fmt.Errorf("GITHUB_REPOSITORY is not set or invalid: %s", repo)
@@ -344,14 +425,13 @@ func (r *runner) setReview(fs afero.Fs, review *run.Review) error {
 		}
 		review.RepoName = repoName
 	}
-	eventPath := os.Getenv("GITHUB_EVENT_PATH")
-	if eventPath == "" {
+	if flags.GitHubEventPath == "" {
 		return nil
 	}
 	var ev *Event
 	if review.PullRequest == 0 {
 		ev = &Event{}
-		if err := r.readEvent(fs, ev, eventPath); err != nil {
+		if err := r.readEvent(fs, ev, flags.GitHubEventPath); err != nil {
 			return err
 		}
 		review.PullRequest = ev.PRNumber()
@@ -361,7 +441,7 @@ func (r *runner) setReview(fs afero.Fs, review *run.Review) error {
 	}
 	if ev == nil {
 		ev = &Event{}
-		if err := r.readEvent(fs, ev, eventPath); err != nil {
+		if err := r.readEvent(fs, ev, flags.GitHubEventPath); err != nil {
 			return err
 		}
 	}
@@ -382,7 +462,7 @@ func (r *runner) readEvent(fs afero.Fs, ev *Event, eventPath string) error {
 	return nil
 }
 
-func (r *runner) setupReview(fs afero.Fs, logger *slogutil.Logger, flags *Flags, isGitHubActions bool) *run.Review {
+func (r *runner) setupReview(fs afero.Fs, logger *slogutil.Logger, flags *Flags) *run.Review {
 	if !flags.Review {
 		return nil
 	}
@@ -392,8 +472,8 @@ func (r *runner) setupReview(fs afero.Fs, logger *slogutil.Logger, flags *Flags,
 		PullRequest: flags.PR,
 		SHA:         flags.SHA,
 	}
-	if isGitHubActions {
-		if err := r.setReview(fs, review); err != nil {
+	if flags.IsGitHubActions {
+		if err := r.setReview(fs, review, flags); err != nil {
 			slogerr.WithError(logger.Logger, err).Error("set review information")
 		}
 	}
@@ -429,13 +509,13 @@ func buildParam(flags *Flags, pwd string, isGitHubActions bool, review *run.Revi
 	return param
 }
 
-func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Config, logger *slog.Logger) (*ghesServices, error) {
+func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Config, logger *slog.Logger, flags *Flags, token string) (*ghesServices, error) {
 	ghesConfig := cfg.GHES
 	if ghesConfig == nil {
-		ghesConfig = config.GHESFromEnv()
+		ghesConfig = flags.GHESFromEnv()
 	} else {
 		// Merge environment variables into config file settings
-		ghesConfig.MergeFromEnv()
+		flags.MergeFromEnv(ghesConfig)
 	}
 	if err := ghesConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("validate GHES configuration: %w", err)
@@ -447,7 +527,7 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 	var ghesFallback bool
 
 	if ghesConfig.IsEnabled() {
-		registry, err := github.NewClientRegistry(ctx, gh, ghesConfig)
+		registry, err := github.NewClientRegistry(ctx, gh, ghesConfig, token)
 		if err != nil {
 			return nil, fmt.Errorf("create GitHub client registry: %w", err)
 		}

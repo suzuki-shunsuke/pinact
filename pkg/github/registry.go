@@ -18,14 +18,13 @@ type ClientRegistry struct {
 
 // NewClientRegistry creates a new ClientRegistry with clients for github.com
 // and optionally a GHES instance.
-func NewClientRegistry(ctx context.Context, defaultClient *Client, ghes *config.GHES) (*ClientRegistry, error) {
+func NewClientRegistry(ctx context.Context, defaultClient *Client, ghes *config.GHES, token string) (*ClientRegistry, error) {
 	registry := &ClientRegistry{
 		defaultClient: defaultClient,
 		ghesConfig:    ghes,
 	}
 
 	if ghes != nil {
-		token := GetGHESToken()
 		client, err := NewWithBaseURL(ctx, ghes.APIURL, token)
 		if err != nil {
 			return nil, fmt.Errorf("create GHES client for %s: %w", ghes.APIURL, err)

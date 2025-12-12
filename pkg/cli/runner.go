@@ -29,7 +29,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
 		Flags: globalFlags.Flags(),
 		Commands: []*cli.Command{
 			initcmd.New(logger, globalFlags),
-			run.New(logger, globalFlags),
+			run.New(logger, globalFlags, env),
 			migrate.New(logger, globalFlags),
 			token.New(logger),
 		},
