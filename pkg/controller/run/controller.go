@@ -15,9 +15,9 @@ import (
 )
 
 type Controller struct {
-	repositoriesService *github.RepositoriesServiceImpl
+	repositoriesService RepositoriesService
 	pullRequestsService github.PullRequestsService
-	gitService          *github.GitServiceImpl
+	gitService          GitService
 	fs                  afero.Fs
 	cfg                 *config.Config
 	param               *ParamRun
@@ -38,7 +38,7 @@ type Controller struct {
 //   - param: operation parameters and settings
 //
 // Returns a pointer to the configured Controller.
-func New(repositoriesService *github.RepositoriesServiceImpl, pullRequestsService github.PullRequestsService, gitService *github.GitServiceImpl, fs afero.Fs, cfg *config.Config, param *ParamRun) *Controller {
+func New(repositoriesService RepositoriesService, pullRequestsService github.PullRequestsService, gitService GitService, fs afero.Fs, cfg *config.Config, param *ParamRun) *Controller {
 	return &Controller{
 		repositoriesService: repositoriesService,
 		pullRequestsService: pullRequestsService,

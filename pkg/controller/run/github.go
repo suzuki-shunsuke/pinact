@@ -12,6 +12,20 @@ import (
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
+// RepositoriesService defines the interface for GitHub Repositories API operations
+// used by the Controller.
+type RepositoriesService interface {
+	ListTags(ctx context.Context, logger *slog.Logger, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error)
+	ListReleases(ctx context.Context, logger *slog.Logger, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error)
+	GetCommitSHA1(ctx context.Context, logger *slog.Logger, owner, repo, ref, lastSHA string) (string, *github.Response, error)
+}
+
+// GitService defines the interface for GitHub Git API operations
+// used by the Controller.
+type GitService interface {
+	GetCommit(ctx context.Context, logger *slog.Logger, owner, repo, sha string) (*github.Commit, *github.Response, error)
+}
+
 // getLatestVersion determines the latest version of a repository.
 // It first tries to get the latest version from releases, and if that fails
 // or returns empty, it falls back to getting the latest version from tags.
@@ -106,7 +120,7 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *s
 
 // checkTagCooldown checks if a tag should be skipped due to cooldown period.
 // It returns true if the tag should be skipped.
-func checkTagCooldown(ctx context.Context, logger *slog.Logger, gitService *github.GitServiceImpl, owner, repo, tagName, sha string, cutoff time.Time) bool {
+func checkTagCooldown(ctx context.Context, logger *slog.Logger, gitService GitService, owner, repo, tagName, sha string, cutoff time.Time) bool {
 	if cutoff.IsZero() || gitService == nil || sha == "" {
 		return false
 	}
