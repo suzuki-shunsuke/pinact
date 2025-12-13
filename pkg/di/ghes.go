@@ -10,6 +10,10 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 )
 
+// setupGHESServices creates GitHub API services with GHES (GitHub Enterprise Server) support.
+// It configures a ClientResolver that routes API requests to either GHES or github.com
+// based on the configuration. When GHES is enabled with fallback, repositories are first
+// checked on GHES and fall back to github.com if not found.
 func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Config, logger *slog.Logger, flags *Flags, token string) (*ghesServices, error) {
 	ghesConfig := cfg.GHES
 	if ghesConfig == nil {

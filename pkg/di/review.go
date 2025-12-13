@@ -10,7 +10,10 @@ import (
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 )
 
-func setReview(fs afero.Fs, review *run.Review, flags *Flags) error {
+// populateReviewFromGitHubActionsEnv fills missing review fields from GitHub Actions environment.
+// It extracts repository name from GITHUB_REPOSITORY and pull request number/SHA from the event file.
+// This function is only called when running in GitHub Actions environment.
+func populateReviewFromGitHubActionsEnv(fs afero.Fs, review *run.Review, flags *Flags) error {
 	if review.RepoName == "" {
 		repo := flags.GitHubRepository
 		_, repoName, ok := strings.Cut(repo, "/")
@@ -46,6 +49,10 @@ func setReview(fs afero.Fs, review *run.Review, flags *Flags) error {
 	return nil
 }
 
+// setupReview creates a Review configuration for the -review flag.
+// It initializes the review with command-line flags, and when running in GitHub Actions,
+// automatically populates missing fields from environment variables and event file.
+// Returns nil if review is disabled or the configuration is invalid.
 func setupReview(fs afero.Fs, logger *slogutil.Logger, flags *Flags) *run.Review {
 	if !flags.Review {
 		return nil
@@ -57,7 +64,7 @@ func setupReview(fs afero.Fs, logger *slogutil.Logger, flags *Flags) *run.Review
 		SHA:         flags.SHA,
 	}
 	if flags.IsGitHubActions {
-		if err := setReview(fs, review, flags); err != nil {
+		if err := populateReviewFromGitHubActionsEnv(fs, review, flags); err != nil {
 			slogerr.WithError(logger.Logger, err).Error("set review information")
 		}
 	}
