@@ -27,6 +27,8 @@ type (
 	Client             = github.Client
 	GitObject          = github.GitObject
 	Commit             = github.Commit
+	CommitAuthor       = github.CommitAuthor
+	Timestamp          = github.Timestamp
 	PullRequestComment = github.PullRequestComment
 )
 

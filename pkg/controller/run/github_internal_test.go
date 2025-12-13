@@ -353,6 +353,180 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 	}
 }
 
+func Test_isStableVersion(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	tests := []struct {
+		name    string
+		version string
+		want    bool
+	}{
+		{
+			name:    "empty version",
+			version: "",
+			want:    false,
+		},
+		{
+			name:    "stable semver with v prefix",
+			version: "v1.2.3",
+			want:    true,
+		},
+		{
+			name:    "stable semver without v prefix",
+			version: "1.2.3",
+			want:    true,
+		},
+		{
+			name:    "prerelease version alpha",
+			version: "v1.2.3-alpha",
+			want:    false,
+		},
+		{
+			name:    "prerelease version beta",
+			version: "v1.2.3-beta.1",
+			want:    false,
+		},
+		{
+			name:    "prerelease version rc",
+			version: "v1.2.3-rc.1",
+			want:    false,
+		},
+		{
+			name:    "invalid version string",
+			version: "not-a-version",
+			want:    false,
+		},
+		{
+			name:    "branch name",
+			version: "main",
+			want:    false,
+		},
+		{
+			name:    "short version v3",
+			version: "v3",
+			want:    true,
+		},
+		{
+			name:    "short version with prerelease",
+			version: "v3-beta",
+			want:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := isStableVersion(tt.version); got != tt.want {
+				t.Errorf("isStableVersion(%q) = %v, want %v", tt.version, got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_checkTagCooldown(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	now := time.Now()
+	cutoff := now.AddDate(0, 0, -7) // 7 days ago
+
+	tests := []struct {
+		name       string
+		gitService GitService
+		sha        string
+		cutoff     time.Time
+		commitTime time.Time
+		want       bool
+	}{
+		{
+			name:       "zero cutoff - no cooldown check",
+			gitService: nil,
+			sha:        "abc123",
+			cutoff:     time.Time{},
+			want:       false,
+		},
+		{
+			name:       "nil git service - no cooldown check",
+			gitService: nil,
+			sha:        "abc123",
+			cutoff:     cutoff,
+			want:       false,
+		},
+		{
+			name:       "empty SHA - no cooldown check",
+			gitService: &mockGitService{},
+			sha:        "",
+			cutoff:     cutoff,
+			want:       false,
+		},
+		{
+			name: "commit before cutoff - not skipped",
+			gitService: &mockGitService{
+				getCommitFunc: func(_ context.Context, _, _, _ string) (*github.Commit, *github.Response, error) {
+					beforeCutoff := github.Timestamp{Time: cutoff.AddDate(0, 0, -1)}
+					return &github.Commit{
+						Committer: &github.CommitAuthor{
+							Date: &beforeCutoff,
+						},
+					}, nil, nil
+				},
+			},
+			sha:    "abc123",
+			cutoff: cutoff,
+			want:   false,
+		},
+		{
+			name: "commit after cutoff - skipped",
+			gitService: &mockGitService{
+				getCommitFunc: func(_ context.Context, _, _, _ string) (*github.Commit, *github.Response, error) {
+					afterCutoff := github.Timestamp{Time: cutoff.AddDate(0, 0, 1)}
+					return &github.Commit{
+						Committer: &github.CommitAuthor{
+							Date: &afterCutoff,
+						},
+					}, nil, nil
+				},
+			},
+			sha:    "abc123",
+			cutoff: cutoff,
+			want:   true,
+		},
+		{
+			name: "API error - skipped",
+			gitService: &mockGitService{
+				getCommitFunc: func(_ context.Context, _, _, _ string) (*github.Commit, *github.Response, error) {
+					return nil, nil, errors.New("API error")
+				},
+			},
+			sha:    "abc123",
+			cutoff: cutoff,
+			want:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			logger := slog.New(slog.DiscardHandler)
+
+			got := checkTagCooldown(ctx, logger, tt.gitService, "owner", "repo", "v1.0.0", tt.sha, tt.cutoff)
+
+			if got != tt.want {
+				t.Errorf("checkTagCooldown() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type mockGitService struct {
+	getCommitFunc func(ctx context.Context, owner, repo, sha string) (*github.Commit, *github.Response, error)
+}
+
+func (m *mockGitService) GetCommit(ctx context.Context, _ *slog.Logger, owner, repo, sha string) (*github.Commit, *github.Response, error) {
+	if m.getCommitFunc != nil {
+		return m.getCommitFunc(ctx, owner, repo, sha)
+	}
+	return nil, nil, errors.New("not implemented")
+}
+
 func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	tests := []struct {

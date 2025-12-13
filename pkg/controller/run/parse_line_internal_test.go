@@ -2,6 +2,7 @@ package run
 
 import (
 	"log/slog"
+	"regexp"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -259,6 +260,501 @@ func Test_patchLine(t *testing.T) {
 			line := patchLine(d.action, d.version, d.tag)
 			if line != d.exp {
 				t.Fatalf(`wanted %s, got %s`, d.exp, line)
+			}
+		})
+	}
+}
+
+func Test_getVersionType(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	tests := []struct {
+		name    string
+		version string
+		want    VersionType
+	}{
+		{
+			name:    "empty string",
+			version: "",
+			want:    Empty,
+		},
+		{
+			name:    "full commit SHA",
+			version: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+			want:    FullCommitSHA,
+		},
+		{
+			name:    "semver with v prefix",
+			version: "v1.2.3",
+			want:    Semver,
+		},
+		{
+			name:    "semver without v prefix",
+			version: "1.2.3",
+			want:    Semver,
+		},
+		{
+			name:    "semver with prerelease",
+			version: "v1.2.3-alpha",
+			want:    Semver,
+		},
+		{
+			name:    "semver with build metadata",
+			version: "v1.2.3+build.1",
+			want:    Semver,
+		},
+		{
+			name:    "short semver v3",
+			version: "v3",
+			want:    Shortsemver,
+		},
+		{
+			name:    "short semver v3.1",
+			version: "v3.1",
+			want:    Shortsemver,
+		},
+		{
+			name:    "short semver without v prefix",
+			version: "3",
+			want:    Shortsemver,
+		},
+		{
+			name:    "short semver minor without v",
+			version: "3.1",
+			want:    Shortsemver,
+		},
+		{
+			name:    "branch name main",
+			version: "main",
+			want:    Other,
+		},
+		{
+			name:    "branch name master",
+			version: "master",
+			want:    Other,
+		},
+		{
+			name:    "short SHA",
+			version: "abc1234",
+			want:    Other,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := getVersionType(tt.version); got != tt.want {
+				t.Errorf("getVersionType(%q) = %v, want %v", tt.version, got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_compareVersion(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	tests := []struct {
+		name           string
+		currentVersion string
+		newVersion     string
+		want           bool
+	}{
+		{
+			name:           "new version is greater",
+			currentVersion: "v1.0.0",
+			newVersion:     "v2.0.0",
+			want:           true,
+		},
+		{
+			name:           "new version is less",
+			currentVersion: "v2.0.0",
+			newVersion:     "v1.0.0",
+			want:           false,
+		},
+		{
+			name:           "versions are equal",
+			currentVersion: "v1.0.0",
+			newVersion:     "v1.0.0",
+			want:           false,
+		},
+		{
+			name:           "minor version is greater",
+			currentVersion: "v1.0.0",
+			newVersion:     "v1.1.0",
+			want:           true,
+		},
+		{
+			name:           "patch version is greater",
+			currentVersion: "v1.0.0",
+			newVersion:     "v1.0.1",
+			want:           true,
+		},
+		{
+			name:           "invalid current version - string comparison",
+			currentVersion: "main",
+			newVersion:     "release",
+			want:           true,
+		},
+		{
+			name:           "invalid new version - string comparison",
+			currentVersion: "v1.0.0",
+			newVersion:     "invalid",
+			want:           false,
+		},
+		{
+			name:           "both invalid - string comparison greater",
+			currentVersion: "alpha",
+			newVersion:     "beta",
+			want:           true,
+		},
+		{
+			name:           "both invalid - string comparison less",
+			currentVersion: "beta",
+			newVersion:     "alpha",
+			want:           false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := compareVersion(tt.currentVersion, tt.newVersion); got != tt.want {
+				t.Errorf("compareVersion(%q, %q) = %v, want %v", tt.currentVersion, tt.newVersion, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestController_shouldSkipAction(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	tests := []struct {
+		name   string
+		cfg    *config.Config
+		param  *ParamRun
+		action *Action
+		want   bool
+	}{
+		{
+			name:  "no filters - should not skip",
+			cfg:   &config.Config{},
+			param: &ParamRun{},
+			action: &Action{
+				Name:    "actions/checkout",
+				Version: "v3",
+			},
+			want: false,
+		},
+		{
+			name: "excluded by exclude pattern",
+			cfg:  &config.Config{},
+			param: &ParamRun{
+				Excludes: []*regexp.Regexp{regexp.MustCompile(`^actions/.*`)},
+			},
+			action: &Action{
+				Name:    "actions/checkout",
+				Version: "v3",
+			},
+			want: true,
+		},
+		{
+			name: "not excluded by non-matching exclude pattern",
+			cfg:  &config.Config{},
+			param: &ParamRun{
+				Excludes: []*regexp.Regexp{regexp.MustCompile(`^other/.*`)},
+			},
+			action: &Action{
+				Name:    "actions/checkout",
+				Version: "v3",
+			},
+			want: false,
+		},
+		{
+			name: "included by include pattern",
+			cfg:  &config.Config{},
+			param: &ParamRun{
+				Includes: []*regexp.Regexp{regexp.MustCompile(`^actions/.*`)},
+			},
+			action: &Action{
+				Name:    "actions/checkout",
+				Version: "v3",
+			},
+			want: false,
+		},
+		{
+			name: "excluded by non-matching include pattern",
+			cfg:  &config.Config{},
+			param: &ParamRun{
+				Includes: []*regexp.Regexp{regexp.MustCompile(`^other/.*`)},
+			},
+			action: &Action{
+				Name:    "actions/checkout",
+				Version: "v3",
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			ctrl := New(nil, nil, nil, fs, tt.cfg, tt.param)
+			logger := slog.New(slog.DiscardHandler)
+
+			if got := ctrl.shouldSkipAction(logger, tt.action); got != tt.want {
+				t.Errorf("shouldSkipAction() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestController_checkOnlyMode(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	tests := []struct {
+		name        string
+		param       *ParamRun
+		action      *Action
+		wantHandled bool
+		wantErr     bool
+	}{
+		{
+			name:  "not check mode",
+			param: &ParamRun{Check: false},
+			action: &Action{
+				Version: "v3",
+			},
+			wantHandled: false,
+			wantErr:     false,
+		},
+		{
+			name:  "check mode with diff - not handled",
+			param: &ParamRun{Check: true, Diff: true},
+			action: &Action{
+				Version: "v3",
+			},
+			wantHandled: false,
+			wantErr:     false,
+		},
+		{
+			name:  "check mode with fix - not handled",
+			param: &ParamRun{Check: true, Fix: true},
+			action: &Action{
+				Version: "v3",
+			},
+			wantHandled: false,
+			wantErr:     false,
+		},
+		{
+			name:  "check mode - action already pinned",
+			param: &ParamRun{Check: true},
+			action: &Action{
+				Version: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+			},
+			wantHandled: true,
+			wantErr:     false,
+		},
+		{
+			name:  "check mode - action not pinned",
+			param: &ParamRun{Check: true},
+			action: &Action{
+				Version: "v3",
+			},
+			wantHandled: true,
+			wantErr:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			ctrl := New(nil, nil, nil, fs, &config.Config{}, tt.param)
+
+			handled, err := ctrl.checkOnlyMode(tt.action)
+
+			if handled != tt.wantHandled {
+				t.Errorf("checkOnlyMode() handled = %v, want %v", handled, tt.wantHandled)
+			}
+			if (err != nil) != tt.wantErr {
+				t.Errorf("checkOnlyMode() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestController_parseActionName(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		action        *Action
+		want          bool
+		wantRepoOwner string
+		wantRepoName  string
+	}{
+		{
+			name: "valid action name",
+			action: &Action{
+				Name: "actions/checkout",
+			},
+			want:          true,
+			wantRepoOwner: "actions",
+			wantRepoName:  "checkout",
+		},
+		{
+			name: "action with path",
+			action: &Action{
+				Name: "owner/repo/path/to/action",
+			},
+			want:          true,
+			wantRepoOwner: "owner",
+			wantRepoName:  "repo",
+		},
+		{
+			name: "single component name",
+			action: &Action{
+				Name: "localaction",
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			ctrl := New(nil, nil, nil, fs, &config.Config{}, &ParamRun{})
+
+			got := ctrl.parseActionName(tt.action)
+
+			if got != tt.want {
+				t.Errorf("parseActionName() = %v, want %v", got, tt.want)
+			}
+			if tt.want {
+				if tt.action.RepoOwner != tt.wantRepoOwner {
+					t.Errorf("RepoOwner = %v, want %v", tt.action.RepoOwner, tt.wantRepoOwner)
+				}
+				if tt.action.RepoName != tt.wantRepoName {
+					t.Errorf("RepoName = %v, want %v", tt.action.RepoName, tt.wantRepoName)
+				}
+			}
+		})
+	}
+}
+
+func TestController_excludeAction(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		excludes   []*regexp.Regexp
+		actionName string
+		want       bool
+	}{
+		{
+			name:       "no excludes",
+			excludes:   nil,
+			actionName: "actions/checkout",
+			want:       false,
+		},
+		{
+			name:       "empty excludes",
+			excludes:   []*regexp.Regexp{},
+			actionName: "actions/checkout",
+			want:       false,
+		},
+		{
+			name:       "matching exclude pattern",
+			excludes:   []*regexp.Regexp{regexp.MustCompile(`actions/checkout`)},
+			actionName: "actions/checkout",
+			want:       true,
+		},
+		{
+			name:       "non-matching exclude pattern",
+			excludes:   []*regexp.Regexp{regexp.MustCompile(`other/action`)},
+			actionName: "actions/checkout",
+			want:       false,
+		},
+		{
+			name: "multiple excludes - one matches",
+			excludes: []*regexp.Regexp{
+				regexp.MustCompile(`other/action`),
+				regexp.MustCompile(`actions/.*`),
+			},
+			actionName: "actions/checkout",
+			want:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			ctrl := New(nil, nil, nil, fs, &config.Config{}, &ParamRun{Excludes: tt.excludes})
+
+			if got := ctrl.excludeAction(tt.actionName); got != tt.want {
+				t.Errorf("excludeAction() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestController_excludeByIncludes(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	tests := []struct {
+		name       string
+		includes   []*regexp.Regexp
+		actionName string
+		want       bool
+	}{
+		{
+			name:       "no includes - not excluded",
+			includes:   nil,
+			actionName: "actions/checkout",
+			want:       false,
+		},
+		{
+			name:       "empty includes - not excluded",
+			includes:   []*regexp.Regexp{},
+			actionName: "actions/checkout",
+			want:       false,
+		},
+		{
+			name:       "matching include - not excluded",
+			includes:   []*regexp.Regexp{regexp.MustCompile(`actions/.*`)},
+			actionName: "actions/checkout",
+			want:       false,
+		},
+		{
+			name:       "non-matching include - excluded",
+			includes:   []*regexp.Regexp{regexp.MustCompile(`other/.*`)},
+			actionName: "actions/checkout",
+			want:       true,
+		},
+		{
+			name: "multiple includes - one matches - not excluded",
+			includes: []*regexp.Regexp{
+				regexp.MustCompile(`other/.*`),
+				regexp.MustCompile(`actions/.*`),
+			},
+			actionName: "actions/checkout",
+			want:       false,
+		},
+		{
+			name: "multiple includes - none match - excluded",
+			includes: []*regexp.Regexp{
+				regexp.MustCompile(`other/.*`),
+				regexp.MustCompile(`another/.*`),
+			},
+			actionName: "actions/checkout",
+			want:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			ctrl := New(nil, nil, nil, fs, &config.Config{}, &ParamRun{Includes: tt.includes})
+
+			if got := ctrl.excludeByIncludes(tt.actionName); got != tt.want {
+				t.Errorf("excludeByIncludes() = %v, want %v", got, tt.want)
 			}
 		})
 	}
