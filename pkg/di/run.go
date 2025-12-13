@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/spf13/afero"
@@ -111,6 +112,7 @@ func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
 		Includes:          includes,
 		Excludes:          excludes,
 		MinAge:            flags.MinAge,
+		Now:               time.Now(),
 	}
 	if flags.FixCount > 0 {
 		param.Fix = flags.Fix

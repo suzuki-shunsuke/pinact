@@ -11,6 +11,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
@@ -31,6 +32,7 @@ type ParamRun struct {
 	Includes          []*regexp.Regexp
 	Excludes          []*regexp.Regexp
 	MinAge            int
+	Now               time.Time
 }
 
 type Review struct {
