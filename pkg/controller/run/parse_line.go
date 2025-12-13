@@ -144,10 +144,6 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 		return "", nil
 	}
 
-	if handled, err := c.checkOnlyMode(action); handled {
-		return "", err
-	}
-
 	if !c.parseActionName(action) {
 		logger.Debug("ignore line")
 		return "", nil
@@ -173,32 +169,25 @@ func (c *Controller) shouldSkipAction(logger *slog.Logger, action *Action) bool 
 	return false
 }
 
-// checkOnlyMode handles the check-only mode where we only verify if actions are pinned.
-// Returns whether this mode handled the action, and any error.
-func (c *Controller) checkOnlyMode(action *Action) (bool, error) {
-	if !c.param.Check || c.param.Diff || c.param.Fix {
-		return false, nil
-	}
-	if fullCommitSHAPattern.MatchString(action.Version) {
-		return true, nil
-	}
-	return true, ErrActionNotPinned
-}
-
 // processVersionComment processes the action based on its version comment type.
 func (c *Controller) processVersionComment(ctx context.Context, logger *slog.Logger, action *Action, attrs *slogerr.Attrs) (string, error) {
 	switch getVersionType(action.VersionComment) {
 	case Empty:
+		// @xxx
 		return c.parseNoTagLine(ctx, logger, action)
 	case Semver:
+		// @xxx # v1.0.0
 		return c.parseSemverTagLine(ctx, logger, action)
 	case Shortsemver:
+		// @xxx # v1
 		logger = attrs.Add(logger, "version_annotation", action.VersionComment)
 		return c.parseShortSemverTagLine(ctx, logger, action)
 	default:
 		if getVersionType(action.Version) == FullCommitSHA {
+			// @xxx # <full commit hash>
 			return "", nil
 		}
+		// @xxx # hoge
 		return "", ErrCantPinned
 	}
 }
