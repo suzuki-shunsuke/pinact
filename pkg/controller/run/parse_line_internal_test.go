@@ -158,8 +158,8 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(&RepositoriesServiceImpl{
-				Tags: map[string]*ListTagsResult{
+			ctrl := New(&github.RepositoriesServiceImpl{
+				Tags: map[string]*github.ListTagsResult{
 					"actions/checkout/0": {
 						Tags: []*github.RepositoryTag{
 							{
@@ -190,13 +190,13 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						Response: &github.Response{},
 					},
 				},
-				Releases: map[string]*ListReleasesResult{
+				Releases: map[string]*github.ListReleasesResult{
 					"actions/checkout/0": {
 						Releases: []*github.RepositoryRelease{}, // Empty releases forces fallback to tags
 						Response: &github.Response{},
 					},
 				},
-				Commits: map[string]*GetCommitSHA1Result{
+				Commits: map[string]*github.GetCommitSHA1Result{
 					"actions/checkout/v3": {
 						SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
 					},

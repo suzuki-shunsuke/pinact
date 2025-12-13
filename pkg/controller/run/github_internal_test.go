@@ -183,12 +183,12 @@ func (m *mockRepoService) Get(_ context.Context, _, _ string) (*github.Repositor
 }
 
 // newTestRepoService creates a RepositoriesServiceImpl with the given mock for testing
-func newTestRepoService(mock *mockRepoService) *RepositoriesServiceImpl {
-	resolver := NewClientResolver(mock, nil, nil, nil, false)
-	impl := &RepositoriesServiceImpl{
-		Tags:     map[string]*ListTagsResult{},
-		Releases: map[string]*ListReleasesResult{},
-		Commits:  map[string]*GetCommitSHA1Result{},
+func newTestRepoService(mock *mockRepoService) *github.RepositoriesServiceImpl {
+	resolver := github.NewClientResolver(mock, nil, nil, nil, false)
+	impl := &github.RepositoriesServiceImpl{
+		Tags:     map[string]*github.ListTagsResult{},
+		Releases: map[string]*github.ListReleasesResult{},
+		Commits:  map[string]*github.GetCommitSHA1Result{},
 	}
 	impl.SetResolver(resolver)
 	return impl

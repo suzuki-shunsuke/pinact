@@ -11,12 +11,13 @@ package run
 import (
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 )
 
 type Controller struct {
-	repositoriesService *RepositoriesServiceImpl
-	pullRequestsService PullRequestsService
-	gitService          *GitServiceImpl
+	repositoriesService *github.RepositoriesServiceImpl
+	pullRequestsService github.PullRequestsService
+	gitService          *github.GitServiceImpl
 	fs                  afero.Fs
 	cfg                 *config.Config
 	param               *ParamRun
@@ -37,7 +38,7 @@ type Controller struct {
 //   - param: operation parameters and settings
 //
 // Returns a pointer to the configured Controller.
-func New(repositoriesService *RepositoriesServiceImpl, pullRequestsService PullRequestsService, gitService *GitServiceImpl, fs afero.Fs, cfg *config.Config, param *ParamRun) *Controller {
+func New(repositoriesService *github.RepositoriesServiceImpl, pullRequestsService github.PullRequestsService, gitService *github.GitServiceImpl, fs afero.Fs, cfg *config.Config, param *ParamRun) *Controller {
 	return &Controller{
 		repositoriesService: repositoriesService,
 		pullRequestsService: pullRequestsService,

@@ -19,9 +19,9 @@ import (
 )
 
 type ghesServices struct {
-	repoService *run.RepositoriesServiceImpl
-	gitService  *run.GitServiceImpl
-	prService   *run.PullRequestsServiceImpl
+	repoService *github.RepositoriesServiceImpl
+	gitService  *github.GitServiceImpl
+	prService   *github.PullRequestsServiceImpl
 }
 
 // Run executes the main run command logic.

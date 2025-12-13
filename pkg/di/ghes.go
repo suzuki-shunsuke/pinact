@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 )
 
@@ -25,9 +24,9 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 		return nil, fmt.Errorf("validate GHES configuration: %w", err)
 	}
 
-	var ghesRepoService run.RepositoriesService
-	var ghesGitService run.GitService
-	var ghesPRService run.PullRequestsService
+	var ghesRepoService github.RepositoriesService
+	var ghesGitService github.GitService
+	var ghesPRService github.PullRequestsService
 	var ghesFallback bool
 
 	if ghesConfig.IsEnabled() {
@@ -42,25 +41,25 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 		ghesFallback = ghesConfig.Fallback
 	}
 
-	resolver := run.NewClientResolver(
+	resolver := github.NewClientResolver(
 		gh.Repositories, gh.Git,
 		ghesRepoService, ghesGitService,
 		ghesFallback,
 	)
 
-	repoService := &run.RepositoriesServiceImpl{
-		Tags:     map[string]*run.ListTagsResult{},
-		Releases: map[string]*run.ListReleasesResult{},
-		Commits:  map[string]*run.GetCommitSHA1Result{},
+	repoService := &github.RepositoriesServiceImpl{
+		Tags:     map[string]*github.ListTagsResult{},
+		Releases: map[string]*github.ListReleasesResult{},
+		Commits:  map[string]*github.GetCommitSHA1Result{},
 	}
 	repoService.SetResolver(resolver)
 
-	gitService := &run.GitServiceImpl{
-		Commits: map[string]*run.GetCommitResult{},
+	gitService := &github.GitServiceImpl{
+		Commits: map[string]*github.GetCommitResult{},
 	}
 	gitService.SetResolver(resolver)
 
-	prService := &run.PullRequestsServiceImpl{}
+	prService := &github.PullRequestsServiceImpl{}
 	prService.SetServices(gh.PullRequests, ghesPRService)
 
 	return &ghesServices{
