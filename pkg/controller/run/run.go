@@ -93,54 +93,65 @@ type Line struct {
 // runWorkflow processes a single workflow file.
 // It reads the file line by line, parses each line for actions,
 // applies transformations, and optionally writes changes back to the file.
-func (c *Controller) runWorkflow(ctx context.Context, logger *slog.Logger, workflowFilePath string) error { //nolint:cyclop
+func (c *Controller) runWorkflow(ctx context.Context, logger *slog.Logger, workflowFilePath string) error {
 	lines, err := c.readWorkflow(workflowFilePath)
 	if err != nil {
 		return err
 	}
-	changed := false
-	failed := false
+	changed, failed := c.processLines(ctx, logger, workflowFilePath, lines)
+	if changed && c.param.Fix {
+		if err := c.writeWorkflow(workflowFilePath, lines); err != nil {
+			return err
+		}
+	}
+	if failed {
+		return ErrActionsNotPinned
+	}
+	return nil
+}
+
+// processLines processes each line in the workflow file.
+// It returns whether any lines were changed and whether any errors occurred.
+func (c *Controller) processLines(ctx context.Context, logger *slog.Logger, workflowFilePath string, lines []string) (changed, failed bool) {
 	for i, lineS := range lines {
 		line := &Line{
 			File:   workflowFilePath,
 			Number: i + 1,
 			Line:   lineS,
 		}
-		logger := logger.With(
+		lineLogger := logger.With(
 			"line_number", i+1,
 			"line", lineS,
 		)
-		l, err := c.parseLine(ctx, logger, lineS)
+		l, err := c.parseLine(ctx, lineLogger, lineS)
 		if err != nil {
 			failed = true
-			c.handleParseLineError(ctx, logger, line, err)
+			c.handleParseLineError(ctx, lineLogger, line, err)
 			continue
 		}
 		if l == "" || lineS == l {
 			continue
 		}
-		logger = logger.With("new_line", l)
+		lineLogger = lineLogger.With("new_line", l)
 		changed = true
 		if c.param.Check {
 			failed = true
 		}
 		lines[i] = l
-		c.handleChangedLine(ctx, logger, line, l)
+		c.handleChangedLine(ctx, lineLogger, line, l)
 	}
-	// Fix file
-	if changed && c.param.Fix {
-		f, err := os.Create(workflowFilePath)
-		if err != nil {
-			return fmt.Errorf("create a workflow file: %w", err)
-		}
-		defer f.Close()
-		if _, err := f.WriteString(strings.Join(lines, "\n") + "\n"); err != nil {
-			return fmt.Errorf("write a workflow file: %w", err)
-		}
+	return changed, failed
+}
+
+// writeWorkflow writes the modified lines back to the workflow file.
+func (c *Controller) writeWorkflow(workflowFilePath string, lines []string) error {
+	f, err := c.fs.Create(workflowFilePath)
+	if err != nil {
+		return fmt.Errorf("create a workflow file: %w", err)
 	}
-	// return error
-	if failed {
-		return ErrActionsNotPinned
+	defer f.Close()
+	if _, err := f.WriteString(strings.Join(lines, "\n") + "\n"); err != nil {
+		return fmt.Errorf("write a workflow file: %w", err)
 	}
 	return nil
 }
