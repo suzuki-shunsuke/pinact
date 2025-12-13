@@ -48,10 +48,23 @@ func (l *Logger) Output(level, message string, line *Line, newLine string) {
 		s = l.red("ERROR")
 	}
 	if newLine == "" {
+		if message == "" {
+			fmt.Fprintf(l.stderr, `%s:%d
+%s
+`, line.File, line.Number, line.Line)
+			return
+		}
 		fmt.Fprintf(l.stderr, `%s %s
 %s:%d
 %s
 `, s, message, line.File, line.Number, line.Line)
+		return
+	}
+	if message == "" {
+		fmt.Fprintf(l.stderr, `%s:%d
+%s
+%s
+`, line.File, line.Number, l.red("- "+line.Line), l.green("+ "+newLine))
 		return
 	}
 	fmt.Fprintf(l.stderr, `%s %s

@@ -21,15 +21,6 @@ import (
 // Run creates and executes the main pinact CLI application.
 // It configures the command structure with global flags and subcommands,
 // then runs the CLI with the provided arguments.
-//
-// Parameters:
-//   - ctx: context for cancellation and timeout control
-//   - logger: slog logger for structured logging
-//   - logLevelVar: slog level variable for dynamic log level changes
-//   - ldFlags: linker flags containing build information
-//   - args: command line arguments to parse and execute
-//
-// Returns an error if command parsing or execution fails.
 func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
 	globalFlags := &flag.GlobalFlags{}
 	return urfave.Command(env, &cli.Command{ //nolint:wrapcheck
@@ -38,7 +29,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
 		Flags: globalFlags.Flags(),
 		Commands: []*cli.Command{
 			initcmd.New(logger, globalFlags),
-			run.New(logger, globalFlags),
+			run.New(logger, globalFlags, env),
 			migrate.New(logger, globalFlags),
 			token.New(logger),
 		},

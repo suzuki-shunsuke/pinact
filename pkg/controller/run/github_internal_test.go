@@ -154,28 +154,44 @@ func Test_compare(t *testing.T) { //nolint:funlen
 	}
 }
 
-// mockRepositoriesService is a mock implementation of RepositoriesService for testing
-type mockRepositoriesService struct {
+// mockRepoService is a mock implementation of RepositoriesService for testing the underlying service
+type mockRepoService struct {
 	listReleasesFunc func(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error)
 	listTagsFunc     func(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error)
 }
 
-func (m *mockRepositoriesService) ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
+func (m *mockRepoService) ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
 	if m.listTagsFunc != nil {
 		return m.listTagsFunc(ctx, owner, repo, opts)
 	}
 	return nil, nil, errors.New("not implemented")
 }
 
-func (m *mockRepositoriesService) GetCommitSHA1(_ context.Context, _, _, _, _ string) (string, *github.Response, error) {
+func (m *mockRepoService) GetCommitSHA1(_ context.Context, _, _, _, _ string) (string, *github.Response, error) {
 	return "", nil, errors.New("not implemented")
 }
 
-func (m *mockRepositoriesService) ListReleases(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
+func (m *mockRepoService) ListReleases(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
 	if m.listReleasesFunc != nil {
 		return m.listReleasesFunc(ctx, owner, repo, opts)
 	}
 	return nil, nil, errors.New("not implemented")
+}
+
+func (m *mockRepoService) Get(_ context.Context, _, _ string) (*github.Repository, *github.Response, error) {
+	return nil, nil, nil
+}
+
+// newTestRepoService creates a RepositoriesServiceImpl with the given mock for testing
+func newTestRepoService(mock *mockRepoService) *github.RepositoriesServiceImpl {
+	resolver := github.NewClientResolver(mock, nil, nil, nil, false)
+	impl := &github.RepositoriesServiceImpl{
+		Tags:     map[string]*github.ListTagsResult{},
+		Releases: map[string]*github.ListReleasesResult{},
+		Commits:  map[string]*github.GetCommitSHA1Result{},
+	}
+	impl.SetResolver(resolver)
+	return impl
 }
 
 func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
@@ -310,14 +326,14 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			mockRepo := &mockRepositoriesService{
+			mockRepo := &mockRepoService{
 				listReleasesFunc: func(_ context.Context, _, _ string, _ *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
 					return tt.releases, nil, tt.listErr
 				},
 			}
 
 			c := &Controller{
-				repositoriesService: mockRepo,
+				repositoriesService: newTestRepoService(mockRepo),
 			}
 
 			ctx := t.Context()
@@ -335,6 +351,180 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 			}
 		})
 	}
+}
+
+func Test_isStableVersion(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	tests := []struct {
+		name    string
+		version string
+		want    bool
+	}{
+		{
+			name:    "empty version",
+			version: "",
+			want:    false,
+		},
+		{
+			name:    "stable semver with v prefix",
+			version: "v1.2.3",
+			want:    true,
+		},
+		{
+			name:    "stable semver without v prefix",
+			version: "1.2.3",
+			want:    true,
+		},
+		{
+			name:    "prerelease version alpha",
+			version: "v1.2.3-alpha",
+			want:    false,
+		},
+		{
+			name:    "prerelease version beta",
+			version: "v1.2.3-beta.1",
+			want:    false,
+		},
+		{
+			name:    "prerelease version rc",
+			version: "v1.2.3-rc.1",
+			want:    false,
+		},
+		{
+			name:    "invalid version string",
+			version: "not-a-version",
+			want:    false,
+		},
+		{
+			name:    "branch name",
+			version: "main",
+			want:    false,
+		},
+		{
+			name:    "short version v3",
+			version: "v3",
+			want:    true,
+		},
+		{
+			name:    "short version with prerelease",
+			version: "v3-beta",
+			want:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := isStableVersion(tt.version); got != tt.want {
+				t.Errorf("isStableVersion(%q) = %v, want %v", tt.version, got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_checkTagCooldown(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	now := time.Now()
+	cutoff := now.AddDate(0, 0, -7) // 7 days ago
+
+	tests := []struct {
+		name       string
+		gitService GitService
+		sha        string
+		cutoff     time.Time
+		commitTime time.Time
+		want       bool
+	}{
+		{
+			name:       "zero cutoff - no cooldown check",
+			gitService: nil,
+			sha:        "abc123",
+			cutoff:     time.Time{},
+			want:       false,
+		},
+		{
+			name:       "nil git service - no cooldown check",
+			gitService: nil,
+			sha:        "abc123",
+			cutoff:     cutoff,
+			want:       false,
+		},
+		{
+			name:       "empty SHA - no cooldown check",
+			gitService: &mockGitService{},
+			sha:        "",
+			cutoff:     cutoff,
+			want:       false,
+		},
+		{
+			name: "commit before cutoff - not skipped",
+			gitService: &mockGitService{
+				getCommitFunc: func(_ context.Context, _, _, _ string) (*github.Commit, *github.Response, error) {
+					beforeCutoff := github.Timestamp{Time: cutoff.AddDate(0, 0, -1)}
+					return &github.Commit{
+						Committer: &github.CommitAuthor{
+							Date: &beforeCutoff,
+						},
+					}, nil, nil
+				},
+			},
+			sha:    "abc123",
+			cutoff: cutoff,
+			want:   false,
+		},
+		{
+			name: "commit after cutoff - skipped",
+			gitService: &mockGitService{
+				getCommitFunc: func(_ context.Context, _, _, _ string) (*github.Commit, *github.Response, error) {
+					afterCutoff := github.Timestamp{Time: cutoff.AddDate(0, 0, 1)}
+					return &github.Commit{
+						Committer: &github.CommitAuthor{
+							Date: &afterCutoff,
+						},
+					}, nil, nil
+				},
+			},
+			sha:    "abc123",
+			cutoff: cutoff,
+			want:   true,
+		},
+		{
+			name: "API error - skipped",
+			gitService: &mockGitService{
+				getCommitFunc: func(_ context.Context, _, _, _ string) (*github.Commit, *github.Response, error) {
+					return nil, nil, errors.New("API error")
+				},
+			},
+			sha:    "abc123",
+			cutoff: cutoff,
+			want:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			logger := slog.New(slog.DiscardHandler)
+
+			got := checkTagCooldown(ctx, logger, tt.gitService, "owner", "repo", "v1.0.0", tt.sha, tt.cutoff)
+
+			if got != tt.want {
+				t.Errorf("checkTagCooldown() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type mockGitService struct {
+	getCommitFunc func(ctx context.Context, owner, repo, sha string) (*github.Commit, *github.Response, error)
+}
+
+func (m *mockGitService) GetCommit(ctx context.Context, _ *slog.Logger, owner, repo, sha string) (*github.Commit, *github.Response, error) {
+	if m.getCommitFunc != nil {
+		return m.getCommitFunc(ctx, owner, repo, sha)
+	}
+	return nil, nil, errors.New("not implemented")
 }
 
 func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
@@ -467,14 +657,14 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			mockRepo := &mockRepositoriesService{
+			mockRepo := &mockRepoService{
 				listTagsFunc: func(_ context.Context, _, _ string, _ *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
 					return tt.tags, nil, tt.listErr
 				},
 			}
 
 			c := &Controller{
-				repositoriesService: mockRepo,
+				repositoriesService: newTestRepoService(mockRepo),
 			}
 
 			ctx := t.Context()
