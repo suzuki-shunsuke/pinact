@@ -45,7 +45,6 @@ type ClientResolver struct {
 	defaultGitService  GitService
 	ghesRepoService    RepositoriesService
 	ghesGitService     GitService
-	logger             *slog.Logger
 	// repoHosts caches which host a repository belongs to
 	repoHosts map[string]repoHost
 	// fallback controls whether to fallback to github.com when a repository is not found on GHES
@@ -59,7 +58,6 @@ func NewClientResolver(
 	ghesRepoService RepositoriesService,
 	ghesGitService GitService,
 	fallback bool,
-	logger *slog.Logger,
 ) *ClientResolver {
 	return &ClientResolver{
 		defaultRepoService: defaultRepoService,
@@ -67,14 +65,13 @@ func NewClientResolver(
 		ghesRepoService:    ghesRepoService,
 		ghesGitService:     ghesGitService,
 		fallback:           fallback,
-		logger:             logger,
 		repoHosts:          map[string]repoHost{},
 	}
 }
 
 // GetRepositoriesService returns the appropriate RepositoriesService for the given repository.
-func (r *ClientResolver) GetRepositoriesService(ctx context.Context, owner, repo string) (RepositoriesService, error) {
-	host, err := r.resolveRepoHost(ctx, owner, repo)
+func (r *ClientResolver) GetRepositoriesService(ctx context.Context, logger *slog.Logger, owner, repo string) (RepositoriesService, error) {
+	host, err := r.resolveRepoHost(ctx, logger, owner, repo)
 	if err != nil {
 		return nil, err
 	}
@@ -85,8 +82,8 @@ func (r *ClientResolver) GetRepositoriesService(ctx context.Context, owner, repo
 }
 
 // GetGitService returns the appropriate GitService for the given repository.
-func (r *ClientResolver) GetGitService(ctx context.Context, owner, repo string) (GitService, error) {
-	host, err := r.resolveRepoHost(ctx, owner, repo)
+func (r *ClientResolver) GetGitService(ctx context.Context, logger *slog.Logger, owner, repo string) (GitService, error) {
+	host, err := r.resolveRepoHost(ctx, logger, owner, repo)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +96,7 @@ func (r *ClientResolver) GetGitService(ctx context.Context, owner, repo string) 
 // resolveRepoHost determines which host a repository belongs to using the Get a Repository API.
 // If fallback is disabled, it always uses GHES without checking repository existence.
 // If fallback is enabled, it checks GHES first and falls back to github.com if not found.
-func (r *ClientResolver) resolveRepoHost(ctx context.Context, owner, repo string) (repoHost, error) {
+func (r *ClientResolver) resolveRepoHost(ctx context.Context, logger *slog.Logger, owner, repo string) (repoHost, error) {
 	// If GHES is not configured, use github.com
 	if r.ghesRepoService == nil {
 		return repoHostGitHubDotCom, nil
@@ -120,7 +117,7 @@ func (r *ClientResolver) resolveRepoHost(ctx context.Context, owner, repo string
 	// Fallback is enabled: check if repository exists on GHES
 	_, resp, err := r.ghesRepoService.Get(ctx, owner, repo)
 	if err == nil {
-		r.logger.Debug("repository found on GHES", "owner", owner, "repo", repo)
+		logger.Debug("repository found on GHES", "owner", owner, "repo", repo)
 		r.repoHosts[key] = repoHostGHES
 		return repoHostGHES, nil
 	}
@@ -129,7 +126,7 @@ func (r *ClientResolver) resolveRepoHost(ctx context.Context, owner, repo string
 	if resp != nil && resp.StatusCode == http.StatusNotFound {
 		_, resp, err = r.defaultRepoService.Get(ctx, owner, repo)
 		if err == nil {
-			r.logger.Debug("repository found on github.com (fallback)", "owner", owner, "repo", repo)
+			logger.Debug("repository found on github.com (fallback)", "owner", owner, "repo", repo)
 			r.repoHosts[key] = repoHostGitHubDotCom
 			return repoHostGitHubDotCom, nil
 		}
@@ -160,13 +157,13 @@ type GetCommitResult struct {
 }
 
 // GetCommit retrieves a commit object with caching and GHES fallback.
-func (g *GitServiceImpl) GetCommit(ctx context.Context, owner, repo, sha string) (*github.Commit, *github.Response, error) {
+func (g *GitServiceImpl) GetCommit(ctx context.Context, logger *slog.Logger, owner, repo, sha string) (*github.Commit, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%s", owner, repo, sha)
 	if result, ok := g.Commits[key]; ok {
 		return result.Commit, result.Response, result.err
 	}
 
-	commit, resp, err := g.getCommit(ctx, owner, repo, sha)
+	commit, resp, err := g.getCommit(ctx, logger, owner, repo, sha)
 	g.Commits[key] = &GetCommitResult{
 		Commit:   commit,
 		Response: resp,
@@ -176,8 +173,8 @@ func (g *GitServiceImpl) GetCommit(ctx context.Context, owner, repo, sha string)
 }
 
 // getCommit calls the appropriate GitService based on the repository host.
-func (g *GitServiceImpl) getCommit(ctx context.Context, owner, repo, sha string) (*github.Commit, *github.Response, error) {
-	service, err := g.resolver.GetGitService(ctx, owner, repo)
+func (g *GitServiceImpl) getCommit(ctx context.Context, logger *slog.Logger, owner, repo, sha string) (*github.Commit, *github.Response, error) {
+	service, err := g.resolver.GetGitService(ctx, logger, owner, repo)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -209,8 +206,8 @@ func (r *RepositoriesServiceImpl) SetResolver(resolver *ClientResolver) {
 }
 
 // Get fetches a repository to check its existence.
-func (r *RepositoriesServiceImpl) Get(ctx context.Context, owner, repo string) (*github.Repository, *github.Response, error) {
-	service, err := r.resolver.GetRepositoriesService(ctx, owner, repo)
+func (r *RepositoriesServiceImpl) Get(ctx context.Context, logger *slog.Logger, owner, repo string) (*github.Repository, *github.Response, error) {
+	service, err := r.resolver.GetRepositoriesService(ctx, logger, owner, repo)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -218,13 +215,13 @@ func (r *RepositoriesServiceImpl) Get(ctx context.Context, owner, repo string) (
 }
 
 // GetCommitSHA1 retrieves the commit SHA for a given reference with caching and GHES fallback.
-func (r *RepositoriesServiceImpl) GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error) {
+func (r *RepositoriesServiceImpl) GetCommitSHA1(ctx context.Context, logger *slog.Logger, owner, repo, ref, lastSHA string) (string, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%s", owner, repo, ref)
 	if result, ok := r.Commits[key]; ok {
 		return result.SHA, result.Response, result.err
 	}
 
-	sha, resp, err := r.getCommitSHA1(ctx, owner, repo, ref, lastSHA)
+	sha, resp, err := r.getCommitSHA1(ctx, logger, owner, repo, ref, lastSHA)
 	r.Commits[key] = &GetCommitSHA1Result{
 		SHA:      sha,
 		Response: resp,
@@ -240,13 +237,13 @@ type GetCommitSHA1Result struct {
 }
 
 // ListTags retrieves repository tags with caching and GHES fallback.
-func (r *RepositoriesServiceImpl) ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
+func (r *RepositoriesServiceImpl) ListTags(ctx context.Context, logger *slog.Logger, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%v", owner, repo, opts.Page)
 	if result, ok := r.Tags[key]; ok {
 		return result.Tags, result.Response, result.err
 	}
 
-	tags, resp, err := r.listTags(ctx, owner, repo, opts)
+	tags, resp, err := r.listTags(ctx, logger, owner, repo, opts)
 	r.Tags[key] = &ListTagsResult{
 		Tags:     tags,
 		Response: resp,
@@ -256,13 +253,13 @@ func (r *RepositoriesServiceImpl) ListTags(ctx context.Context, owner string, re
 }
 
 // ListReleases retrieves repository releases with caching and GHES fallback.
-func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
+func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, logger *slog.Logger, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
 	key := fmt.Sprintf("%s/%s/%v", owner, repo, opts.Page)
 	if result, ok := r.Releases[key]; ok {
 		return result.Releases, result.Response, result.err
 	}
 
-	releases, resp, err := r.listReleases(ctx, owner, repo, opts)
+	releases, resp, err := r.listReleases(ctx, logger, owner, repo, opts)
 	arr := filterDraftReleases(releases)
 	r.Releases[key] = &ListReleasesResult{
 		Releases: arr,
@@ -273,8 +270,8 @@ func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, owner string
 }
 
 // getCommitSHA1 calls the appropriate RepositoriesService based on the repository host.
-func (r *RepositoriesServiceImpl) getCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error) {
-	service, err := r.resolver.GetRepositoriesService(ctx, owner, repo)
+func (r *RepositoriesServiceImpl) getCommitSHA1(ctx context.Context, logger *slog.Logger, owner, repo, ref, lastSHA string) (string, *github.Response, error) {
+	service, err := r.resolver.GetRepositoriesService(ctx, logger, owner, repo)
 	if err != nil {
 		return "", nil, err
 	}
@@ -282,8 +279,8 @@ func (r *RepositoriesServiceImpl) getCommitSHA1(ctx context.Context, owner, repo
 }
 
 // listTags calls the appropriate RepositoriesService based on the repository host.
-func (r *RepositoriesServiceImpl) listTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
-	service, err := r.resolver.GetRepositoriesService(ctx, owner, repo)
+func (r *RepositoriesServiceImpl) listTags(ctx context.Context, logger *slog.Logger, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
+	service, err := r.resolver.GetRepositoriesService(ctx, logger, owner, repo)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -291,8 +288,8 @@ func (r *RepositoriesServiceImpl) listTags(ctx context.Context, owner string, re
 }
 
 // listReleases calls the appropriate RepositoriesService based on the repository host.
-func (r *RepositoriesServiceImpl) listReleases(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
-	service, err := r.resolver.GetRepositoriesService(ctx, owner, repo)
+func (r *RepositoriesServiceImpl) listReleases(ctx context.Context, logger *slog.Logger, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
+	service, err := r.resolver.GetRepositoriesService(ctx, logger, owner, repo)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -387,7 +384,7 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *s
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
-	releases, _, err := c.repositoriesService.ListReleases(ctx, owner, repo, opts)
+	releases, _, err := c.repositoriesService.ListReleases(ctx, logger, owner, repo, opts)
 	if err != nil {
 		return "", fmt.Errorf("list releases: %w", err)
 	}
@@ -428,7 +425,7 @@ func checkTagCooldown(ctx context.Context, logger *slog.Logger, gitService *GitS
 	if cutoff.IsZero() || gitService == nil || sha == "" {
 		return false
 	}
-	commit, _, err := gitService.GetCommit(ctx, owner, repo, sha)
+	commit, _, err := gitService.GetCommit(ctx, logger, owner, repo, sha)
 	if err != nil {
 		slogerr.WithError(logger, err).Warn("skip tag: failed to get commit for cooldown check", "tag", tagName, "sha", sha)
 		return true
@@ -450,7 +447,7 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
-	tags, _, err := c.repositoriesService.ListTags(ctx, owner, repo, opts)
+	tags, _, err := c.repositoriesService.ListTags(ctx, logger, owner, repo, opts)
 	if err != nil {
 		return "", fmt.Errorf("list tags: %w", err)
 	}

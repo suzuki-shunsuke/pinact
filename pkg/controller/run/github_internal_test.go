@@ -154,32 +154,44 @@ func Test_compare(t *testing.T) { //nolint:funlen
 	}
 }
 
-// mockRepositoriesService is a mock implementation of RepositoriesService for testing
-type mockRepositoriesService struct {
+// mockRepoService is a mock implementation of RepositoriesService for testing the underlying service
+type mockRepoService struct {
 	listReleasesFunc func(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error)
 	listTagsFunc     func(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error)
 }
 
-func (m *mockRepositoriesService) ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
+func (m *mockRepoService) ListTags(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
 	if m.listTagsFunc != nil {
 		return m.listTagsFunc(ctx, owner, repo, opts)
 	}
 	return nil, nil, errors.New("not implemented")
 }
 
-func (m *mockRepositoriesService) GetCommitSHA1(_ context.Context, _, _, _, _ string) (string, *github.Response, error) {
+func (m *mockRepoService) GetCommitSHA1(_ context.Context, _, _, _, _ string) (string, *github.Response, error) {
 	return "", nil, errors.New("not implemented")
 }
 
-func (m *mockRepositoriesService) ListReleases(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
+func (m *mockRepoService) ListReleases(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
 	if m.listReleasesFunc != nil {
 		return m.listReleasesFunc(ctx, owner, repo, opts)
 	}
 	return nil, nil, errors.New("not implemented")
 }
 
-func (m *mockRepositoriesService) Get(_ context.Context, _, _ string) (*github.Repository, *github.Response, error) {
+func (m *mockRepoService) Get(_ context.Context, _, _ string) (*github.Repository, *github.Response, error) {
 	return nil, nil, nil
+}
+
+// newTestRepoService creates a RepositoriesServiceImpl with the given mock for testing
+func newTestRepoService(mock *mockRepoService) *RepositoriesServiceImpl {
+	resolver := NewClientResolver(mock, nil, nil, nil, false)
+	impl := &RepositoriesServiceImpl{
+		Tags:     map[string]*ListTagsResult{},
+		Releases: map[string]*ListReleasesResult{},
+		Commits:  map[string]*GetCommitSHA1Result{},
+	}
+	impl.SetResolver(resolver)
+	return impl
 }
 
 func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
@@ -314,14 +326,14 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			mockRepo := &mockRepositoriesService{
+			mockRepo := &mockRepoService{
 				listReleasesFunc: func(_ context.Context, _, _ string, _ *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
 					return tt.releases, nil, tt.listErr
 				},
 			}
 
 			c := &Controller{
-				repositoriesService: mockRepo,
+				repositoriesService: newTestRepoService(mockRepo),
 			}
 
 			ctx := t.Context()
@@ -471,14 +483,14 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			mockRepo := &mockRepositoriesService{
+			mockRepo := &mockRepoService{
 				listTagsFunc: func(_ context.Context, _, _ string, _ *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
 					return tt.tags, nil, tt.listErr
 				},
 			}
 
 			c := &Controller{
-				repositoriesService: mockRepo,
+				repositoriesService: newTestRepoService(mockRepo),
 			}
 
 			ctx := t.Context()

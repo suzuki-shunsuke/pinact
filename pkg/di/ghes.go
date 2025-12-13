@@ -3,7 +3,6 @@ package di
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
@@ -14,7 +13,7 @@ import (
 // It configures a ClientResolver that routes API requests to either GHES or github.com
 // based on the configuration. When GHES is enabled with fallback, repositories are first
 // checked on GHES and fall back to github.com if not found.
-func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Config, logger *slog.Logger, flags *Flags, token string) (*ghesServices, error) {
+func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Config, flags *Flags, token string) (*ghesServices, error) {
 	ghesConfig := cfg.GHES
 	if ghesConfig == nil {
 		ghesConfig = flags.GHESFromEnv()
@@ -47,7 +46,6 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 		gh.Repositories, gh.Git,
 		ghesRepoService, ghesGitService,
 		ghesFallback,
-		logger,
 	)
 
 	repoService := &run.RepositoriesServiceImpl{

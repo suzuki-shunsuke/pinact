@@ -52,7 +52,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 	if err != nil {
 		return err
 	}
-	services, err := setupGHESServices(ctx, gh, cfg, logger.Logger, flags, secrets.GHESToken)
+	services, err := setupGHESServices(ctx, gh, cfg, flags, secrets.GHESToken)
 	if err != nil {
 		return err
 	}
