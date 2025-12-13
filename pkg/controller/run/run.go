@@ -191,34 +191,49 @@ func (c *Controller) handleParseLineError(ctx context.Context, logger *slog.Logg
 // handleChangedLine handles lines that have been modified.
 // It creates review comments, GitHub Actions annotations, and outputs
 // diff information depending on the operation mode.
-func (c *Controller) handleChangedLine(ctx context.Context, logger *slog.Logger, line *Line, newLine string) { //nolint:cyclop
-	reviewed := false
-	if c.param.Review != nil {
-		// Create review
-		if code, err := c.review(ctx, line.File, c.param.Review.SHA, line.Number, newLine, nil); err != nil {
-			level := slog.LevelError
-			if code == http.StatusUnprocessableEntity {
-				level = slog.LevelWarn
-			}
-			slogerr.WithError(logger, err).Log(ctx, level, "create a review comment",
-				"review_repo_owner", c.param.Review.RepoOwner,
-				"review_repo_name", c.param.Review.RepoName,
-				"review_pr_number", c.param.Review.PullRequest,
-				"review_sha", c.param.Review.SHA,
-			)
-		} else {
-			reviewed = true
-		}
+func (c *Controller) handleChangedLine(ctx context.Context, logger *slog.Logger, line *Line, newLine string) {
+	reviewed := c.tryCreateReview(ctx, logger, line, newLine)
+	c.outputGitHubActionsAnnotation(line, reviewed)
+	c.outputDiff(line, newLine)
+}
+
+// tryCreateReview attempts to create a PR review comment for the changed line.
+// Returns true if the review was created successfully.
+func (c *Controller) tryCreateReview(ctx context.Context, logger *slog.Logger, line *Line, newLine string) bool {
+	if c.param.Review == nil {
+		return false
 	}
-	// Output GitHub Actions error
-	if c.param.IsGitHubActions && !reviewed {
-		level := "notice"
-		if c.param.Check {
-			level = levelError
+	code, err := c.review(ctx, line.File, c.param.Review.SHA, line.Number, newLine, nil)
+	if err != nil {
+		level := slog.LevelError
+		if code == http.StatusUnprocessableEntity {
+			level = slog.LevelWarn
 		}
-		fmt.Fprintf(c.param.Stderr, "::%s file=%s,line=%d,title=pinact error::action isn't pinned\n", level, line.File, line.Number)
+		slogerr.WithError(logger, err).Log(ctx, level, "create a review comment",
+			"review_repo_owner", c.param.Review.RepoOwner,
+			"review_repo_name", c.param.Review.RepoName,
+			"review_pr_number", c.param.Review.PullRequest,
+			"review_sha", c.param.Review.SHA,
+		)
+		return false
 	}
-	// Output diff
+	return true
+}
+
+// outputGitHubActionsAnnotation outputs a GitHub Actions annotation for the changed line.
+func (c *Controller) outputGitHubActionsAnnotation(line *Line, reviewed bool) {
+	if !c.param.IsGitHubActions || reviewed {
+		return
+	}
+	level := "notice"
+	if c.param.Check {
+		level = levelError
+	}
+	fmt.Fprintf(c.param.Stderr, "::%s file=%s,line=%d,title=pinact error::action isn't pinned\n", level, line.File, line.Number)
+}
+
+// outputDiff outputs the diff information for the changed line.
+func (c *Controller) outputDiff(line *Line, newLine string) {
 	if !c.param.Check && c.param.Fix && !c.param.Diff {
 		return
 	}

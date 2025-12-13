@@ -127,54 +127,72 @@ func (c *Controller) excludeByIncludes(actionName string) bool {
 // parseLine processes a single line from a workflow file.
 // It parses the line for action usage, applies filtering rules, and determines
 // what modifications (if any) should be made based on the operation mode.
-func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line string) (s string, e error) { //nolint:cyclop
+func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line string) (s string, e error) {
 	attrs := slogerr.NewAttrs(2) //nolint:mnd
 	defer func() {
 		e = attrs.With(e)
 	}()
 	action := parseAction(line)
 	if action == nil {
-		// Ignore a line if the line doesn't use an action.
 		logger.Debug("unmatch")
 		return "", nil
 	}
 
 	logger = attrs.Add(logger, "action", action.Name+"@"+action.Version)
 
-	if c.ignoreAction(logger, action) {
-		logger.Debug("ignore the action")
-		return "", nil
-	}
-	if c.excludeAction(action.Name) {
-		logger.Debug("exclude the action")
-		return "", nil
-	}
-	if c.excludeByIncludes(action.Name) {
-		logger.Debug("exclude the action")
+	if c.shouldSkipAction(logger, action) {
 		return "", nil
 	}
 
-	if c.param.Check && !c.param.Diff && !c.param.Fix {
-		if fullCommitSHAPattern.MatchString(action.Version) {
-			return "", nil
-		}
-		return "", ErrActionNotPinned
+	if handled, err := c.checkOnlyMode(action); handled {
+		return "", err
 	}
 
-	if f := c.parseActionName(action); !f {
+	if !c.parseActionName(action) {
 		logger.Debug("ignore line")
 		return "", nil
 	}
 
+	return c.processVersionComment(ctx, logger, action, attrs)
+}
+
+// shouldSkipAction checks if an action should be skipped based on filtering rules.
+func (c *Controller) shouldSkipAction(logger *slog.Logger, action *Action) bool {
+	if c.ignoreAction(logger, action) {
+		logger.Debug("ignore the action")
+		return true
+	}
+	if c.excludeAction(action.Name) {
+		logger.Debug("exclude the action")
+		return true
+	}
+	if c.excludeByIncludes(action.Name) {
+		logger.Debug("exclude the action")
+		return true
+	}
+	return false
+}
+
+// checkOnlyMode handles the check-only mode where we only verify if actions are pinned.
+// Returns whether this mode handled the action, and any error.
+func (c *Controller) checkOnlyMode(action *Action) (bool, error) {
+	if !c.param.Check || c.param.Diff || c.param.Fix {
+		return false, nil
+	}
+	if fullCommitSHAPattern.MatchString(action.Version) {
+		return true, nil
+	}
+	return true, ErrActionNotPinned
+}
+
+// processVersionComment processes the action based on its version comment type.
+func (c *Controller) processVersionComment(ctx context.Context, logger *slog.Logger, action *Action, attrs *slogerr.Attrs) (string, error) {
 	switch getVersionType(action.VersionComment) {
 	case Empty:
 		return c.parseNoTagLine(ctx, logger, action)
 	case Semver:
-		// @xxx # v3.0.0
 		return c.parseSemverTagLine(ctx, logger, action)
 	case Shortsemver:
-		// @xxx # v3
-		// @<full commit hash> # v3
 		logger = attrs.Add(logger, "version_annotation", action.VersionComment)
 		return c.parseShortSemverTagLine(ctx, logger, action)
 	default:
