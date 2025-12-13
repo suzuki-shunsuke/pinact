@@ -79,10 +79,7 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	return nil
 }
 
-var (
-	ErrActionsNotPinned = errors.New("action aren't pinned")
-	ErrActionNotPinned  = errors.New("action isn't pinned")
-)
+var ErrActionsNotPinned = errors.New("action aren't pinned")
 
 type Line struct {
 	File   string
@@ -193,7 +190,7 @@ func (c *Controller) handleParseLineError(ctx context.Context, logger *slog.Logg
 // diff information depending on the operation mode.
 func (c *Controller) handleChangedLine(ctx context.Context, logger *slog.Logger, line *Line, newLine string) {
 	reviewed := c.tryCreateReview(ctx, logger, line, newLine)
-	c.outputGitHubActionsAnnotation(line, reviewed)
+	c.outputGitHubActionsAnnotation(line, newLine, reviewed)
 	c.outputDiff(line, newLine)
 }
 
@@ -221,7 +218,7 @@ func (c *Controller) tryCreateReview(ctx context.Context, logger *slog.Logger, l
 }
 
 // outputGitHubActionsAnnotation outputs a GitHub Actions annotation for the changed line.
-func (c *Controller) outputGitHubActionsAnnotation(line *Line, reviewed bool) {
+func (c *Controller) outputGitHubActionsAnnotation(line *Line, newLine string, reviewed bool) {
 	if !c.param.IsGitHubActions || reviewed {
 		return
 	}
@@ -229,7 +226,7 @@ func (c *Controller) outputGitHubActionsAnnotation(line *Line, reviewed bool) {
 	if c.param.Check {
 		level = levelError
 	}
-	fmt.Fprintf(c.param.Stderr, "::%s file=%s,line=%d,title=pinact error::action isn't pinned\n", level, line.File, line.Number)
+	fmt.Fprintf(c.param.Stderr, "::%s file=%s,line=%d,title=pinact error::%s\n", level, line.File, line.Number, newLine)
 }
 
 // outputDiff outputs the diff information for the changed line.
@@ -241,7 +238,7 @@ func (c *Controller) outputDiff(line *Line, newLine string) {
 	if c.param.Check {
 		level = levelError
 	}
-	c.logger.Output(level, "action isn't pinned", line, newLine)
+	c.logger.Output(level, "", line, newLine)
 }
 
 // readWorkflow reads a workflow file and returns its lines.
