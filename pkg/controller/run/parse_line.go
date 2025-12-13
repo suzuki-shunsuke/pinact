@@ -174,6 +174,7 @@ func (c *Controller) processVersionComment(ctx context.Context, logger *slog.Log
 	switch getVersionType(action.VersionComment) {
 	case Empty:
 		// @xxx
+		// Note that comments like "hoge" are treated as Empty
 		return c.parseNoTagLine(ctx, logger, action)
 	case Semver:
 		// @xxx # v1.0.0
@@ -183,11 +184,12 @@ func (c *Controller) processVersionComment(ctx context.Context, logger *slog.Log
 		logger = attrs.Add(logger, "version_annotation", action.VersionComment)
 		return c.parseShortSemverTagLine(ctx, logger, action)
 	default:
+		// @xxx # hoge
 		if getVersionType(action.Version) == FullCommitSHA {
-			// @xxx # <full commit hash>
+			// @<full commit sha> # hoge
 			return "", nil
 		}
-		// @xxx # hoge
+		// @<not full commit sha> # hoge
 		return "", ErrCantPinned
 	}
 }
@@ -204,6 +206,7 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, ac
 	default:
 		return "", ErrCantPinned
 	}
+	// @v1, @v1.0.0
 	if c.param.Update {
 		return c.updateToLatestVersion(ctx, logger, action)
 	}
