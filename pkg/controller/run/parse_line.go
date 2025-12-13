@@ -188,7 +188,7 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 // parseNoTagLine processes actions without version comments.
 // It handles pinning actions that don't have version annotations,
 // either by updating to latest version or converting tags to commit SHAs.
-func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, action *Action) (string, error) { //nolint:cyclop
+func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
 	typ := getVersionType(action.Version)
 	switch typ {
 	case Shortsemver, Semver:
@@ -197,23 +197,29 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, ac
 	default:
 		return "", ErrCantPinned
 	}
-	// @xxx
 	if c.param.Update {
-		// get the latest version
-		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.Version)
-		if err != nil {
-			return "", fmt.Errorf("get the latest version: %w", err)
-		}
-		sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
-		if err != nil {
-			return "", fmt.Errorf("get a reference: %w", err)
-		}
-		return patchLine(action, sha, lv), nil
+		return c.updateToLatestVersion(ctx, logger, action)
 	}
+	return c.pinCurrentVersion(ctx, logger, action, typ)
+}
 
+// updateToLatestVersion updates an action to its latest version.
+func (c *Controller) updateToLatestVersion(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
+	lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.Version)
+	if err != nil {
+		return "", fmt.Errorf("get the latest version: %w", err)
+	}
+	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
+	if err != nil {
+		return "", fmt.Errorf("get a reference: %w", err)
+	}
+	return patchLine(action, sha, lv), nil
+}
+
+// pinCurrentVersion pins the current version to a commit SHA.
+func (c *Controller) pinCurrentVersion(ctx context.Context, logger *slog.Logger, action *Action, typ VersionType) (string, error) {
 	// Get commit hash from tag
 	// https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#get-a-reference
-	// > The :ref in the URL must be formatted as heads/<branch name> for branches and tags/<tag name> for tags. If the :ref doesn't match an existing ref, a 404 is returned.
 	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, action.Version, "")
 	if err != nil {
 		return "", fmt.Errorf("get a reference: %w", err)
@@ -228,7 +234,6 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, ac
 			longVersion = v
 		}
 	}
-	// @yyy # longVersion
 	return patchLine(action, sha, longVersion), nil
 }
 
