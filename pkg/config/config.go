@@ -242,12 +242,6 @@ type Finder struct {
 }
 
 // NewFinder creates a new configuration file finder.
-// It initializes a Finder with the provided filesystem interface.
-//
-// Parameters:
-//   - fs: filesystem interface for file operations
-//
-// Returns a pointer to the configured Finder.
 func NewFinder(fs afero.Fs) *Finder {
 	return &Finder{fs: fs}
 }
@@ -255,11 +249,6 @@ func NewFinder(fs afero.Fs) *Finder {
 // Find locates the configuration file path to use.
 // If a specific path is provided, it returns that path.
 // Otherwise, it searches for configuration files in standard locations.
-//
-// Parameters:
-//   - configFilePath: explicit configuration file path or empty string
-//
-// Returns the configuration file path to use or an error if search fails.
 func (f *Finder) Find(configFilePath string) (string, error) {
 	if configFilePath != "" {
 		return configFilePath, nil
@@ -276,12 +265,6 @@ type Reader struct {
 }
 
 // NewReader creates a new configuration file reader.
-// It initializes a Reader with the provided filesystem interface.
-//
-// Parameters:
-//   - fs: filesystem interface for file operations
-//
-// Returns a pointer to the configured Reader.
 func NewReader(fs afero.Fs) *Reader {
 	return &Reader{fs: fs}
 }
@@ -289,12 +272,6 @@ func NewReader(fs afero.Fs) *Reader {
 // Read loads and parses a configuration file.
 // It reads the YAML file, validates the schema version, and initializes
 // all configuration components including files and ignore actions.
-//
-// Parameters:
-//   - cfg: Config struct to populate with parsed data
-//   - configFilePath: path to the configuration file to read
-//
-// Returns an error if reading, parsing, or validation fails.
 func (r *Reader) Read(cfg *Config, configFilePath string) error {
 	if configFilePath == "" {
 		return nil
@@ -312,8 +289,6 @@ func (r *Reader) Read(cfg *Config, configFilePath string) error {
 
 // Init initializes and validates the configuration.
 // It validates the schema version and initializes all configuration components.
-//
-// Returns an error if validation or initialization fails.
 func (cfg *Config) Init() error {
 	if err := validateSchemaVersion(cfg.Version); err != nil {
 		return err
