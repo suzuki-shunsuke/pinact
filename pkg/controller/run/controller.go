@@ -20,17 +20,7 @@ type Controller struct {
 	fs                  afero.Fs
 	cfg                 *config.Config
 	param               *ParamRun
-	cfgFinder           ConfigFinder
-	cfgReader           ConfigReader
 	logger              *Logger
-}
-
-type ConfigFinder interface {
-	Find(configFilePath string) (string, error)
-}
-
-type ConfigReader interface {
-	Read(cfg *config.Config, configFilePath string) error
 }
 
 // New creates a new Controller for running pinact operations.
@@ -43,21 +33,18 @@ type ConfigReader interface {
 //   - pullRequestsService: GitHub API service for pull request operations
 //   - gitService: GitHub API service for git operations (optional, for cooldown feature)
 //   - fs: filesystem interface for file operations
-//   - cfgFinder: service for locating configuration files
-//   - cfgReader: service for reading and parsing configuration files
+//   - cfg: configuration settings
 //   - param: operation parameters and settings
 //
 // Returns a pointer to the configured Controller.
-func New(repositoriesService RepositoriesService, pullRequestsService PullRequestsService, gitService *GitServiceImpl, fs afero.Fs, cfgFinder ConfigFinder, cfgReader ConfigReader, param *ParamRun) *Controller {
+func New(repositoriesService RepositoriesService, pullRequestsService PullRequestsService, gitService *GitServiceImpl, fs afero.Fs, cfg *config.Config, param *ParamRun) *Controller {
 	return &Controller{
 		repositoriesService: repositoriesService,
 		pullRequestsService: pullRequestsService,
 		gitService:          gitService,
 		param:               param,
 		fs:                  fs,
-		cfgFinder:           cfgFinder,
-		cfgReader:           cfgReader,
-		cfg:                 &config.Config{},
+		cfg:                 cfg,
 		logger:              NewLogger(param.Stderr),
 	}
 }

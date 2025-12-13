@@ -10,8 +10,11 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path"
 	"regexp"
+	"slices"
+	"strings"
 
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
@@ -22,6 +25,12 @@ type Config struct {
 	Version       int             `json:"version,omitempty" jsonschema:"enum=2,enum=3"`
 	Files         []*File         `json:"files,omitempty" jsonschema:"description=Target files. If files are passed via positional command line arguments, this is ignored"`
 	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores"`
+	GHES          *GHES           `json:"ghes,omitempty" yaml:"ghes" jsonschema:"description=GitHub Enterprise Server configuration"`
+}
+
+type GHES struct {
+	APIURL string   `json:"api_url,omitempty" yaml:"api_url" jsonschema:"description=API URL of the GHES instance (e.g. https://ghes.example.com)"`
+	Owners []string `json:"owners,omitempty" jsonschema:"description=Repository owners to match (exact match)"`
 }
 
 type File struct {
@@ -198,13 +207,74 @@ func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
 	return ia.refRegexp.FindString(ref) == ref, nil
 }
 
+// Match checks if a repository owner matches any of the GHES owners.
+//
+// Parameters:
+//   - owner: repository owner to match
+//
+// Returns true if the owner matches any entry in owners, false otherwise.
+// Returns false if g is nil.
+func (g *GHES) Match(owner string) bool {
+	if g == nil {
+		return false
+	}
+	return slices.Contains(g.Owners, owner)
+}
+
+// GHESFromEnv creates a GHES configuration from environment variables.
+// It reads PINACT_GHES_API_URL (or GITHUB_API_URL as fallback) and PINACT_GHES_OWNERS.
+//
+// Resolution priority for API URL:
+//  1. PINACT_GHES_API_URL - if set, it is used (and GITHUB_API_URL is ignored)
+//  2. GITHUB_API_URL - used as fallback
+//
+// Returns nil if neither PINACT_GHES_API_URL nor PINACT_GHES_OWNERS is set.
+func GHESFromEnv() *GHES {
+	apiURL := os.Getenv("PINACT_GHES_API_URL")
+	ownersStr := os.Getenv("PINACT_GHES_OWNERS")
+	if apiURL == "" {
+		if ownersStr == "" {
+			return nil
+		}
+		apiURL = os.Getenv("GITHUB_API_URL")
+	}
+
+	return &GHES{
+		APIURL: apiURL,
+		Owners: strings.Split(ownersStr, ","),
+	}
+}
+
+func (g *GHES) Validate() error {
+	if g == nil {
+		return nil
+	}
+	if g.APIURL == "" {
+		return errors.New("GHES api_url is required")
+	}
+	return nil
+}
+
+// MergeFromEnv merges environment variable values into GHES configuration.
+// If api_url or owners is empty in the config, it fills them from environment variables.
+func (g *GHES) MergeFromEnv() {
+	if g == nil {
+		return
+	}
+	if g.APIURL == "" {
+		g.APIURL = os.Getenv("PINACT_GHES_API_URL")
+		if g.APIURL == "" {
+			g.APIURL = os.Getenv("GITHUB_API_URL")
+		}
+	}
+	if len(g.Owners) == 0 {
+		g.Owners = strings.Split(os.Getenv("PINACT_GHES_OWNERS"), ",")
+	}
+}
+
 // getConfigPath searches for a pinact configuration file in standard locations.
 // It checks for .pinact.yaml, .github/pinact.yaml, .pinact.yml, and .github/pinact.yml
 // in order of preference.
-//
-// Parameters:
-//   - fs: filesystem interface for file operations
-//
 // Returns the path to the first found configuration file, empty string if none found, or an error.
 func getConfigPath(fs afero.Fs) (string, error) {
 	for _, path := range []string{".pinact.yaml", ".github/pinact.yaml", ".pinact.yml", ".github/pinact.yml"} {
@@ -289,6 +359,14 @@ func (r *Reader) Read(cfg *Config, configFilePath string) error {
 	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
 		return fmt.Errorf("decode a configuration file as YAML: %w", err)
 	}
+	return cfg.Init()
+}
+
+// Init initializes and validates the configuration.
+// It validates the schema version and initializes all configuration components.
+//
+// Returns an error if validation or initialization fails.
+func (cfg *Config) Init() error {
 	if err := validateSchemaVersion(cfg.Version); err != nil {
 		return err
 	}

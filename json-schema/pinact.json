@@ -25,6 +25,10 @@
           },
           "type": "array",
           "description": "Actions and reusable workflows that pinact ignores"
+        },
+        "ghes": {
+          "$ref": "#/$defs/GHES",
+          "description": "GitHub Enterprise Server configuration"
         }
       },
       "additionalProperties": false,
@@ -41,6 +45,23 @@
       "required": [
         "pattern"
       ]
+    },
+    "GHES": {
+      "properties": {
+        "api_url": {
+          "type": "string",
+          "description": "API URL of the GHES instance (e.g. https://ghes.example.com)"
+        },
+        "owners": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Repository owners to match (exact match)"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
     },
     "IgnoreAction": {
       "properties": {

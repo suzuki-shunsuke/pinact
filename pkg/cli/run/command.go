@@ -50,12 +50,6 @@ type Flags struct {
 // New creates a new run command for the CLI.
 // It initializes a runner with the provided logger and returns
 // the configured CLI command for pinning GitHub Actions versions.
-//
-// Parameters:
-//   - logger: slog logger for structured logging
-//   - logLevelVar: slog level variable for dynamic log level changes
-//
-// Returns a pointer to the configured CLI command.
 func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command {
 	r := &runner{}
 	return r.Command(logger, globalFlags)
@@ -67,8 +61,6 @@ type runner struct{}
 // It defines all flags, options, and the action handler for the run subcommand.
 // This command handles the core pinning functionality with various modes
 // like check, diff, fix, update, and review.
-//
-// Returns a pointer to the configured CLI command.
 func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command { //nolint:funlen
 	flags := &Flags{GlobalFlags: globalFlags}
 	return &cli.Command{
@@ -178,9 +170,8 @@ type Event struct {
 }
 
 // RepoName extracts the repository name from the GitHub event.
-// It safely accesses the repository information from the event payload.
-//
-// Returns the repository name or empty string if not available.
+// It safely accesses the repository information from the event payload
+// and returns the repository name or empty string if not available.
 func (e *Event) RepoName() string {
 	if e != nil && e.Repository != nil {
 		return e.Repository.Name
@@ -189,9 +180,8 @@ func (e *Event) RepoName() string {
 }
 
 // PRNumber extracts the pull request or issue number from the GitHub event.
-// It checks both pull request and issue fields to find the number.
-//
-// Returns the PR/issue number or 0 if not available.
+// It checks both pull request and issue fields to find the number
+// and returns the PR/issue number or 0 if not available.
 func (e *Event) PRNumber() int {
 	if e == nil {
 		return 0
@@ -206,9 +196,8 @@ func (e *Event) PRNumber() int {
 }
 
 // SHA extracts the commit SHA from the GitHub event.
-// It looks for the SHA in the pull request head information.
-//
-// Returns the commit SHA or empty string if not available.
+// It looks for the SHA in the pull request head information
+// and returns the commit SHA or empty string if not available.
 func (e *Event) SHA() string {
 	if e == nil {
 		return ""
@@ -241,11 +230,30 @@ type Head struct {
 	SHA string `json:"sha"`
 }
 
+type ghesServices struct {
+	repoService *run.RepositoriesServiceImpl
+	gitService  *run.GitServiceImpl
+	prService   *run.PullRequestsServiceImpl
+}
+
+func readConfig(fs afero.Fs, configFilePath string) (*config.Config, error) {
+	cfgFinder := config.NewFinder(fs)
+	cfgReader := config.NewReader(fs)
+	configPath, err := cfgFinder.Find(configFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("find configuration file: %w", err)
+	}
+	cfg := &config.Config{}
+	if err := cfgReader.Read(cfg, configPath); err != nil {
+		return nil, fmt.Errorf("read configuration file: %w", err)
+	}
+	return cfg, nil
+}
+
 // action executes the main run command logic.
 // It configures logging, processes GitHub Actions context, parses includes/excludes,
 // sets up the controller, and executes the pinning operation.
-// Returns an error if the operation fails.
-func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Flags) error { //nolint:cyclop,funlen
+func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Flags) error {
 	isGitHubActions := os.Getenv("GITHUB_ACTIONS") == "true"
 	if isGitHubActions {
 		color.NoColor = false
@@ -261,24 +269,13 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 
 	gh := github.New(ctx, logger.Logger)
 	fs := afero.NewOsFs()
-	var review *run.Review
-	if flags.Review {
-		review = &run.Review{
-			RepoOwner:   flags.RepoOwner,
-			RepoName:    flags.RepoName,
-			PullRequest: flags.PR,
-			SHA:         flags.SHA,
-		}
-		if isGitHubActions {
-			if err := r.setReview(fs, review); err != nil {
-				slogerr.WithError(logger.Logger, err).Error("set review information")
-			}
-		}
-		if !review.Valid() {
-			logger.Warn("skip creating reviews because the review information is invalid")
-			review = nil
-		}
+
+	cfg, err := readConfig(fs, flags.Config)
+	if err != nil {
+		return err
 	}
+
+	review := r.setupReview(fs, logger, flags, isGitHubActions)
 	if flags.MinAge > 0 && !flags.Update {
 		return errors.New("--min-age requires --update (-u) flag")
 	}
@@ -290,46 +287,19 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, flags *Fla
 	if err != nil {
 		return err
 	}
-	param := &run.ParamRun{
-		WorkflowFilePaths: flags.Args,
-		ConfigFilePath:    flags.Config,
-		PWD:               pwd,
-		IsVerify:          flags.Verify,
-		Check:             flags.Check,
-		Update:            flags.Update,
-		Diff:              flags.Diff,
-		Fix:               true,
-		IsGitHubActions:   isGitHubActions,
-		Stderr:            os.Stderr,
-		Review:            review,
-		Includes:          includes,
-		Excludes:          excludes,
-		MinAge:            flags.MinAge,
+
+	param := buildParam(flags, pwd, isGitHubActions, review, includes, excludes)
+	services, err := setupGHESServices(ctx, gh, cfg)
+	if err != nil {
+		return err
 	}
-	if flags.FixIsSet {
-		param.Fix = flags.Fix
-	} else if param.Check || param.Diff {
-		param.Fix = false
-	}
-	ctrl := run.New(&run.RepositoriesServiceImpl{
-		Tags:                map[string]*run.ListTagsResult{},
-		Releases:            map[string]*run.ListReleasesResult{},
-		Commits:             map[string]*run.GetCommitSHA1Result{},
-		RepositoriesService: gh.Repositories,
-	}, gh.PullRequests, &run.GitServiceImpl{
-		GitService: gh.Git,
-		Commits:    map[string]*run.GetCommitResult{},
-	}, fs, config.NewFinder(fs), config.NewReader(fs), param)
+
+	ctrl := run.New(services.repoService, services.prService, services.gitService, fs, cfg, param)
 	return ctrl.Run(ctx, logger.Logger) //nolint:wrapcheck
 }
 
 // parseIncludes compiles include regular expressions from command-line options.
 // These patterns are used to filter which actions should be processed.
-//
-// Parameters:
-//   - opts: slice of include pattern strings
-//
-// Returns compiled regular expressions or an error if compilation fails.
 func parseIncludes(opts []string) ([]*regexp.Regexp, error) {
 	includes := make([]*regexp.Regexp, len(opts))
 	for i, include := range opts {
@@ -344,11 +314,6 @@ func parseIncludes(opts []string) ([]*regexp.Regexp, error) {
 
 // parseExcludes compiles exclude regular expressions from command-line options.
 // These patterns are used to filter which actions should be skipped.
-//
-// Parameters:
-//   - opts: slice of exclude pattern strings
-//
-// Returns compiled regular expressions or an error if compilation fails.
 func parseExcludes(opts []string) ([]*regexp.Regexp, error) {
 	excludes := make([]*regexp.Regexp, len(opts))
 	for i, exclude := range opts {
@@ -364,12 +329,6 @@ func parseExcludes(opts []string) ([]*regexp.Regexp, error) {
 // setReview configures review information from GitHub Actions environment.
 // It extracts repository name, pull request number, and commit SHA from
 // environment variables and GitHub event payload.
-//
-// Parameters:
-//   - fs: filesystem interface for reading event files
-//   - review: review configuration to populate
-//
-// Returns an error if required information cannot be extracted.
 func (r *runner) setReview(fs afero.Fs, review *run.Review) error {
 	if review.RepoName == "" {
 		repo := os.Getenv("GITHUB_REPOSITORY")
@@ -409,13 +368,6 @@ func (r *runner) setReview(fs afero.Fs, review *run.Review) error {
 
 // readEvent reads and parses the GitHub event payload from file.
 // It unmarshals the JSON event data into the provided Event struct.
-//
-// Parameters:
-//   - fs: filesystem interface for file operations
-//   - ev: Event struct to populate with parsed data
-//   - eventPath: path to the GitHub event file
-//
-// Returns an error if the file cannot be read or parsed.
 func (r *runner) readEvent(fs afero.Fs, ev *Event, eventPath string) error {
 	event, err := fs.Open(eventPath)
 	if err != nil {
@@ -425,4 +377,100 @@ func (r *runner) readEvent(fs afero.Fs, ev *Event, eventPath string) error {
 		return fmt.Errorf("unmarshal GITHUB_EVENT_PATH: %w", err)
 	}
 	return nil
+}
+
+func (r *runner) setupReview(fs afero.Fs, logger *slogutil.Logger, flags *Flags, isGitHubActions bool) *run.Review {
+	if !flags.Review {
+		return nil
+	}
+	review := &run.Review{
+		RepoOwner:   flags.RepoOwner,
+		RepoName:    flags.RepoName,
+		PullRequest: flags.PR,
+		SHA:         flags.SHA,
+	}
+	if isGitHubActions {
+		if err := r.setReview(fs, review); err != nil {
+			slogerr.WithError(logger.Logger, err).Error("set review information")
+		}
+	}
+	if !review.Valid() {
+		logger.Warn("skip creating reviews because the review information is invalid")
+		return nil
+	}
+	return review
+}
+
+func buildParam(flags *Flags, pwd string, isGitHubActions bool, review *run.Review, includes, excludes []*regexp.Regexp) *run.ParamRun {
+	param := &run.ParamRun{
+		WorkflowFilePaths: flags.Args,
+		ConfigFilePath:    flags.Config,
+		PWD:               pwd,
+		IsVerify:          flags.Verify,
+		Check:             flags.Check,
+		Update:            flags.Update,
+		Diff:              flags.Diff,
+		Fix:               true,
+		IsGitHubActions:   isGitHubActions,
+		Stderr:            os.Stderr,
+		Review:            review,
+		Includes:          includes,
+		Excludes:          excludes,
+		MinAge:            flags.MinAge,
+	}
+	if flags.FixIsSet {
+		param.Fix = flags.Fix
+	} else if param.Check || param.Diff {
+		param.Fix = false
+	}
+	return param
+}
+
+func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Config) (*ghesServices, error) {
+	ghesConfig := cfg.GHES
+	if ghesConfig == nil {
+		ghesConfig = config.GHESFromEnv()
+	} else {
+		// Merge environment variables into config file settings
+		ghesConfig.MergeFromEnv()
+	}
+	if err := ghesConfig.Validate(); err != nil {
+		return nil, fmt.Errorf("validate GHES configuration: %w", err)
+	}
+
+	var ghesRepoService run.RepositoriesService
+	var ghesGitService run.GitService
+	var ghesPRService run.PullRequestsService
+
+	if ghesConfig != nil {
+		registry, err := github.NewClientRegistry(ctx, gh, ghesConfig)
+		if err != nil {
+			return nil, fmt.Errorf("create GitHub client registry: %w", err)
+		}
+		client := registry.GetGHESClient()
+		ghesRepoService = client.Repositories
+		ghesGitService = client.Git
+		ghesPRService = client.PullRequests
+	}
+
+	repoService := &run.RepositoriesServiceImpl{
+		Tags:     map[string]*run.ListTagsResult{},
+		Releases: map[string]*run.ListReleasesResult{},
+		Commits:  map[string]*run.GetCommitSHA1Result{},
+	}
+	repoService.SetServices(gh.Repositories, ghesRepoService, ghesConfig)
+
+	gitService := &run.GitServiceImpl{
+		Commits: map[string]*run.GetCommitResult{},
+	}
+	gitService.SetServices(gh.Git, ghesGitService, ghesConfig)
+
+	prService := &run.PullRequestsServiceImpl{}
+	prService.SetServices(gh.PullRequests, ghesPRService, ghesConfig)
+
+	return &ghesServices{
+		repoService: repoService,
+		gitService:  gitService,
+		prService:   prService,
+	}, nil
 }
