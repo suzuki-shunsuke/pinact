@@ -171,11 +171,18 @@ pinact run -u
 
 [#1266](https://github.com/suzuki-shunsuke/pinact/pull/1266) pinact >= v3.5.0
 
-You can skip recently released versions using the `--min-age` (`-m`) option.
+You can skip recently released versions using the `--min-age` (`-m`) option or the environment variable `PINACT_MIN_AGE`.
 This helps avoid updating to potentially unstable versions that haven't had time to prove their stability.
 
 ```sh
 pinact run -u --min-age 7
+```
+
+or
+
+```sh
+export PINACT_MIN_AGE=7
+pinact run -u
 ```
 
 This command skips versions released within the last 7 days.

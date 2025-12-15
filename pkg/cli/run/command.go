@@ -134,6 +134,7 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Aliases:     []string{"m"},
 				Usage:       "Skip versions released within the specified number of days (requires -u)",
 				Destination: &flags.MinAge,
+				Sources:     cli.EnvVars("PINACT_MIN_AGE"),
 				Validator: func(i int) error {
 					if i < 0 {
 						return errors.New("--min-age must be a non-negative integer")
