@@ -25,6 +25,10 @@
           },
           "type": "array",
           "description": "Actions and reusable workflows that pinact ignores"
+        },
+        "ghes": {
+          "$ref": "#/$defs/GHES",
+          "description": "GitHub Enterprise Server configuration"
         }
       },
       "additionalProperties": false,
@@ -41,6 +45,20 @@
       "required": [
         "pattern"
       ]
+    },
+    "GHES": {
+      "properties": {
+        "api_url": {
+          "type": "string",
+          "description": "API URL of the GHES instance (e.g. https://ghes.example.com)"
+        },
+        "fallback": {
+          "type": "boolean",
+          "description": "Whether to fallback to github.com when a repository is not found on GHES. Default is false"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
     },
     "IgnoreAction": {
       "properties": {

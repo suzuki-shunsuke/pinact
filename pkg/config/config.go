@@ -22,6 +22,12 @@ type Config struct {
 	Version       int             `json:"version,omitempty" jsonschema:"enum=2,enum=3"`
 	Files         []*File         `json:"files,omitempty" jsonschema:"description=Target files. If files are passed via positional command line arguments, this is ignored"`
 	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores"`
+	GHES          *GHES           `json:"ghes,omitempty" yaml:"ghes" jsonschema:"description=GitHub Enterprise Server configuration"`
+}
+
+type GHES struct {
+	APIURL   string `json:"api_url,omitempty" yaml:"api_url" jsonschema:"description=API URL of the GHES instance (e.g. https://ghes.example.com)"`
+	Fallback bool   `json:"fallback,omitempty" yaml:"fallback" jsonschema:"description=Whether to fallback to github.com when a repository is not found on GHES. Default is false"`
 }
 
 type File struct {
@@ -198,13 +204,25 @@ func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
 	return ia.refRegexp.FindString(ref) == ref, nil
 }
 
+// IsEnabled checks if GHES is enabled.
+// GHES is enabled if the APIURL is set.
+func (g *GHES) IsEnabled() bool {
+	return g != nil && g.APIURL != ""
+}
+
+func (g *GHES) Validate() error {
+	if g == nil {
+		return nil
+	}
+	if g.APIURL == "" {
+		return errors.New("GHES api_url is required")
+	}
+	return nil
+}
+
 // getConfigPath searches for a pinact configuration file in standard locations.
 // It checks for .pinact.yaml, .github/pinact.yaml, .pinact.yml, and .github/pinact.yml
 // in order of preference.
-//
-// Parameters:
-//   - fs: filesystem interface for file operations
-//
 // Returns the path to the first found configuration file, empty string if none found, or an error.
 func getConfigPath(fs afero.Fs) (string, error) {
 	for _, path := range []string{".pinact.yaml", ".github/pinact.yaml", ".pinact.yml", ".github/pinact.yml"} {
@@ -224,12 +242,6 @@ type Finder struct {
 }
 
 // NewFinder creates a new configuration file finder.
-// It initializes a Finder with the provided filesystem interface.
-//
-// Parameters:
-//   - fs: filesystem interface for file operations
-//
-// Returns a pointer to the configured Finder.
 func NewFinder(fs afero.Fs) *Finder {
 	return &Finder{fs: fs}
 }
@@ -237,11 +249,6 @@ func NewFinder(fs afero.Fs) *Finder {
 // Find locates the configuration file path to use.
 // If a specific path is provided, it returns that path.
 // Otherwise, it searches for configuration files in standard locations.
-//
-// Parameters:
-//   - configFilePath: explicit configuration file path or empty string
-//
-// Returns the configuration file path to use or an error if search fails.
 func (f *Finder) Find(configFilePath string) (string, error) {
 	if configFilePath != "" {
 		return configFilePath, nil
@@ -258,12 +265,6 @@ type Reader struct {
 }
 
 // NewReader creates a new configuration file reader.
-// It initializes a Reader with the provided filesystem interface.
-//
-// Parameters:
-//   - fs: filesystem interface for file operations
-//
-// Returns a pointer to the configured Reader.
 func NewReader(fs afero.Fs) *Reader {
 	return &Reader{fs: fs}
 }
@@ -271,12 +272,6 @@ func NewReader(fs afero.Fs) *Reader {
 // Read loads and parses a configuration file.
 // It reads the YAML file, validates the schema version, and initializes
 // all configuration components including files and ignore actions.
-//
-// Parameters:
-//   - cfg: Config struct to populate with parsed data
-//   - configFilePath: path to the configuration file to read
-//
-// Returns an error if reading, parsing, or validation fails.
 func (r *Reader) Read(cfg *Config, configFilePath string) error {
 	if configFilePath == "" {
 		return nil
@@ -289,6 +284,12 @@ func (r *Reader) Read(cfg *Config, configFilePath string) error {
 	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
 		return fmt.Errorf("decode a configuration file as YAML: %w", err)
 	}
+	return cfg.Init()
+}
+
+// Init initializes and validates the configuration.
+// It validates the schema version and initializes all configuration components.
+func (cfg *Config) Init() error {
 	if err := validateSchemaVersion(cfg.Version); err != nil {
 		return err
 	}

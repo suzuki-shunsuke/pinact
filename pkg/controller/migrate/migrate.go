@@ -12,11 +12,6 @@ import (
 // Migrate performs configuration file migration to the latest schema version.
 // It finds the configuration file, reads and parses it, determines the required
 // migration path, and applies necessary transformations to update the schema.
-//
-// Parameters:
-//   - logger: slog logger for structured logging
-//
-// Returns an error if migration fails, nil if successful or no migration needed.
 func (c *Controller) Migrate(logger *slog.Logger) error {
 	// find and read .pinact.yaml
 	p, err := c.cfgFinder.Find(c.param.ConfigFilePath)
@@ -58,12 +53,6 @@ func (c *Controller) Migrate(logger *slog.Logger) error {
 // edit writes the migrated configuration content back to the file.
 // It preserves the original file permissions while updating the content
 // with the migrated configuration.
-//
-// Parameters:
-//   - file: path to the configuration file to update
-//   - content: migrated configuration content
-//
-// Returns an error if file operations fail.
 func (c *Controller) edit(file, content string) error {
 	stat, err := c.fs.Stat(file)
 	if err != nil {
@@ -78,12 +67,6 @@ func (c *Controller) edit(file, content string) error {
 // migrate determines and applies the appropriate migration strategy.
 // It examines the current configuration version and routes to the
 // corresponding migration function.
-//
-// Parameters:
-//   - logger: slog logger for structured logging
-//   - content: original configuration file content
-//
-// Returns the migrated content as string and any error encountered.
 func (c *Controller) migrate(logger *slog.Logger, content []byte) (string, error) {
 	switch c.cfg.Version {
 	case 2: //nolint:mnd
@@ -100,12 +83,6 @@ func (c *Controller) migrate(logger *slog.Logger, content []byte) (string, error
 // migrateEmptyVersion migrates configuration files without version information.
 // It handles legacy configuration files that don't have explicit version
 // fields by applying AST-based migration.
-//
-// Parameters:
-//   - logger: slog logger for structured logging
-//   - content: original configuration file content
-//
-// Returns the migrated content as string and any error encountered.
 func (c *Controller) migrateEmptyVersion(logger *slog.Logger, content []byte) (string, error) {
 	return parseConfigAST(logger, content)
 }
@@ -113,12 +90,6 @@ func (c *Controller) migrateEmptyVersion(logger *slog.Logger, content []byte) (s
 // migrateV2 migrates configuration files from version 2 to version 3.
 // It applies necessary transformations to update the schema from version 2
 // format to the current version 3 format.
-//
-// Parameters:
-//   - logger: slog logger for structured logging
-//   - content: original configuration file content
-//
-// Returns the migrated content as string and any error encountered.
 func (c *Controller) migrateV2(logger *slog.Logger, content []byte) (string, error) {
 	// Add code comment
 	// Change version from 2 to 3
