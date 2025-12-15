@@ -4,7 +4,6 @@ package di
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -45,9 +44,6 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 	}
 
 	review := setupReview(fs, logger, flags)
-	if flags.MinAge > 0 && !flags.Update {
-		return errors.New("--min-age requires --update (-u) flag")
-	}
 
 	param, err := buildParam(flags, review)
 	if err != nil {
