@@ -11,7 +11,7 @@ USAGE:
    pinact [global options] [command [command options]]
 
 VERSION:
-   3.5.0
+   3.6.0
 
 COMMANDS:
    init        Create .pinact.yaml if it doesn't exist
@@ -63,7 +63,7 @@ NAME:
    pinact run - Pin GitHub Actions versions
 
 USAGE:
-   pinact run
+   pinact run [arguments...]
 
 DESCRIPTION:
    If no argument is passed, pinact searches GitHub Actions workflow files from .github/workflows.
@@ -90,7 +90,7 @@ OPTIONS:
    --pr int                                                     GitHub pull request number (default: 0)
    --include string, -i string [ --include string, -i string ]  A regular expression to fix actions
    --exclude string, -e string [ --exclude string, -e string ]  A regular expression to exclude actions
-   --min-age int, -m int                                        Skip versions released within the specified number of days (requires -u) (default: 0)
+   --min-age int, -m int                                        Skip versions released within the specified number of days (requires -u) (default: 0) [$PINACT_MIN_AGE]
    --help, -h                                                   show help
 ```
 
