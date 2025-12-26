@@ -27,6 +27,9 @@ jobs:
             ./cmd/pinact
       - run: pinact -v
 
+      - run: pinact list testdata/foo.yaml > testdata/foo_list_result.txt
+      - run: diff testdata/foo_list.txt testdata/foo_list_result.txt
+
       - run: |
           if pinact run --check testdata/foo.yaml; then
             echo "::error:: pinact run --check should fail"

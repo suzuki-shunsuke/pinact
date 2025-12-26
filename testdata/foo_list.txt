@@ -1,0 +1,15 @@
+testdata/foo.yaml,9,actions/checkout,c85c95e3d7251135ab7dc9ce3241c5835cc595a9,v3
+testdata/foo.yaml,10,actions/checkout,c85c95e3d7251135ab7dc9ce3241c5835cc595a9,v3
+testdata/foo.yaml,11,actions/checkout,c85c95e3d7251135ab7dc9ce3241c5835cc595a9,v3
+testdata/foo.yaml,12,actions/checkout,c85c95e3d7251135ab7dc9ce3241c5835cc595a9,v3
+testdata/foo.yaml,13,actions/checkout,83b7061638ee4956cf7545a6f7efe594e5ad0247,
+testdata/foo.yaml,14,actions/checkout,v2,
+testdata/foo.yaml,15,actions/cache,v3.3.1,
+testdata/foo.yaml,16,actions/setup-java,v3,
+testdata/foo.yaml,17,rharkor/caching-for-turbo,v1.6,
+testdata/foo.yaml,18,peaceiris/actions-gh-pages,v4.0.0,
+testdata/foo.yaml,19,actions/checkout,v3,
+testdata/foo.yaml,20,actions/checkout,v3,
+testdata/foo.yaml,21,cardinalby/git-get-release-action,cf4593dd18e51a1ecfbfb1c68abac9910a8b1e0c,v1
+testdata/foo.yaml,23,suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml,v0.5.0,
+testdata/foo.yaml,30,slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml,v1.6.0,
