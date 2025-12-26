@@ -10,6 +10,7 @@ import (
 
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/initcmd"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/list"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/migrate"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/run"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/token"
@@ -29,6 +30,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
 		Flags: globalFlags.Flags(),
 		Commands: []*cli.Command{
 			initcmd.New(logger, globalFlags),
+			list.New(logger, globalFlags),
 			run.New(logger, globalFlags, env),
 			migrate.New(logger, globalFlags),
 			token.New(logger),
