@@ -28,11 +28,14 @@ type ParamRun struct {
 	Fix               bool
 	Diff              bool
 	Stderr            io.Writer
+	Stdout            io.Writer
 	Review            *Review
 	Includes          []*regexp.Regexp
 	Excludes          []*regexp.Regexp
 	MinAge            int
 	Now               time.Time
+	Format            string
+	Findings          []Finding
 }
 
 type Review struct {
@@ -71,6 +74,12 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 				continue
 			}
 			slogerr.WithError(logger, err).Error("update a workflow")
+		}
+	}
+	// Output SARIF if format is sarif
+	if c.param.Format == "sarif" {
+		if err := c.outputSARIF(); err != nil {
+			return fmt.Errorf("output SARIF: %w", err)
 		}
 	}
 	if failed {
@@ -157,6 +166,13 @@ func (c *Controller) writeWorkflow(workflowFilePath string, lines []string) erro
 // It outputs error messages, creates GitHub Actions annotations, and
 // optionally creates pull request review comments.
 func (c *Controller) handleParseLineError(ctx context.Context, logger *slog.Logger, line *Line, gErr error) {
+	// Collect finding for SARIF output
+	c.param.Findings = append(c.param.Findings, Finding{
+		File:    line.File,
+		Line:    line.Number,
+		OldLine: line.Line,
+		Message: "failed to handle a line: " + gErr.Error(),
+	})
 	// Output error
 	c.logger.Output(levelError, "failed to handle a line: "+gErr.Error(), line, "")
 	if c.param.Review == nil {
@@ -189,6 +205,13 @@ func (c *Controller) handleParseLineError(ctx context.Context, logger *slog.Logg
 // It creates review comments, GitHub Actions annotations, and outputs
 // diff information depending on the operation mode.
 func (c *Controller) handleChangedLine(ctx context.Context, logger *slog.Logger, line *Line, newLine string) {
+	// Collect finding for SARIF output
+	c.param.Findings = append(c.param.Findings, Finding{
+		File:    line.File,
+		Line:    line.Number,
+		OldLine: line.Line,
+		NewLine: newLine,
+	})
 	reviewed := c.tryCreateReview(ctx, logger, line, newLine)
 	c.outputGitHubActionsAnnotation(line, newLine, reviewed)
 	c.outputDiff(line, newLine)

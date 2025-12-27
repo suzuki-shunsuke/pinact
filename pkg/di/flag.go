@@ -15,6 +15,7 @@ type Flags struct {
 	Review bool
 	Fix    bool
 	Diff   bool
+	Format string
 
 	IsGitHubActions bool
 	FallbackEnabled bool
