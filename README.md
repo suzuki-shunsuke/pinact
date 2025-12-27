@@ -340,9 +340,22 @@ pinact run --format sarif
 
 This format is useful to integration tools like [reviewdog](https://github.com/reviewdog/reviewdog) and [GitHub SARIF Code Scanning](https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/sarif-support-for-code-scanning).
 
+Reviewdog:
+
 ```sh
 pinact run --diff --format sarif |
   reviewdog -f sarif -name pinact -reporter github-pr-review
+```
+
+GitHub SARIF Code Scanning:
+
+```yaml
+- run: pinact run --diff --format sarif > sarif.json || true
+- name: Upload SARIF file
+  uses: github/codeql-action/upload-sarif@5d4e8d1aca955e8d8589aabd499c5cae939e33c7 # v4.31.9
+  with:
+    sarif_file: sarif.json
+    category: pinact
 ```
 
 ## GitHub Actions
