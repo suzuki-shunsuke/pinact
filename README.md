@@ -205,6 +205,10 @@ pinact run README.md
 As of pinact v3.3.0, pinact can create reviews by GitHub API.
 A GitHub access token with `pull_requests:write` permission is required.
 
+> [!NOTE]
+> [As of pinact v3.7.1, pinact supports SARIF format output.](#sarif)
+> [We recommend using the SARIF format output with reviewdog rather than the `-review` option.](#reviewdog)
+
 ```sh
 pinact run \
   -review \
@@ -340,14 +344,14 @@ pinact run --format sarif
 
 This format is useful to integration tools like [reviewdog](https://github.com/reviewdog/reviewdog) and [GitHub SARIF Code Scanning](https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/sarif-support-for-code-scanning).
 
-Reviewdog:
+### Reviewdog
 
 ```sh
 pinact run --diff --format sarif |
   reviewdog -f sarif -name pinact -reporter github-pr-review
 ```
 
-GitHub SARIF Code Scanning:
+### GitHub SARIF Code Scanning
 
 ```yaml
 - run: pinact run --diff --format sarif > sarif.json || true
