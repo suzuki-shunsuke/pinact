@@ -142,8 +142,8 @@ func TestController_buildSARIFResults(t *testing.T) { //nolint:funlen,cyclop
 				if r.RuleID != ruleUnpinnedAction {
 					t.Errorf("RuleID = %v, want %v", r.RuleID, ruleUnpinnedAction)
 				}
-				if r.Level != "error" {
-					t.Errorf("Level = %v, want error", r.Level)
+				if r.Level != levelError {
+					t.Errorf("Level = %v, want %v", r.Level, levelError)
 				}
 				if r.Locations[0].PhysicalLocation.ArtifactLocation.URI != "test.yml" {
 					t.Errorf("URI = %v, want test.yml", r.Locations[0].PhysicalLocation.ArtifactLocation.URI)
@@ -193,8 +193,8 @@ func TestController_buildSARIFResults(t *testing.T) { //nolint:funlen,cyclop
 				if r.RuleID != ruleParseError {
 					t.Errorf("RuleID = %v, want %v", r.RuleID, ruleParseError)
 				}
-				if r.Level != "error" {
-					t.Errorf("Level = %v, want error", r.Level)
+				if r.Level != levelError {
+					t.Errorf("Level = %v, want %v", r.Level, levelError)
 				}
 				if r.Message.Text != "failed to parse action" {
 					t.Errorf("Message = %v, want 'failed to parse action'", r.Message.Text)
