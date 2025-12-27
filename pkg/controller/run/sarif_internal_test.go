@@ -142,8 +142,8 @@ func TestController_buildSARIFResults(t *testing.T) { //nolint:funlen,cyclop
 				if r.RuleID != ruleUnpinnedAction {
 					t.Errorf("RuleID = %v, want %v", r.RuleID, ruleUnpinnedAction)
 				}
-				if r.Level != "warning" {
-					t.Errorf("Level = %v, want warning", r.Level)
+				if r.Level != "error" {
+					t.Errorf("Level = %v, want error", r.Level)
 				}
 				if r.Locations[0].PhysicalLocation.ArtifactLocation.URI != "test.yml" {
 					t.Errorf("URI = %v, want test.yml", r.Locations[0].PhysicalLocation.ArtifactLocation.URI)
