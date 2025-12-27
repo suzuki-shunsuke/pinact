@@ -89,7 +89,7 @@ If you use linters such as [ghalint](https://github.com/suzuki-shunsuke/ghalint)
 ## GitHub Access token
 
 pinact calls GitHub REST API to get commit hashes and tags.
-You can pass GitHub Access token via environment variable `GITHUB_TOKEN`.
+You can pass GitHub Access token via environment variable `PINACT_GITHUB_TOKEN` or `GITHUB_TOKEN`.
 If no GitHub Access token is passed, pinact calls GitHub REST API without access token.
 About GitHub Enterprise Server, see also [GitHub Access Token for GHES](#github-access-token-for-ghes).
 
@@ -555,9 +555,10 @@ If the fallback is enabled, repositories of actions are first searched on the GH
 
 Set a GitHub Access Token for GHES using one of the following environment variables (checked in order):
 
-1. `GHES_TOKEN`
-2. `GITHUB_TOKEN_ENTERPRISE`
-3. `GITHUB_ENTERPRISE_TOKEN`
+1. `PINACT_GHES_TOKEN`
+2. `GHES_TOKEN`
+3. `GITHUB_TOKEN_ENTERPRISE`
+4. `GITHUB_ENTERPRISE_TOKEN`
 
 ```sh
 export GHES_TOKEN=xxx
