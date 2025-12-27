@@ -2,8 +2,10 @@ package di
 
 // Secrets holds sensitive tokens for GitHub API authentication.
 type Secrets struct {
-	GitHubToken string
-	GHESToken   string
+	GitHubToken          string
+	GHESToken            string
+	GitHubTokenForReview string
+	GHESTokenForReview   string
 }
 
 // SetFromEnv sets secrets from environment variables.
@@ -12,6 +14,8 @@ func (s *Secrets) SetFromEnv(getEnv func(string) string) {
 	if s.GitHubToken == "" {
 		s.GitHubToken = getEnv("GITHUB_TOKEN")
 	}
+	s.GitHubTokenForReview = getEnv("PINACT_GITHUB_TOKEN_FOR_REVIEW")
+	s.GHESTokenForReview = getEnv("PINACT_GHES_TOKEN_FOR_REVIEW")
 	for _, envName := range []string{"PINACT_GHES_TOKEN", "GHES_TOKEN", "GITHUB_TOKEN_ENTERPRISE", "GITHUB_ENTERPRISE_TOKEN"} {
 		if token := getEnv(envName); token != "" {
 			s.GHESToken = token
