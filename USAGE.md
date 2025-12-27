@@ -11,7 +11,7 @@ USAGE:
    pinact [global options] [command [command options]]
 
 VERSION:
-   3.6.0
+   3.7.1
 
 COMMANDS:
    init        Create .pinact.yaml if it doesn't exist
@@ -84,6 +84,7 @@ OPTIONS:
    --review                                                     Create reviews
    --fix                                                        Fix code. By default, this is true. If -check or -diff is true, this is false by default
    --diff                                                       Output diff. By default, this is false
+   --format string                                              Output format. Currently only 'sarif' is supported. If sarif is specified, results are output in SARIF format to stdout
    --repo-owner string                                          GitHub repository owner [$GITHUB_REPOSITORY_OWNER]
    --repo-name string                                           GitHub repository name
    --sha string                                                 Commit SHA to be reviewed
