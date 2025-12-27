@@ -70,7 +70,7 @@ func (c *Controller) buildSARIFResults() []sarif.Result {
 			}
 		}
 
-		results = append(results, sarif.Result{
+		result := sarif.Result{
 			RuleID:  ruleID,
 			Level:   level,
 			Message: sarif.Message{Text: msg},
@@ -86,7 +86,34 @@ func (c *Controller) buildSARIFResults() []sarif.Result {
 					},
 				},
 			},
-		})
+		}
+
+		// Add fix suggestion if NewLine is available
+		if f.NewLine != "" {
+			result.Fixes = []sarif.Fix{
+				{
+					ArtifactChanges: []sarif.ArtifactChange{
+						{
+							ArtifactLocation: sarif.ArtifactLocation{
+								URI: f.File,
+							},
+							Replacements: []sarif.Replacement{
+								{
+									DeletedRegion: sarif.Region{
+										StartLine: f.Line,
+									},
+									InsertedContent: &sarif.ArtifactContent{
+										Text: f.NewLine,
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+		}
+
+		results = append(results, result)
 	}
 	return results
 }
