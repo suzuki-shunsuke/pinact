@@ -98,9 +98,14 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 			},
 			&cli.StringFlag{
 				Name:        "format",
-				Usage:       "Output format (text, sarif). If sarif is specified, results are output in SARIF format to stdout",
+				Usage:       "Output format. Currently only 'sarif' is supported. If sarif is specified, results are output in SARIF format to stdout",
 				Destination: &flags.Format,
-				Value:       "text",
+				Validator: func(s string) error {
+					if s != "" && s != "sarif" {
+						return errors.New("--format must be 'sarif'")
+					}
+					return nil
+				},
 			},
 			&cli.StringFlag{
 				Name:        "repo-owner",
