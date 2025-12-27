@@ -8,10 +8,14 @@ type Secrets struct {
 
 // SetFromEnv sets secrets from environment variables.
 func (s *Secrets) SetFromEnv(getEnv func(string) string) {
-	s.GitHubToken = getEnv("GITHUB_TOKEN")
-	for _, envName := range []string{"GHES_TOKEN", "GITHUB_TOKEN_ENTERPRISE", "GITHUB_ENTERPRISE_TOKEN"} {
+	s.GitHubToken = getEnv("PINACT_GITHUB_TOKEN")
+	if s.GitHubToken == "" {
+		s.GitHubToken = getEnv("GITHUB_TOKEN")
+	}
+	for _, envName := range []string{"PINACT_GHES_TOKEN", "GHES_TOKEN", "GITHUB_TOKEN_ENTERPRISE", "GITHUB_ENTERPRISE_TOKEN"} {
 		if token := getEnv(envName); token != "" {
 			s.GHESToken = token
+			return
 		}
 	}
 }
