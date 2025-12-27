@@ -97,6 +97,12 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Destination: &flags.Diff,
 			},
 			&cli.StringFlag{
+				Name:        "format",
+				Usage:       "Output format (text, sarif). If sarif is specified, results are output in SARIF format to stdout",
+				Destination: &flags.Format,
+				Value:       "text",
+			},
+			&cli.StringFlag{
 				Name:        "repo-owner",
 				Usage:       "GitHub repository owner",
 				Sources:     cli.EnvVars("GITHUB_REPOSITORY_OWNER"),

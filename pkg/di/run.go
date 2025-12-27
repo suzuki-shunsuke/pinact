@@ -104,11 +104,13 @@ func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
 		Fix:               true,
 		IsGitHubActions:   flags.IsGitHubActions,
 		Stderr:            os.Stderr,
+		Stdout:            os.Stdout,
 		Review:            review,
 		Includes:          includes,
 		Excludes:          excludes,
 		MinAge:            flags.MinAge,
 		Now:               time.Now(),
+		Format:            flags.Format,
 	}
 	if flags.FixCount > 0 {
 		param.Fix = flags.Fix
