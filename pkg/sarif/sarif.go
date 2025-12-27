@@ -39,6 +39,29 @@ type Result struct {
 	Level     string     `json:"level"`
 	Message   Message    `json:"message"`
 	Locations []Location `json:"locations"`
+	Fixes     []Fix      `json:"fixes,omitempty"`
+}
+
+// Fix represents a proposed fix for a result.
+type Fix struct {
+	ArtifactChanges []ArtifactChange `json:"artifactChanges"`
+}
+
+// ArtifactChange represents a change to a single artifact.
+type ArtifactChange struct {
+	ArtifactLocation ArtifactLocation `json:"artifactLocation"`
+	Replacements     []Replacement    `json:"replacements"`
+}
+
+// Replacement represents the replacement of a single region.
+type Replacement struct {
+	DeletedRegion   Region           `json:"deletedRegion"`
+	InsertedContent *ArtifactContent `json:"insertedContent,omitempty"`
+}
+
+// ArtifactContent represents the content to insert.
+type ArtifactContent struct {
+	Text string `json:"text"`
 }
 
 // Message contains text describing a result or rule.
