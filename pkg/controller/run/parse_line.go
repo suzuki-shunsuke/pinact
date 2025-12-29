@@ -267,41 +267,72 @@ func compareVersion(currentVersion, newVersion string) bool {
 // commit SHAs match their corresponding version tags.
 func (c *Controller) parseSemverTagLine(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
 	// @xxx # v3.0.0
-	if c.param.Update { //nolint:nestif
-		// get the latest version
-		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment)
+	if c.param.Update {
+		return c.parseSemverTagLineUpdate(ctx, logger, action)
+	}
+	return c.parseSemverTagLinePin(ctx, logger, action)
+}
+
+// parseSemverTagLineUpdate handles the update case for semver tag lines.
+func (c *Controller) parseSemverTagLineUpdate(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
+	lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment)
+	if err != nil {
+		return "", fmt.Errorf("get the latest version: %w", err)
+	}
+	if action.VersionComment == lv {
+		return c.handleCurrentVersionIsLatest(ctx, logger, action, lv)
+	}
+	return c.handleUpdateToNewerVersion(ctx, logger, action, lv)
+}
+
+// handleCurrentVersionIsLatest handles when the current version comment matches the latest version.
+func (c *Controller) handleCurrentVersionIsLatest(ctx context.Context, logger *slog.Logger, action *Action, lv string) (string, error) {
+	switch getVersionType(action.Version) {
+	case Semver, Shortsemver:
+		sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
-		if action.VersionComment == lv {
-			return "", nil
-		}
-		if !compareVersion(action.VersionComment, lv) {
-			logger.Warn("skip updating because the current version is newer than the new version",
-				"current_version", action.VersionComment,
-				"new_version", lv,
-			)
-			return "", nil
-		}
-		if action.VersionComment != lv {
-			sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
-			if err != nil {
-				return "", fmt.Errorf("get the latest version: %w", err)
-			}
-			return patchLine(action, sha, lv), nil
-		}
+		return patchLine(action, sha, lv), nil
+	case FullCommitSHA:
+		return c.verifyIfNeeded(ctx, logger, action)
 	}
-	// verify commit hash
-	if !c.param.IsVerify {
+	return "", ErrCantPinned
+}
+
+// handleUpdateToNewerVersion handles updating to a newer version when available.
+func (c *Controller) handleUpdateToNewerVersion(ctx context.Context, logger *slog.Logger, action *Action, lv string) (string, error) {
+	if !compareVersion(action.VersionComment, lv) {
+		logger.Warn("skip updating because the current version is newer than the new version",
+			"current_version", action.VersionComment,
+			"new_version", lv,
+		)
 		return "", nil
 	}
-	// @xxx # v3.0.0
-	// @<full commit hash> # v3.0.0
-	if FullCommitSHA != getVersionType(action.Version) {
-		return "", nil
+	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
+	if err != nil {
+		return "", fmt.Errorf("get the latest version: %w", err)
 	}
-	if err := c.verify(ctx, logger, action); err != nil {
-		return "", fmt.Errorf("verify the version annotation: %w", err)
+	return patchLine(action, sha, lv), nil
+}
+
+// parseSemverTagLinePin handles the pin case for semver tag lines.
+func (c *Controller) parseSemverTagLinePin(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
+	switch typ := getVersionType(action.Version); typ {
+	case Semver, Shortsemver:
+		return c.pinCurrentVersion(ctx, logger, action, typ)
+	case FullCommitSHA:
+		return c.verifyIfNeeded(ctx, logger, action)
+	}
+	return "", ErrCantPinned
+}
+
+// verifyIfNeeded verifies the commit hash if verification is enabled.
+func (c *Controller) verifyIfNeeded(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
+	if c.param.IsVerify {
+		if err := c.verify(ctx, logger, action); err != nil {
+			return "", fmt.Errorf("verify the version annotation: %w", err)
+		}
 	}
 	return "", nil
 }
