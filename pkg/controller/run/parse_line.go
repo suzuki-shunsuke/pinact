@@ -274,7 +274,23 @@ func (c *Controller) parseSemverTagLine(ctx context.Context, logger *slog.Logger
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
 		if action.VersionComment == lv {
-			return "", nil
+			switch getVersionType(action.Version) {
+			case Semver, Shortsemver:
+				sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
+				if err != nil {
+					return "", fmt.Errorf("get the latest version: %w", err)
+				}
+				return patchLine(action, sha, lv), nil
+			case FullCommitSHA:
+				if c.param.IsVerify {
+					// verify commit hash
+					if err := c.verify(ctx, logger, action); err != nil {
+						return "", fmt.Errorf("verify the version annotation: %w", err)
+					}
+				}
+				return "", nil
+			}
+			return "", ErrCantPinned
 		}
 		if !compareVersion(action.VersionComment, lv) {
 			logger.Warn("skip updating because the current version is newer than the new version",
@@ -291,19 +307,19 @@ func (c *Controller) parseSemverTagLine(ctx context.Context, logger *slog.Logger
 			return patchLine(action, sha, lv), nil
 		}
 	}
-	// verify commit hash
-	if !c.param.IsVerify {
+	switch typ := getVersionType(action.Version); typ {
+	case Semver, Shortsemver:
+		return c.pinCurrentVersion(ctx, logger, action, typ)
+	case FullCommitSHA:
+		if c.param.IsVerify {
+			// verify commit hash
+			if err := c.verify(ctx, logger, action); err != nil {
+				return "", fmt.Errorf("verify the version annotation: %w", err)
+			}
+		}
 		return "", nil
 	}
-	// @xxx # v3.0.0
-	// @<full commit hash> # v3.0.0
-	if FullCommitSHA != getVersionType(action.Version) {
-		return "", nil
-	}
-	if err := c.verify(ctx, logger, action); err != nil {
-		return "", fmt.Errorf("verify the version annotation: %w", err)
-	}
-	return "", nil
+	return "", ErrCantPinned
 }
 
 // parseShortSemverTagLine processes actions with short semantic version comments.
