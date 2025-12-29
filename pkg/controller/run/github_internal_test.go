@@ -339,7 +339,7 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 			ctx := t.Context()
 			logger := slog.New(slog.DiscardHandler)
 
-			gotVersion, err := c.getLatestVersionFromReleases(ctx, logger, "owner", "repo", tt.isStable, time.Time{})
+			gotVersion, _, err := c.getLatestVersionFromReleases(ctx, logger, "owner", "repo", tt.isStable, time.Time{})
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getLatestVersionFromReleases() error = %v, wantErr %v", err, tt.wantErr)
@@ -670,7 +670,7 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 			ctx := t.Context()
 			logger := slog.New(slog.DiscardHandler)
 
-			gotVersion, err := c.getLatestVersionFromTags(ctx, logger, "owner", "repo", false, time.Time{})
+			gotVersion, err := c.getLatestVersionFromTags(ctx, logger, "owner", "repo", false, time.Time{}, nil)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getLatestVersionFromTags() error = %v, wantErr %v", err, tt.wantErr)

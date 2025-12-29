@@ -38,14 +38,14 @@ func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, 
 		cutoff = c.param.Now.AddDate(0, 0, -c.param.MinAge)
 	}
 
-	lv, err := c.getLatestVersionFromReleases(ctx, logger, owner, repo, isStable, cutoff)
+	lv, versions, err := c.getLatestVersionFromReleases(ctx, logger, owner, repo, isStable, cutoff)
 	if err != nil {
 		slogerr.WithError(logger, err).Debug("get the latest version from releases")
 	}
 	if lv != "" {
 		return lv, nil
 	}
-	return c.getLatestVersionFromTags(ctx, logger, owner, repo, isStable, cutoff)
+	return c.getLatestVersionFromTags(ctx, logger, owner, repo, isStable, cutoff, versions)
 }
 
 func isStableVersion(v string) bool {
@@ -79,14 +79,15 @@ func compare(latestSemver *version.Version, latestVersion, tag string) (*version
 // getLatestVersionFromReleases finds the latest version from repository releases.
 // It retrieves releases from GitHub API and compares them to find the highest
 // version using semantic versioning when possible, falling back to string comparison.
-func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool, cutoff time.Time) (string, error) {
+func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool, cutoff time.Time) (string, map[string]struct{}, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
 	releases, _, err := c.repositoriesService.ListReleases(ctx, logger, owner, repo, opts)
 	if err != nil {
-		return "", fmt.Errorf("list releases: %w", err)
+		return "", nil, fmt.Errorf("list releases: %w", err)
 	}
+	versions := make(map[string]struct{}, len(releases))
 
 	var latestSemver *version.Version
 	latestVersion := ""
@@ -96,6 +97,7 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *s
 			continue
 		}
 		tag := release.GetTagName()
+		versions[tag] = struct{}{}
 		// Skip releases within cooldown period
 		if !cutoff.IsZero() && release.GetPublishedAt().After(cutoff) {
 			logger.Info("skip release due to cooldown",
@@ -113,9 +115,9 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *s
 	}
 
 	if latestSemver != nil {
-		return latestSemver.Original(), nil
+		return latestSemver.Original(), versions, nil
 	}
-	return latestVersion, nil
+	return latestVersion, versions, nil
 }
 
 // checkTagCooldown checks if a tag should be skipped due to cooldown period.
@@ -142,7 +144,7 @@ func checkTagCooldown(ctx context.Context, logger *slog.Logger, gitService GitSe
 // It retrieves tags from GitHub API and compares them to find the highest
 // version using semantic versioning when possible, falling back to string comparison.
 // It filters out prerelease versions when currentVersion is stable.
-func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool, cutoff time.Time) (string, error) {
+func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool, cutoff time.Time, releaseVersions map[string]struct{}) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 30, //nolint:mnd
 	}
@@ -155,6 +157,10 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.
 	latestVersion := ""
 	for _, tag := range tags {
 		t := tag.GetName()
+		if _, ok := releaseVersions[t]; ok {
+			// Skip tags that are already released
+			continue
+		}
 
 		// Skip prereleases if current version is stable (issue #1095)
 		if isStable {
