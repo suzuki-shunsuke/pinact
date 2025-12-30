@@ -17,7 +17,7 @@ func (c *Controller) searchFiles() ([]string, error) {
 	if c.cfg != nil && len(c.cfg.Files) > 0 {
 		return c.searchFilesByGlob()
 	}
-	return listWorkflows()
+	return ListWorkflows()
 }
 
 // searchFilesByGlob finds files using glob patterns from configuration.

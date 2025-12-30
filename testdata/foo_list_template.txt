@@ -1,0 +1,8 @@
+actions/cache
+actions/checkout
+actions/setup-java
+cardinalby/git-get-release-action
+peaceiris/actions-gh-pages
+rharkor/caching-for-turbo
+slsa-framework/slsa-github-generator
+suzuki-shunsuke/actionlint-workflow
