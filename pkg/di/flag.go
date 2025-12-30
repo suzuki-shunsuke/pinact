@@ -20,6 +20,7 @@ type Flags struct {
 	IsGitHubActions bool
 	FallbackEnabled bool
 	KeyringEnabled  bool
+	GHTKNEnabled    bool
 
 	RepoOwner string
 	RepoName  string
