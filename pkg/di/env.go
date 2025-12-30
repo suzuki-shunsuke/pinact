@@ -30,4 +30,5 @@ func SetEnv(flags *Flags, getEnv func(string) string) {
 	flags.IsGitHubActions = getEnv("GITHUB_ACTIONS") == trueS
 	flags.FallbackEnabled = getEnv("PINACT_GHES_FALLBACK") == trueS
 	flags.KeyringEnabled = getEnv("PINACT_KEYRING_ENABLED") == trueS
+	flags.GHTKNEnabled = getEnv("PINACT_GHTKN") == trueS
 }

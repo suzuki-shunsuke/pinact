@@ -13,6 +13,7 @@ import (
 	"net/http"
 
 	"github.com/google/go-github/v80/github"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/keyring/ghtoken"
 	"golang.org/x/oauth2"
 )
@@ -35,8 +36,8 @@ type (
 // New creates a new GitHub API client with authentication.
 // It configures the client with appropriate HTTP client based on available
 // authentication methods (environment token or keyring).
-func New(ctx context.Context, logger *slog.Logger, token string, keyringEnabled bool) *Client {
-	return github.NewClient(getHTTPClientForGitHub(ctx, logger, token, keyringEnabled))
+func New(ctx context.Context, logger *slog.Logger, token string, keyringEnabled, ghtknEnabled bool) *Client {
+	return github.NewClient(getHTTPClientForGitHub(ctx, logger, token, keyringEnabled, ghtknEnabled))
 }
 
 // Ptr returns a pointer to the provided value.
@@ -49,16 +50,27 @@ func Ptr[T any](v T) *T {
 // getHTTPClientForGitHub creates an HTTP client configured for GitHub API access.
 // It handles authentication using environment token, keyring, or falls back
 // to unauthenticated access. The client is configured with OAuth2 for authenticated requests.
-func getHTTPClientForGitHub(ctx context.Context, logger *slog.Logger, token string, keyringEnabled bool) *http.Client {
-	if token == "" {
-		if keyringEnabled {
-			return oauth2.NewClient(ctx, ghtoken.NewTokenSource(logger, KeyService))
-		}
+func getHTTPClientForGitHub(ctx context.Context, logger *slog.Logger, token string, keyringEnabled, ghtknEnabled bool) *http.Client {
+	ts := getTokenSourceForGitHub(logger, token, keyringEnabled, ghtknEnabled)
+	if ts == nil {
 		return http.DefaultClient
 	}
-	return oauth2.NewClient(ctx, oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: token},
-	))
+	return oauth2.NewClient(ctx, ts)
+}
+
+func getTokenSourceForGitHub(logger *slog.Logger, token string, keyringEnabled, ghtknEnabled bool) oauth2.TokenSource {
+	if token != "" {
+		return oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: token},
+		)
+	}
+	if keyringEnabled {
+		return ghtoken.NewTokenSource(logger, KeyService)
+	}
+	if ghtknEnabled {
+		return ghtkn.New().TokenSource(logger, &ghtkn.InputGet{})
+	}
+	return nil
 }
 
 // NewWithBaseURL creates a new GitHub API client with a custom base URL.

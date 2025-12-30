@@ -35,7 +35,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 		return fmt.Errorf("set log level: %w", err)
 	}
 
-	gh := github.New(ctx, logger.Logger, secrets.GitHubToken, flags.KeyringEnabled)
+	gh := github.New(ctx, logger.Logger, secrets.GitHubToken, flags.KeyringEnabled, flags.GHTKNEnabled)
 	fs := afero.NewOsFs()
 
 	cfg, err := readConfig(fs, flags.Config)
