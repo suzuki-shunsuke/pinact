@@ -102,7 +102,7 @@ About ghtkn, please see the document of ghtkn.
 You need to set up ghtkn first.
 
 ```sh
-export PINACT_ENABLE_GHTKN=true
+export PINACT_GHTKN=true
 ```
 
 ### Manage GitHub Access token using Keyring
