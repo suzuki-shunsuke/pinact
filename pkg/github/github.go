@@ -13,6 +13,7 @@ import (
 	"net/http"
 
 	"github.com/google/go-github/v80/github"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/keyring/ghtoken"
 	"golang.org/x/oauth2"
 )
@@ -63,7 +64,7 @@ func getTokenSourceForGitHub(logger *slog.Logger, token string, keyringEnabled, 
 			return ghtoken.NewTokenSource(logger, KeyService)
 		}
 		if ghtknEnabled {
-			return ghtoken.NewTokenSource(logger, KeyService)
+			return ghtkn.New().TokenSource(logger, &ghtkn.InputGet{})
 		}
 		return nil
 	}
