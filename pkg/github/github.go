@@ -59,18 +59,18 @@ func getHTTPClientForGitHub(ctx context.Context, logger *slog.Logger, token stri
 }
 
 func getTokenSourceForGitHub(logger *slog.Logger, token string, keyringEnabled, ghtknEnabled bool) oauth2.TokenSource {
-	if token == "" {
-		if keyringEnabled {
-			return ghtoken.NewTokenSource(logger, KeyService)
-		}
-		if ghtknEnabled {
-			return ghtkn.New().TokenSource(logger, &ghtkn.InputGet{})
-		}
-		return nil
+	if token != "" {
+		return oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: token},
+		)
 	}
-	return oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: token},
-	)
+	if keyringEnabled {
+		return ghtoken.NewTokenSource(logger, KeyService)
+	}
+	if ghtknEnabled {
+		return ghtkn.New().TokenSource(logger, &ghtkn.InputGet{})
+	}
+	return nil
 }
 
 // NewWithBaseURL creates a new GitHub API client with a custom base URL.
