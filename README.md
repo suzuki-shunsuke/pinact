@@ -474,7 +474,7 @@ This is required.
 A regular expression of ignored action versions (branch, tag, or commit hash).
 
 > [!WARNING]
-> Regular expressions must match with action names exactly.
+> Regular expressions must match with action versions exactly.
 > For instance, `ref: main` doesn't match with `malicious-main`
 
 #### `ghes`
