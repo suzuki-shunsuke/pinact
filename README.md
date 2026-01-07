@@ -600,15 +600,15 @@ ghes:
 
 You can also configure GHES using environment variables instead of a configuration file.
 
-- `PINACT_GHES_API_URL`
+- `GHES_API_URL`
 - `PINACT_GHES_FALLBACK`
 
 ```sh
-export PINACT_GHES_API_URL=https://ghes.example.com
+export GHES_API_URL=https://ghes.example.com
 export PINACT_GHES_FALLBACK=true
 ```
 
-If `PINACT_GHES_API_URL` is not set, `GITHUB_API_URL` will be used instead.
+If `GHES_API_URL` is not set, `GITHUB_API_URL` will be used instead.
 This is convenient when running on GitHub Actions hosted on GHES.
 
 ### Conditions for Enabling GHES
@@ -616,7 +616,7 @@ This is convenient when running on GitHub Actions hosted on GHES.
 GHES mode is enabled when any of the following conditions are met:
 
 1. `ghes.api_url` is configured in the configuration file
-2. `PINACT_GHES_API_URL` environment variable is set
+2. `GHES_API_URL` environment variable is set
 3. `GITHUB_API_URL` environment variable is set and is not `https://api.github.com`
 
 ## See also
