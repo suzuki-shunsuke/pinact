@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/google/go-github/v80/github"
+	"github.com/google/go-github/v81/github"
 )
 
 // RepositoriesService defines the interface for GitHub Repositories API operations.
