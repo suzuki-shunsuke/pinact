@@ -6,7 +6,7 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/goccy/go-yaml v1.19.1
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-github/v80 v80.0.0
+	github.com/google/go-github/v81 v81.0.0
 	github.com/hashicorp/go-version v1.8.0
 	github.com/lmittmann/tint v1.1.2
 	github.com/spf13/afero v1.15.0
@@ -27,6 +27,7 @@ require (
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/danieljoos/wincred v1.2.2 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/google/go-github/v80 v80.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
