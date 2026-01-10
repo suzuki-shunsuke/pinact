@@ -4,17 +4,11 @@ pinact is written in Go. So you only have to install a binary in your `PATH`.
 
 There are some ways to install pinact.
 
-- [Install](#install)
-  - [Homebrew](#homebrew)
-  - [Scoop](#scoop)
-  - [aqua](#aqua)
-  - [mise-en-place](#mise-en-place)
-  - [Build an executable binary from source code yourself using Go](#build-an-executable-binary-from-source-code-yourself-using-go)
-  - [GitHub Releases](#github-releases)
-    - [Verify downloaded assets from GitHub Releases](#verify-downloaded-assets-from-github-releases)
-    - [1. GitHub CLI](#1-github-cli)
-    - [2. slsa-verifier](#2-slsa-verifier)
-    - [3. Cosign](#3-cosign)
+1. [Homebrew](#homebrew)
+1. [Scoop](#scoop)
+1. [aqua](#aqua)
+1. [mise-en-place](#mise-en-place)
+1. [Build an executable binary from source code yourself using Go](#build-an-executable-binary-from-source-code-yourself-using-go)
 
 ## Homebrew
 
