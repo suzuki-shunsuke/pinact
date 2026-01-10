@@ -8,6 +8,7 @@ There are some ways to install pinact.
 1. [Scoop](#scoop)
 1. [aqua](#aqua)
 1. [mise-en-place](#mise-en-place)
+1. [GitHub Releases](#github-releases)
 1. [Build an executable binary from source code yourself using Go](#build-an-executable-binary-from-source-code-yourself-using-go)
 
 ## Homebrew
