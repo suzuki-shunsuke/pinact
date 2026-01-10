@@ -50,7 +50,7 @@ You can install pinact using [mise](https://mise.jdx.dev).
 
 ```sh
 mise use -g pinact@latest
-``
+```
 
 ## Build an executable binary from source code yourself using Go
 
