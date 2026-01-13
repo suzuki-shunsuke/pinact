@@ -1,0 +1,5 @@
+testdata/foo.yaml,17,rharkor/caching-for-turbo,v1.6,
+testdata/foo.yaml,18,peaceiris/actions-gh-pages,v4.0.0,
+testdata/foo.yaml,21,cardinalby/git-get-release-action,cf4593dd18e51a1ecfbfb1c68abac9910a8b1e0c,v1
+testdata/foo.yaml,23,suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml,v0.5.0,
+testdata/foo.yaml,30,slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml,v1.6.0,

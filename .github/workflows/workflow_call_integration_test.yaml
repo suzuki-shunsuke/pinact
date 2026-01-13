@@ -27,6 +27,21 @@ jobs:
             ./cmd/pinact
       - run: pinact -v
 
+      - run: pinact list testdata/foo.yaml > testdata/foo_list_result.txt
+      - run: diff testdata/foo_list.txt testdata/foo_list_result.txt
+
+      - run: pinact list --owner actions testdata/foo.yaml > testdata/foo_list_owner_result.txt
+      - run: diff testdata/foo_list_owner.txt testdata/foo_list_owner_result.txt
+
+      - run: pinact list -i "^actions/checkout$" testdata/foo.yaml > testdata/foo_list_include_result.txt
+      - run: diff testdata/foo_list_include.txt testdata/foo_list_include_result.txt
+
+      - run: pinact list -e "^actions/" testdata/foo.yaml > testdata/foo_list_exclude_result.txt
+      - run: diff testdata/foo_list_exclude.txt testdata/foo_list_exclude_result.txt
+
+      - run: pinact list --line-template "{{.RepoOwner}}/{{.RepoName}}" testdata/foo.yaml | sort -u > testdata/foo_list_template_result.txt
+      - run: diff testdata/foo_list_template.txt testdata/foo_list_template_result.txt
+
       - run: |
           if pinact run --check testdata/foo.yaml; then
             echo "::error:: pinact run --check should fail"

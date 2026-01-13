@@ -7,12 +7,12 @@ import (
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
-// listWorkflows discovers GitHub Actions workflow and composite action files.
+// ListWorkflows discovers GitHub Actions workflow and composite action files.
 // It searches for YAML files in standard locations including .github/workflows
 // and action.yaml files in various directory structures.
 //
 // Returns a slice of discovered file paths or an error if globbing fails.
-func listWorkflows() ([]string, error) {
+func ListWorkflows() ([]string, error) {
 	patterns := []string{
 		".github/workflows/*.yml",
 		".github/workflows/*.yaml",
