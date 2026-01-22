@@ -319,12 +319,12 @@ This is a table how the behaviour is changed by these options.
 
 options | Fix files | Exit with code 1 if actions aren't pinned | Output changes
 --- | --- | --- | ---
-No option | o | | |
+No option | o | o | |
 -check | | o | |
--diff | | | o
+-diff | | o | o
 -check -diff | | o | o
 -check -fix | o | o | o
--fix -diff | o | | o
+-fix -diff | o | o | o
 
 ## Fix or exclude only specific actions
 
