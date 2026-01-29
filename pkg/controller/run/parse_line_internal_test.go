@@ -108,7 +108,7 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			act := parseAction(d.line)
+			act := ParseAction(d.line)
 			if diff := cmp.Diff(d.exp, act); diff != "" {
 				t.Fatal(diff)
 			}

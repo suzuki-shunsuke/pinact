@@ -61,10 +61,10 @@ func getVersionType(v string) VersionType {
 	return Other
 }
 
-// parseAction extracts action information from a YAML line.
+// ParseAction extracts action information from a YAML line.
 // It uses regular expressions to parse 'uses' statements and extract
 // action name, version, comments, and formatting details.
-func parseAction(line string) *Action {
+func ParseAction(line string) *Action {
 	matches := usesPattern.FindStringSubmatch(line)
 	if matches == nil {
 		return nil
@@ -132,7 +132,7 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 	defer func() {
 		e = attrs.With(e)
 	}()
-	action := parseAction(line)
+	action := ParseAction(line)
 	if action == nil {
 		logger.Debug("unmatch")
 		return "", nil
