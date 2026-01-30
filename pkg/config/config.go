@@ -23,6 +23,7 @@ type Config struct {
 	Files         []*File         `json:"files,omitempty" jsonschema:"description=Target files. If files are passed via positional command line arguments, this is ignored"`
 	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores"`
 	GHES          *GHES           `json:"ghes,omitempty" yaml:"ghes" jsonschema:"description=GitHub Enterprise Server configuration"`
+	Separator     string          `json:"separator,omitempty" jsonschema:"description=Separator between version and tag comment. Default is ' # '"`
 }
 
 type GHES struct {
@@ -304,4 +305,13 @@ func (cfg *Config) Init() error {
 		}
 	}
 	return nil
+}
+
+// GetSeparator returns the configured separator or the default value " # ".
+// This separator is used between the action version and the tag comment.
+func (cfg *Config) GetSeparator() string {
+	if cfg.Separator == "" {
+		return " # "
+	}
+	return cfg.Separator
 }

@@ -67,3 +67,40 @@ func TestIgnoreAction_Match(t *testing.T) {
 		})
 	}
 }
+
+func TestConfig_GetSeparator(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		separator string
+		want      string
+	}{
+		{
+			name:      "default separator when empty",
+			separator: "",
+			want:      " # ",
+		},
+		{
+			name:      "custom separator 1",
+			separator: " # tag=",
+			want:      " # tag=",
+		},
+		{
+			name:      "custom separator 2",
+			separator: "  # ",
+			want:      "  # ",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			cfg := &config.Config{
+				Separator: tt.separator,
+			}
+			if got := cfg.GetSeparator(); got != tt.want {
+				t.Errorf("GetSeparator() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
