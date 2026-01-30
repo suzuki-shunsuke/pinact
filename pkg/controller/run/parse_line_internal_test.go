@@ -257,7 +257,60 @@ func Test_patchLine(t *testing.T) {
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			line := patchLine(d.action, d.version, d.tag)
+			fs := afero.NewMemMapFs()
+			cfg := &config.Config{}
+			ctrl := New(nil, nil, nil, fs, cfg, &ParamRun{})
+			line := ctrl.patchLine(d.action, d.version, d.tag)
+			if line != d.exp {
+				t.Fatalf(`wanted %s, got %s`, d.exp, line)
+			}
+		})
+	}
+}
+
+func Test_patchLine_customSeparator(t *testing.T) {
+	t.Parallel()
+	data := []struct {
+		name      string
+		tag       string
+		version   string
+		action    *Action
+		separator string
+		exp       string
+	}{
+		{
+			name: "custom separator",
+			exp:  "  - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5  # v3.5.2",
+			action: &Action{
+				Uses:    "  - uses: ",
+				Name:    "actions/checkout",
+				Version: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+			},
+			version:   "ee0669bd1cc54295c223e0bb666b733df41de1c5",
+			tag:       "v3.5.2",
+			separator: "  # ",
+		},
+		{
+			name: "existing separator preserved",
+			exp:  "  uses: actions/setup-go@abc123 # tag=v4.0.0",
+			action: &Action{
+				Uses:                    "  uses: ",
+				Name:                    "actions/setup-go",
+				Version:                 "v3",
+				VersionCommentSeparator: " # tag=",
+			},
+			version:   "abc123",
+			tag:       "v4.0.0",
+			separator: "  # ",
+		},
+	}
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			cfg := &config.Config{Separator: d.separator}
+			ctrl := New(nil, nil, nil, fs, cfg, &ParamRun{})
+			line := ctrl.patchLine(d.action, d.version, d.tag)
 			if line != d.exp {
 				t.Fatalf(`wanted %s, got %s`, d.exp, line)
 			}
