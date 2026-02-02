@@ -4,11 +4,9 @@ package di
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -77,12 +75,11 @@ func getSeparator(cfg *config.Config, flags *Flags, getEnv func(string) string) 
 	return " # "
 }
 
+var separatorPattern = regexp.MustCompile(` +# +(?:tag=)?`)
+
 func validateSeparator(sep string) error {
-	if !strings.Contains(sep, "#") {
-		return errors.New("separator must contain '#'")
-	}
-	if !strings.HasPrefix(sep, " ") {
-		return errors.New("separator must start with space ' '")
+	if !separatorPattern.MatchString(sep) {
+		return fmt.Errorf("separator must match the regular expression `%s`", separatorPattern.String())
 	}
 	return nil
 }
