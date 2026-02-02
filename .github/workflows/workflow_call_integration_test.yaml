@@ -26,7 +26,6 @@ jobs:
             -ldflags "-X main.version=v1.0.0 -X main.commit=$GITHUB_SHA -X main.date=$(date +"%Y-%m-%dT%H:%M:%SZ%:z" | tr -d '+')" \
             ./cmd/pinact
       - run: pinact -v
-
       - run: |
           if pinact run --check testdata/foo.yaml; then
             echo "::error:: pinact run --check should fail"
@@ -57,6 +56,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{github.token}}
       - run: diff testdata/foo.yaml testdata/foo_exclude_after.yaml
+
+      - run: pinact run testdata/separator/foo.yaml
+        env:
+          GITHUB_TOKEN: ${{github.token}}
+          PINACT_CONFIG: testdata/separator/pinact.yaml
+      - run: diff testdata/separator/foo.yaml testdata/foo_after.yaml
+
+      - name: Test separator
+        run: pinact run testdata/separator/foo.yaml
+        env:
+          GITHUB_TOKEN: ${{github.token}}
+          PINACT_CONFIG: testdata/separator/pinact.yaml
+      - run: diff testdata/separator/foo.yaml testdata/separator/foo_after.yaml
 
       - run: pinact run
         working-directory: testdata/actions
