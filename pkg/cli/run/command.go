@@ -58,7 +58,7 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 			di.SetEnv(flags, env.Getenv)
 			secrets := &di.Secrets{}
 			secrets.SetFromEnv(env.Getenv)
-			return di.Run(ctx, logger, flags, secrets)
+			return di.Run(ctx, logger, flags, secrets, env.Getenv)
 		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
@@ -152,6 +152,12 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 					}
 					return nil
 				},
+			},
+			&cli.StringFlag{
+				Name:        "separator",
+				Aliases:     []string{"sep"},
+				Usage:       "Separator between version and tag comment",
+				Destination: &flags.Separator,
 			},
 		},
 		Arguments: []cli.Argument{

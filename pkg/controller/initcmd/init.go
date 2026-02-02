@@ -15,6 +15,8 @@ version: 3
 #   - pattern: action.yaml
 #   - pattern: */action.yaml
 
+# separator: "  # "
+
 ignore_actions:
 # - name: slsa-framework/slsa-github-generator/\.github/workflows/generator_generic_slsa3\.yml
 #   ref: v\d+\.\d+\.\d+

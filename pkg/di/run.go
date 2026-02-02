@@ -4,9 +4,11 @@ package di
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -27,7 +29,7 @@ type ghesServices struct {
 // Run executes the main run command logic.
 // It configures logging, processes GitHub Actions context, parses includes/excludes,
 // sets up the controller, and executes the pinning operation.
-func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Secrets) error {
+func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Secrets, getEnv func(string) string) error {
 	if flags.IsGitHubActions {
 		color.NoColor = false
 	}
@@ -41,6 +43,18 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 	cfg, err := readConfig(fs, flags.Config)
 	if err != nil {
 		return err
+	}
+	if flags.Separator != "" {
+		cfg.Separator = flags.Separator
+	}
+	if cfg.Separator == "" {
+		cfg.Separator = getEnv("PINACT_SEPARATOR")
+	}
+	if !strings.Contains(cfg.Separator, "#") {
+		return errors.New("separator must contain '#'")
+	}
+	if !strings.HasPrefix(cfg.Separator, " ") {
+		return errors.New("separator must start with space ' '")
 	}
 
 	review := setupReview(fs, logger, flags)
