@@ -306,12 +306,3 @@ func (cfg *Config) Init() error {
 	}
 	return nil
 }
-
-// GetSeparator returns the configured separator or the default value " # ".
-// This separator is used between the action version and the tag comment.
-func (cfg *Config) GetSeparator() string {
-	if cfg.Separator == "" {
-		return " # "
-	}
-	return cfg.Separator
-}

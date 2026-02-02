@@ -44,17 +44,9 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 	if err != nil {
 		return err
 	}
-	if flags.Separator != "" {
-		cfg.Separator = flags.Separator
-	}
-	if cfg.Separator == "" {
-		cfg.Separator = getEnv("PINACT_SEPARATOR")
-	}
-	if !strings.Contains(cfg.Separator, "#") {
-		return errors.New("separator must contain '#'")
-	}
-	if !strings.HasPrefix(cfg.Separator, " ") {
-		return errors.New("separator must start with space ' '")
+	cfg.Separator = getSeparator(cfg, flags, getEnv)
+	if err := validateSeparator(cfg.Separator); err != nil {
+		return err
 	}
 
 	review := setupReview(fs, logger, flags)
@@ -70,6 +62,29 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 
 	ctrl := run.New(services.repoService, services.prService, services.gitService, fs, cfg, param)
 	return ctrl.Run(ctx, logger.Logger) //nolint:wrapcheck
+}
+
+func getSeparator(cfg *config.Config, flags *Flags, getEnv func(string) string) string {
+	if flags.Separator != "" {
+		return flags.Separator
+	}
+	if cfg.Separator != "" {
+		return cfg.Separator
+	}
+	if s := getEnv("PINACT_SEPARATOR"); s != "" {
+		return s
+	}
+	return " # "
+}
+
+func validateSeparator(sep string) error {
+	if !strings.Contains(sep, "#") {
+		return errors.New("separator must contain '#'")
+	}
+	if !strings.HasPrefix(sep, " ") {
+		return errors.New("separator must start with space ' '")
+	}
+	return nil
 }
 
 func readConfig(fs afero.Fs, configFilePath string) (*config.Config, error) {

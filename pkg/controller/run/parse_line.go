@@ -375,7 +375,7 @@ func (c *Controller) parseShortSemverTagLine(ctx context.Context, logger *slog.L
 func (c *Controller) patchLine(action *Action, version, tag string) string {
 	sep := action.VersionCommentSeparator
 	if sep == "" {
-		sep = c.cfg.GetSeparator()
+		sep = c.cfg.Separator
 	}
 	return action.Uses + action.Quote + action.Name + "@" + version + action.Quote + sep + tag + action.Suffix
 }
