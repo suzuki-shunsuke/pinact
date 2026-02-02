@@ -422,6 +422,9 @@ ignore_actions:
 ghes:
   api_url: https://ghes.example.com
   fallback: true # optional, default is false
+
+# Separator between version and tag comment (optional, default is " # ")
+separator: " # "
 ```
 
 #### `files`
@@ -479,6 +482,27 @@ A regular expression of ignored action versions (branch, tag, or commit hash).
 #### `ghes`
 
 [See GitHub Enterprise Support](#github-enterprise-server-ghes-support).
+
+#### `separator`
+
+This is optional. Default is `" # "`.
+The separator between the action version (commit SHA) and the version tag comment.
+
+e.g.
+
+```yaml
+# Default separator " # "
+separator: " # "
+# Results in: uses: actions/checkout@abc123... # v3.5.0
+
+# Custom separator " # tag="
+separator: " # tag="
+# Results in: uses: actions/checkout@abc123... # tag=v3.5.0
+
+# Custom separator with double space before #
+separator: "  # "
+# Results in: uses: actions/checkout@abc123...  # v3.5.0
+```
 
 ### Old Schemas
 

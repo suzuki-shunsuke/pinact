@@ -223,7 +223,7 @@ func (c *Controller) updateToLatestVersion(ctx context.Context, logger *slog.Log
 	if err != nil {
 		return "", fmt.Errorf("get a reference: %w", err)
 	}
-	return patchLine(action, sha, lv), nil
+	return c.patchLine(action, sha, lv), nil
 }
 
 // pinCurrentVersion pins the current version to a commit SHA.
@@ -244,7 +244,7 @@ func (c *Controller) pinCurrentVersion(ctx context.Context, logger *slog.Logger,
 			longVersion = v
 		}
 	}
-	return patchLine(action, sha, longVersion), nil
+	return c.patchLine(action, sha, longVersion), nil
 }
 
 // compareVersion compares two version strings.
@@ -293,7 +293,7 @@ func (c *Controller) handleCurrentVersionIsLatest(ctx context.Context, logger *s
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
-		return patchLine(action, sha, lv), nil
+		return c.patchLine(action, sha, lv), nil
 	case FullCommitSHA:
 		return c.verifyIfNeeded(ctx, logger, action)
 	}
@@ -313,7 +313,7 @@ func (c *Controller) handleUpdateToNewerVersion(ctx context.Context, logger *slo
 	if err != nil {
 		return "", fmt.Errorf("get the latest version: %w", err)
 	}
-	return patchLine(action, sha, lv), nil
+	return c.patchLine(action, sha, lv), nil
 }
 
 // parseSemverTagLinePin handles the pin case for semver tag lines.
@@ -355,7 +355,7 @@ func (c *Controller) parseShortSemverTagLine(ctx context.Context, logger *slog.L
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
-		return patchLine(action, sha, lv), nil
+		return c.patchLine(action, sha, lv), nil
 	}
 	// replace Shortsemer to Semver
 	longVersion, err := c.getLongVersionFromSHA(ctx, logger, action, action.Version)
@@ -366,16 +366,16 @@ func (c *Controller) parseShortSemverTagLine(ctx context.Context, logger *slog.L
 		logger.Debug("a long tag whose SHA is same as SHA of the version annotation isn't found")
 		return "", nil
 	}
-	return patchLine(action, action.Version, longVersion), nil
+	return c.patchLine(action, action.Version, longVersion), nil
 }
 
 // patchLine reconstructs a workflow line with updated version and tag.
 // It combines the action information with new version and tag to create
 // the updated line with proper formatting and comments.
-func patchLine(action *Action, version, tag string) string {
+func (c *Controller) patchLine(action *Action, version, tag string) string {
 	sep := action.VersionCommentSeparator
 	if sep == "" {
-		sep = " # "
+		sep = c.cfg.GetSeparator()
 	}
 	return action.Uses + action.Quote + action.Name + "@" + version + action.Quote + sep + tag + action.Suffix
 }

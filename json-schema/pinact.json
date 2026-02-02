@@ -29,6 +29,10 @@
         "ghes": {
           "$ref": "#/$defs/GHES",
           "description": "GitHub Enterprise Server configuration"
+        },
+        "separator": {
+          "type": "string",
+          "description": "Separator between version and tag comment. Default is ' # '"
         }
       },
       "additionalProperties": false,
