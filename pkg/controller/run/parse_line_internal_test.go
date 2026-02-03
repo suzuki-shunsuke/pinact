@@ -205,7 +205,9 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
 					},
 				},
-			}, nil, nil, fs, &config.Config{}, &ParamRun{})
+			}, nil, nil, fs, &config.Config{
+				Separator: " # ",
+			}, &ParamRun{})
 			line, err := ctrl.parseLine(t.Context(), logger, d.line)
 			if err != nil {
 				if d.isErr {
@@ -258,7 +260,9 @@ func Test_patchLine(t *testing.T) {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			cfg := &config.Config{}
+			cfg := &config.Config{
+				Separator: " # ",
+			}
 			ctrl := New(nil, nil, nil, fs, cfg, &ParamRun{})
 			line := ctrl.patchLine(d.action, d.version, d.tag)
 			if line != d.exp {

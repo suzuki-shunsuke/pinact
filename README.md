@@ -424,6 +424,7 @@ ghes:
   fallback: true # optional, default is false
 
 # Separator between version and tag comment (optional, default is " # ")
+# pinact >= v3.9.0
 separator: " # "
 ```
 
@@ -485,8 +486,12 @@ A regular expression of ignored action versions (branch, tag, or commit hash).
 
 #### `separator`
 
-This is optional. Default is `" # "`.
+pinact >= v3.9.0 [#1365](https://github.com/suzuki-shunsuke/pinact/pull/1365) [#1372](https://github.com/suzuki-shunsuke/pinact/pull/1372)
+
+This is optional. Default is ` # `.
 The separator between the action version (commit SHA) and the version tag comment.
+It must include `#`.
+You can also configure the separator by command line option `--separator (-sep)` or environment variable `PINACT_SEPARATOR`.
 
 e.g.
 

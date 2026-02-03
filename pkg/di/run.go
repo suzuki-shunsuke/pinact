@@ -27,7 +27,7 @@ type ghesServices struct {
 // Run executes the main run command logic.
 // It configures logging, processes GitHub Actions context, parses includes/excludes,
 // sets up the controller, and executes the pinning operation.
-func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Secrets) error {
+func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Secrets, getEnv func(string) string) error {
 	if flags.IsGitHubActions {
 		color.NoColor = false
 	}
@@ -40,6 +40,10 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 
 	cfg, err := readConfig(fs, flags.Config)
 	if err != nil {
+		return err
+	}
+	cfg.Separator = getSeparator(cfg, flags, getEnv)
+	if err := validateSeparator(cfg.Separator); err != nil {
 		return err
 	}
 
@@ -56,6 +60,28 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 
 	ctrl := run.New(services.repoService, services.prService, services.gitService, fs, cfg, param)
 	return ctrl.Run(ctx, logger.Logger) //nolint:wrapcheck
+}
+
+func getSeparator(cfg *config.Config, flags *Flags, getEnv func(string) string) string {
+	if flags.Separator != "" {
+		return flags.Separator
+	}
+	if cfg.Separator != "" {
+		return cfg.Separator
+	}
+	if s := getEnv("PINACT_SEPARATOR"); s != "" {
+		return s
+	}
+	return " # "
+}
+
+var separatorPattern = regexp.MustCompile(` +# +(?:tag=)?`)
+
+func validateSeparator(sep string) error {
+	if !separatorPattern.MatchString(sep) {
+		return fmt.Errorf("separator must match the regular expression `%s`", separatorPattern.String())
+	}
+	return nil
 }
 
 func readConfig(fs afero.Fs, configFilePath string) (*config.Config, error) {
