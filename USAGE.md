@@ -11,7 +11,7 @@ USAGE:
    pinact [global options] [command [command options]]
 
 VERSION:
-   3.8.0
+   3.9.0
 
 COMMANDS:
    init        Create .pinact.yaml if it doesn't exist
@@ -92,6 +92,7 @@ OPTIONS:
    --include string, -i string [ --include string, -i string ]  A regular expression to fix actions
    --exclude string, -e string [ --exclude string, -e string ]  A regular expression to exclude actions
    --min-age int, -m int                                        Skip versions released within the specified number of days (requires -u) (default: 0) [$PINACT_MIN_AGE]
+   --separator string, --sep string                             Separator between version and tag comment
    --help, -h                                                   show help
 ```
 
