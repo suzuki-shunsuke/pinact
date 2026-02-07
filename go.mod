@@ -1,6 +1,6 @@
 module github.com/suzuki-shunsuke/pinact/v3
 
-go 1.25.6
+go 1.25.7
 
 require (
 	github.com/fatih/color v1.18.0
