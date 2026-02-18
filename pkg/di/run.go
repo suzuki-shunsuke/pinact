@@ -53,7 +53,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 	if err != nil {
 		return err
 	}
-	services, err := setupGHESServices(ctx, gh, cfg, flags, secrets.GHESToken)
+	services, err := setupGHESServices(ctx, gh, cfg, flags, secrets.GHESToken, secrets.GitHubTokenForReview, secrets.GHESTokenForReview)
 	if err != nil {
 		return err
 	}
