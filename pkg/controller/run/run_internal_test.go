@@ -142,9 +142,9 @@ func TestController_processLines(t *testing.T) { //nolint:funlen
 					"actions/checkout/0": {
 						Tags: []*github.RepositoryTag{
 							{
-								Name: github.Ptr("v3.5.2"),
+								Name: new("v3.5.2"),
 								Commit: &github.Commit{
-									SHA: github.Ptr("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
+									SHA: new("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
 								},
 							},
 						},

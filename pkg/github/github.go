@@ -41,10 +41,10 @@ func New(ctx context.Context, logger *slog.Logger, token string, keyringEnabled,
 }
 
 // Ptr returns a pointer to the provided value.
-// This is a convenience function that delegates to github.Ptr for
+// This is a convenience function that delegates to new for
 // creating pointers to values, commonly needed for GitHub API structs.
 func Ptr[T any](v T) *T {
-	return github.Ptr(v)
+	return new(v)
 }
 
 // getHTTPClientForGitHub creates an HTTP client configured for GitHub API access.
