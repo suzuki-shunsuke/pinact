@@ -46,7 +46,7 @@ func Test_compileRegexps(t *testing.T) {
 
 func Test_buildParam_default(t *testing.T) {
 	t.Parallel()
-	flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Args: []string{"test.yaml"}, PWD: "/tmp"}
+	flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Args: []string{"test.yaml"}, CWD: "/tmp"}
 	got, err := buildParam(flags, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

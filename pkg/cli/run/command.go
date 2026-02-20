@@ -54,7 +54,7 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 			if err != nil {
 				return fmt.Errorf("get the current directory: %w", err)
 			}
-			flags.PWD = pwd
+			flags.CWD = pwd
 			di.SetEnv(flags, env.Getenv)
 			secrets := &di.Secrets{}
 			secrets.SetFromEnv(env.Getenv)
