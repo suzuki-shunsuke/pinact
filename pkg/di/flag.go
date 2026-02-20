@@ -32,7 +32,7 @@ type Flags struct {
 	GitHubEventPath  string
 	GHESAPIURL       string
 
-	PWD string
+	CWD string
 
 	FixCount int
 	PR       int
