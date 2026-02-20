@@ -3,7 +3,7 @@ package di
 import (
 	"testing"
 
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
 )
 
 func Test_compileRegexps(t *testing.T) {
@@ -46,7 +46,7 @@ func Test_compileRegexps(t *testing.T) {
 
 func Test_buildParam_default(t *testing.T) {
 	t.Parallel()
-	flags := &Flags{GlobalFlags: &flag.GlobalFlags{}, Args: []string{"test.yaml"}, PWD: "/tmp"}
+	flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Args: []string{"test.yaml"}, PWD: "/tmp"}
 	got, err := buildParam(flags, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -61,7 +61,7 @@ func Test_buildParam_default(t *testing.T) {
 
 func Test_buildParam_checkMode(t *testing.T) {
 	t.Parallel()
-	flags := &Flags{GlobalFlags: &flag.GlobalFlags{}, Check: true}
+	flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Check: true}
 	got, err := buildParam(flags, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -76,7 +76,7 @@ func Test_buildParam_checkMode(t *testing.T) {
 
 func Test_buildParam_diffMode(t *testing.T) {
 	t.Parallel()
-	flags := &Flags{GlobalFlags: &flag.GlobalFlags{}, Diff: true}
+	flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Diff: true}
 	got, err := buildParam(flags, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -88,7 +88,7 @@ func Test_buildParam_diffMode(t *testing.T) {
 
 func Test_buildParam_explicitFix(t *testing.T) {
 	t.Parallel()
-	flags := &Flags{GlobalFlags: &flag.GlobalFlags{}, Check: true, Fix: true, FixCount: 1}
+	flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Check: true, Fix: true, FixCount: 1}
 	got, err := buildParam(flags, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -102,14 +102,14 @@ func Test_buildParam_invalidRegex(t *testing.T) {
 	t.Parallel()
 	t.Run("invalid include", func(t *testing.T) {
 		t.Parallel()
-		flags := &Flags{GlobalFlags: &flag.GlobalFlags{}, Include: []string{"[invalid"}}
+		flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Include: []string{"[invalid"}}
 		if _, err := buildParam(flags, nil); err == nil {
 			t.Error("expected error, got nil")
 		}
 	})
 	t.Run("invalid exclude", func(t *testing.T) {
 		t.Parallel()
-		flags := &Flags{GlobalFlags: &flag.GlobalFlags{}, Exclude: []string{"[invalid"}}
+		flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Exclude: []string{"[invalid"}}
 		if _, err := buildParam(flags, nil); err == nil {
 			t.Error("expected error, got nil")
 		}
