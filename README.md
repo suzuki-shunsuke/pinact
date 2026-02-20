@@ -315,16 +315,19 @@ INFO[0000] action isn't pinned
 ### -diff, -check, -fix options
 
 The behaviour of `pinact run` command is changed by command line options `-diff`, `-check`, and `-fix`.
-This is a table how the behaviour is changed by these options.
 
-options | Fix files | Exit with code 1 if actions aren't pinned | Output changes
---- | --- | --- | ---
-No option | o | | |
--check | | o | |
--diff | | | o
--check -diff | | o | o
--check -fix | o | o | o
--fix -diff | o | | o
+Default behaviour:
+
+- Fix files
+- Exit with code 1 if actions aren't pinned
+- Don't output changes
+
+Each option's behaviour:
+
+- `-check` disables to fix files
+  - If `-check` is used with `-fix`, it fixes files. In that case, `-check` has no meaning
+- `-diff` outputs changes and disables to fix files
+- `-fix` uses with `-diff` to output changes and fix files
 
 ## Fix or exclude only specific actions
 
