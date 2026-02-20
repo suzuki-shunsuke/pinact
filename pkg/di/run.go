@@ -122,7 +122,7 @@ func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
 	param := &run.ParamRun{
 		WorkflowFilePaths: flags.Args,
 		ConfigFilePath:    flags.Config,
-		PWD:               flags.PWD,
+		CWD:               flags.CWD,
 		IsVerify:          flags.Verify,
 		Check:             flags.Check,
 		Update:            flags.Update,
