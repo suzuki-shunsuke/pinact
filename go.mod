@@ -6,7 +6,7 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-github/v82 v82.0.0
+	github.com/google/go-github/v83 v83.0.0
 	github.com/hashicorp/go-version v1.8.0
 	github.com/lmittmann/tint v1.1.3
 	github.com/spf13/afero v1.15.0
