@@ -207,7 +207,7 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "single semver release",
 			releases: []*github.RepositoryRelease{
-				{TagName: github.Ptr("v1.0.0")},
+				{TagName: new("v1.0.0")},
 			},
 			wantVersion: "v1.0.0",
 			wantErr:     false,
@@ -215,9 +215,9 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "multiple semver releases - returns highest",
 			releases: []*github.RepositoryRelease{
-				{TagName: github.Ptr("v1.0.0")},
-				{TagName: github.Ptr("v2.0.0")},
-				{TagName: github.Ptr("v1.5.0")},
+				{TagName: new("v1.0.0")},
+				{TagName: new("v2.0.0")},
+				{TagName: new("v1.5.0")},
 			},
 			wantVersion: "v2.0.0",
 			wantErr:     false,
@@ -225,9 +225,9 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "mix of valid and invalid semver",
 			releases: []*github.RepositoryRelease{
-				{TagName: github.Ptr("v1.0.0")},
-				{TagName: github.Ptr("not-a-version")},
-				{TagName: github.Ptr("v2.0.0")},
+				{TagName: new("v1.0.0")},
+				{TagName: new("not-a-version")},
+				{TagName: new("v2.0.0")},
 			},
 			wantVersion: "v2.0.0",
 			wantErr:     false,
@@ -235,9 +235,9 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "only invalid versions - returns latest by string comparison",
 			releases: []*github.RepositoryRelease{
-				{TagName: github.Ptr("main")},
-				{TagName: github.Ptr("release")},
-				{TagName: github.Ptr("develop")},
+				{TagName: new("main")},
+				{TagName: new("release")},
+				{TagName: new("develop")},
 			},
 			wantVersion: "release",
 			wantErr:     false,
@@ -257,9 +257,9 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "prerelease versions",
 			releases: []*github.RepositoryRelease{
-				{TagName: github.Ptr("v1.0.0-alpha")},
-				{TagName: github.Ptr("v1.0.0-beta")},
-				{TagName: github.Ptr("v1.0.0")},
+				{TagName: new("v1.0.0-alpha")},
+				{TagName: new("v1.0.0-beta")},
+				{TagName: new("v1.0.0")},
 			},
 			wantVersion: "v1.0.0",
 			wantErr:     false,
@@ -267,9 +267,9 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "build metadata versions",
 			releases: []*github.RepositoryRelease{
-				{TagName: github.Ptr("v1.0.0+build.1")},
-				{TagName: github.Ptr("v1.0.0+build.2")},
-				{TagName: github.Ptr("v1.0.1")},
+				{TagName: new("v1.0.0+build.1")},
+				{TagName: new("v1.0.0+build.2")},
+				{TagName: new("v1.0.1")},
 			},
 			wantVersion: "v1.0.1",
 			wantErr:     false,
@@ -278,7 +278,7 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 			name: "releases with nil tag names",
 			releases: []*github.RepositoryRelease{
 				{TagName: nil},
-				{TagName: github.Ptr("v1.0.0")},
+				{TagName: new("v1.0.0")},
 				{TagName: nil},
 			},
 			wantVersion: "v1.0.0",
@@ -294,8 +294,8 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "empty tag name",
 			releases: []*github.RepositoryRelease{
-				{TagName: github.Ptr("")},
-				{TagName: github.Ptr("v1.0.0")},
+				{TagName: new("")},
+				{TagName: new("v1.0.0")},
 			},
 			wantVersion: "v1.0.0",
 			wantErr:     false,
@@ -303,9 +303,9 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "stable version ignores prerelease when current is stable (issue #1095)",
 			releases: []*github.RepositoryRelease{
-				{TagName: github.Ptr("v6-beta"), Prerelease: github.Ptr(true)},
-				{TagName: github.Ptr("v5.0.0"), Prerelease: github.Ptr(false)},
-				{TagName: github.Ptr("v4.3.0"), Prerelease: github.Ptr(false)},
+				{TagName: new("v6-beta"), Prerelease: new(true)},
+				{TagName: new("v5.0.0"), Prerelease: new(false)},
+				{TagName: new("v4.3.0"), Prerelease: new(false)},
 			},
 			isStable:    true,
 			wantVersion: "v5.0.0",
@@ -314,8 +314,8 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "prerelease version can update to newer prerelease (issue #1095)",
 			releases: []*github.RepositoryRelease{
-				{TagName: github.Ptr("v6-beta"), Prerelease: github.Ptr(true)},
-				{TagName: github.Ptr("v5.0.0"), Prerelease: github.Ptr(false)},
+				{TagName: new("v6-beta"), Prerelease: new(true)},
+				{TagName: new("v5.0.0"), Prerelease: new(false)},
 			},
 			isStable:    false,
 			wantVersion: "v6-beta",
@@ -539,7 +539,7 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 		{
 			name: "single semver tag",
 			tags: []*github.RepositoryTag{
-				{Name: github.Ptr("v1.0.0")},
+				{Name: new("v1.0.0")},
 			},
 			wantVersion: "v1.0.0",
 			wantErr:     false,
@@ -547,9 +547,9 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 		{
 			name: "multiple semver tags - returns highest",
 			tags: []*github.RepositoryTag{
-				{Name: github.Ptr("v1.0.0")},
-				{Name: github.Ptr("v2.0.0")},
-				{Name: github.Ptr("v1.5.0")},
+				{Name: new("v1.0.0")},
+				{Name: new("v2.0.0")},
+				{Name: new("v1.5.0")},
 			},
 			wantVersion: "v2.0.0",
 			wantErr:     false,
@@ -557,9 +557,9 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 		{
 			name: "mix of valid and invalid semver",
 			tags: []*github.RepositoryTag{
-				{Name: github.Ptr("v1.0.0")},
-				{Name: github.Ptr("not-a-version")},
-				{Name: github.Ptr("v2.0.0")},
+				{Name: new("v1.0.0")},
+				{Name: new("not-a-version")},
+				{Name: new("v2.0.0")},
 			},
 			wantVersion: "v2.0.0",
 			wantErr:     false,
@@ -567,9 +567,9 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 		{
 			name: "only invalid versions - returns latest by string comparison",
 			tags: []*github.RepositoryTag{
-				{Name: github.Ptr("main")},
-				{Name: github.Ptr("release")},
-				{Name: github.Ptr("develop")},
+				{Name: new("main")},
+				{Name: new("release")},
+				{Name: new("develop")},
 			},
 			wantVersion: "release",
 			wantErr:     false,
@@ -589,9 +589,9 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 		{
 			name: "prerelease versions",
 			tags: []*github.RepositoryTag{
-				{Name: github.Ptr("v1.0.0-alpha")},
-				{Name: github.Ptr("v1.0.0-beta")},
-				{Name: github.Ptr("v1.0.0")},
+				{Name: new("v1.0.0-alpha")},
+				{Name: new("v1.0.0-beta")},
+				{Name: new("v1.0.0")},
 			},
 			wantVersion: "v1.0.0",
 			wantErr:     false,
@@ -599,9 +599,9 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 		{
 			name: "build metadata versions",
 			tags: []*github.RepositoryTag{
-				{Name: github.Ptr("v1.0.0+build.1")},
-				{Name: github.Ptr("v1.0.0+build.2")},
-				{Name: github.Ptr("v1.0.1")},
+				{Name: new("v1.0.0+build.1")},
+				{Name: new("v1.0.0+build.2")},
+				{Name: new("v1.0.1")},
 			},
 			wantVersion: "v1.0.1",
 			wantErr:     false,
@@ -610,7 +610,7 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 			name: "tags with nil names",
 			tags: []*github.RepositoryTag{
 				{Name: nil},
-				{Name: github.Ptr("v1.0.0")},
+				{Name: new("v1.0.0")},
 				{Name: nil},
 			},
 			wantVersion: "v1.0.0",
@@ -626,8 +626,8 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 		{
 			name: "empty tag name",
 			tags: []*github.RepositoryTag{
-				{Name: github.Ptr("")},
-				{Name: github.Ptr("v1.0.0")},
+				{Name: new("")},
+				{Name: new("v1.0.0")},
 			},
 			wantVersion: "v1.0.0",
 			wantErr:     false,
@@ -635,9 +635,9 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 		{
 			name: "tags without v prefix",
 			tags: []*github.RepositoryTag{
-				{Name: github.Ptr("1.0.0")},
-				{Name: github.Ptr("2.0.0")},
-				{Name: github.Ptr("1.5.0")},
+				{Name: new("1.0.0")},
+				{Name: new("2.0.0")},
+				{Name: new("1.5.0")},
 			},
 			wantVersion: "2.0.0",
 			wantErr:     false,
@@ -645,9 +645,9 @@ func TestController_getLatestVersionFromTags(t *testing.T) { //nolint:funlen
 		{
 			name: "mixed v prefix and no prefix",
 			tags: []*github.RepositoryTag{
-				{Name: github.Ptr("v1.0.0")},
-				{Name: github.Ptr("2.0.0")},
-				{Name: github.Ptr("v1.5.0")},
+				{Name: new("v1.0.0")},
+				{Name: new("2.0.0")},
+				{Name: new("v1.5.0")},
 			},
 			wantVersion: "2.0.0",
 			wantErr:     false,
