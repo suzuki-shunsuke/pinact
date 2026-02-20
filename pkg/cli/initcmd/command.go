@@ -10,14 +10,14 @@ import (
 	"fmt"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/initcmd"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/urfave/cli/v3"
 )
 
 type Flags struct {
-	*flag.GlobalFlags
+	*gflag.GlobalFlags
 
 	Args     []string
 	FirstArg string
@@ -25,7 +25,7 @@ type Flags struct {
 
 // New creates a new init command instance with the provided logger.
 // It returns a CLI command that can be registered with the main CLI application.
-func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command {
+func New(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags) *cli.Command {
 	r := &runner{}
 	return r.Command(logger, globalFlags)
 }
@@ -34,7 +34,7 @@ type runner struct{}
 
 // Command returns the CLI command definition for the init subcommand.
 // It defines the command name, usage, description, and action handler.
-func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command {
+func (r *runner) Command(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags) *cli.Command {
 	flags := &Flags{GlobalFlags: globalFlags}
 	return &cli.Command{
 		Name:  "init",

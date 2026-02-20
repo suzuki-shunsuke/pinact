@@ -8,7 +8,7 @@ package cli
 import (
 	"context"
 
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/initcmd"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/migrate"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/run"
@@ -22,7 +22,7 @@ import (
 // It configures the command structure with global flags and subcommands,
 // then runs the CLI with the provided arguments.
 func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
-	globalFlags := &flag.GlobalFlags{}
+	globalFlags := &gflag.GlobalFlags{}
 	return urfave.Command(env, &cli.Command{ //nolint:wrapcheck
 		Name:  "pinact",
 		Usage: "Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact",

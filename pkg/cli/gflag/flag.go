@@ -1,4 +1,4 @@
-package flag
+package gflag
 
 import "github.com/urfave/cli/v3"
 

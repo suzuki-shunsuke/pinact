@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/di"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
@@ -23,7 +23,7 @@ import (
 // New creates a new run command for the CLI.
 // It initializes a runner with the provided logger and returns
 // the configured CLI command for pinning GitHub Actions versions.
-func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags, env *urfave.Env) *cli.Command {
+func New(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags, env *urfave.Env) *cli.Command {
 	r := &runner{}
 	return r.Command(logger, globalFlags, env)
 }
@@ -34,7 +34,7 @@ type runner struct{}
 // It defines all flags, options, and the action handler for the run subcommand.
 // This command handles the core pinning functionality with various modes
 // like check, diff, fix, update, and review.
-func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags, env *urfave.Env) *cli.Command { //nolint:funlen
+func (r *runner) Command(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags, env *urfave.Env) *cli.Command { //nolint:funlen
 	flags := &di.Flags{GlobalFlags: globalFlags}
 	return &cli.Command{
 		Name:  "run",

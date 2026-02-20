@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/migrate"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
@@ -23,7 +23,7 @@ type runner struct{}
 // It initializes a runner with the provided logger and returns
 // the configured CLI command for migrating pinact configuration files.
 // Returns a pointer to the configured CLI command.
-func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command {
+func New(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags) *cli.Command {
 	r := runner{}
 	return r.Command(logger, globalFlags)
 }
@@ -33,7 +33,7 @@ func New(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command {
 // for the migrate subcommand.
 //
 // Returns a pointer to the configured CLI command.
-func (r *runner) Command(logger *slogutil.Logger, globalFlags *flag.GlobalFlags) *cli.Command {
+func (r *runner) Command(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags) *cli.Command {
 	return &cli.Command{
 		Name:  "migrate",
 		Usage: "Migrate .pinact.yaml",
@@ -51,7 +51,7 @@ $ pinact migrate
 // It configures logging, creates the filesystem interface and controller,
 // then performs the configuration file migration.
 // Returns an error if migration fails or logging configuration fails.
-func (r *runner) action(logger *slogutil.Logger, flags *flag.GlobalFlags) error {
+func (r *runner) action(logger *slogutil.Logger, flags *gflag.GlobalFlags) error {
 	if err := logger.SetLevel(flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
