@@ -10,7 +10,8 @@
 - id: pinact-fix
   name: Pin versions of Actions and reusable workflows
   description: Pin versions of GitHub Actions and reusable workflows
-  entry: pinact run
+  entry: pinact run --fix
+  args: [--diff]
   language: golang
   types: [yaml]
   files: ^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$
@@ -19,6 +20,7 @@
   name: Pin and update versions of Actions and reusable workflows
   description: Pin and update versions of GitHub Actions and reusable workflows
   entry: pinact run --update
+  args: [--diff]
   language: golang
   types: [yaml]
   files: ^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$
