@@ -24,3 +24,11 @@
   language: golang
   types: [yaml]
   files: ^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$
+
+- id: pinact-system
+  name: Pin versions of Actions and reusable workflows
+  description: Pin versions of GitHub Actions and reusable workflows
+  entry: pinact run
+  language: system
+  types: [yaml]
+  files: ^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$
