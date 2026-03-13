@@ -1,22 +1,22 @@
 module github.com/suzuki-shunsuke/pinact/v3
 
-go 1.25.7
+go 1.26.1
 
 require (
 	github.com/fatih/color v1.18.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-github/v82 v82.0.0
+	github.com/google/go-github/v83 v83.0.0
 	github.com/hashicorp/go-version v1.8.0
 	github.com/lmittmann/tint v1.1.3
 	github.com/spf13/afero v1.15.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.2
 	github.com/suzuki-shunsuke/slog-error v0.2.2
-	github.com/suzuki-shunsuke/slog-util v0.3.1
-	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.0
-	github.com/urfave/cli/v3 v3.6.2
-	golang.org/x/oauth2 v0.35.0
+	github.com/suzuki-shunsuke/slog-util v0.3.2
+	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.3
+	github.com/urfave/cli/v3 v3.7.0
+	golang.org/x/oauth2 v0.36.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

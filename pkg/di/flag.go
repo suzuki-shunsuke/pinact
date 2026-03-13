@@ -1,13 +1,13 @@
 package di
 
 import (
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 )
 
 // Flags holds all command-line flags for the run command.
 type Flags struct {
-	*flag.GlobalFlags
+	*gflag.GlobalFlags
 
 	Verify    bool
 	Check     bool
@@ -32,7 +32,7 @@ type Flags struct {
 	GitHubEventPath  string
 	GHESAPIURL       string
 
-	PWD string
+	CWD string
 
 	FixCount int
 	PR       int

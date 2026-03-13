@@ -5,7 +5,7 @@ import (
 
 	"github.com/lmittmann/tint"
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 )
@@ -81,7 +81,7 @@ func Test_setupReview(t *testing.T) {
 
 	t.Run("review disabled", func(t *testing.T) {
 		t.Parallel()
-		flags := &Flags{GlobalFlags: &flag.GlobalFlags{}, Review: false}
+		flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Review: false}
 		if got := setupReview(afero.NewMemMapFs(), logger, flags); got != nil {
 			t.Errorf("expected nil, got %+v", got)
 		}
@@ -90,7 +90,7 @@ func Test_setupReview(t *testing.T) {
 	t.Run("review enabled with all fields", func(t *testing.T) {
 		t.Parallel()
 		flags := &Flags{
-			GlobalFlags: &flag.GlobalFlags{},
+			GlobalFlags: &gflag.GlobalFlags{},
 			Review:      true,
 			RepoOwner:   "owner",
 			RepoName:    "repo",
@@ -114,7 +114,7 @@ func Test_setupReview(t *testing.T) {
 
 	t.Run("review enabled but invalid - missing required fields", func(t *testing.T) {
 		t.Parallel()
-		flags := &Flags{GlobalFlags: &flag.GlobalFlags{}, Review: true}
+		flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Review: true}
 		if got := setupReview(afero.NewMemMapFs(), logger, flags); got != nil {
 			t.Errorf("expected nil for invalid review, got %+v", got)
 		}

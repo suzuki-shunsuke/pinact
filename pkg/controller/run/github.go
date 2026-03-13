@@ -193,19 +193,19 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.
 // posts it to the specified pull request using the GitHub API.
 func (c *Controller) review(ctx context.Context, filePath, sha string, line int, suggestion string, err error) (int, error) {
 	cmt := &github.PullRequestComment{
-		Body: github.Ptr(""),
-		Path: github.Ptr(filePath),
-		Line: github.Ptr(line),
+		Body: new(""),
+		Path: new(filePath),
+		Line: new(line),
 	}
 	if sha != "" {
-		cmt.CommitID = github.Ptr(sha)
+		cmt.CommitID = new(sha)
 	}
 	const header = "Reviewed by [pinact](https://github.com/suzuki-shunsuke/pinact)"
 	switch {
 	case suggestion != "":
-		cmt.Body = github.Ptr(fmt.Sprintf("%s\n```suggestion\n%s\n```", header, suggestion))
+		cmt.Body = new(fmt.Sprintf("%s\n```suggestion\n%s\n```", header, suggestion))
 	case err != nil:
-		cmt.Body = github.Ptr(fmt.Sprintf("%s\n%s", header, err.Error()))
+		cmt.Body = new(fmt.Sprintf("%s\n%s", header, err.Error()))
 	default:
 		return 0, errors.New("either suggestion or error must be provided")
 	}

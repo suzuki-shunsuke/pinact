@@ -11,10 +11,6 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 )
 
-func strP(s string) *string {
-	return &s
-}
-
 func Test_parseAction(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	data := []struct {
@@ -164,27 +160,27 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 					"actions/checkout/0": {
 						Tags: []*github.RepositoryTag{
 							{
-								Name: strP("v3"),
+								Name: new("v3"),
 								Commit: &github.Commit{
-									SHA: strP("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
+									SHA: new("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
 								},
 							},
 							{
-								Name: strP("v3.5.2"),
+								Name: new("v3.5.2"),
 								Commit: &github.Commit{
-									SHA: strP("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
+									SHA: new("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
 								},
 							},
 							{
-								Name: strP("v2"),
+								Name: new("v2"),
 								Commit: &github.Commit{
-									SHA: strP("ee0669bd1cc54295c223e0bb666b733df41de1c5"),
+									SHA: new("ee0669bd1cc54295c223e0bb666b733df41de1c5"),
 								},
 							},
 							{
-								Name: strP("v2.7.0"),
+								Name: new("v2.7.0"),
 								Commit: &github.Commit{
-									SHA: strP("ee0669bd1cc54295c223e0bb666b733df41de1c5"),
+									SHA: new("ee0669bd1cc54295c223e0bb666b733df41de1c5"),
 								},
 							},
 						},

@@ -20,7 +20,7 @@ import (
 type ParamRun struct {
 	WorkflowFilePaths []string
 	ConfigFilePath    string
-	PWD               string
+	CWD               string
 	IsVerify          bool
 	Update            bool
 	Check             bool
