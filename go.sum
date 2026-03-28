@@ -73,8 +73,6 @@ github.com/suzuki-shunsuke/slog-util v0.3.2 h1:P4sc/swT8rwmmKDfMrh9GR+AzYJhJdW3B
 github.com/suzuki-shunsuke/slog-util v0.3.2/go.mod h1:fHyN2kPkinXSgo6GMR0QBj0gd/CpSer0j8bc5C4Pqks=
 github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.3 h1:28ZzFUyh118PFMBeHuKYPkIwaxHo+/mJYmljlr9DBRU=
 github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.3/go.mod h1:pfMAEENW39YADk1hW/bfHfO4rMu8GKgO4Psh6YY9nyM=
-github.com/urfave/cli/v3 v3.7.0 h1:AGSnbUyjtLiM+WJUb4dzXKldl/gL+F8OwmRDtVr6g2U=
-github.com/urfave/cli/v3 v3.7.0/go.mod h1:ysVLtOEmg2tOy6PknnYVhDoouyC/6N42TMeoMzskhso=
 github.com/urfave/cli/v3 v3.8.0 h1:XqKPrm0q4P0q5JpoclYoCAv0/MIvH/jZ2umzuf8pNTI=
 github.com/urfave/cli/v3 v3.8.0/go.mod h1:ysVLtOEmg2tOy6PknnYVhDoouyC/6N42TMeoMzskhso=
 github.com/wk8/go-ordered-map/v2 v2.1.8 h1:5h/BUHu93oj4gIdvHHHGsScSTMijfx5PeYkE/fJgbpc=
