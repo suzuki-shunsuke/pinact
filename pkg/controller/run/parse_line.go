@@ -222,18 +222,6 @@ func (c *Controller) addMissingComment(ctx context.Context, logger *slog.Logger,
 	if v == "" {
 		return "", nil
 	}
-	// If the found tag is a short semver (e.g. v3), try to find the full version (e.g. v3.5.2)
-	if getVersionType(v) == Shortsemver {
-		a := *action
-		a.VersionComment = v
-		longV, err := c.getLongVersionFromSHA(ctx, logger, &a, action.Version)
-		if err != nil {
-			return "", err
-		}
-		if longV != "" {
-			v = longV
-		}
-	}
 	return c.patchLine(action, action.Version, v), nil
 }
 
@@ -407,11 +395,13 @@ func (c *Controller) patchLine(action *Action, version, tag string) string {
 // getLongVersionFromSHA finds the full semantic version tag for a commit SHA.
 // It searches through repository tags to find a tag that points to the given
 // commit and matches the version comment prefix.
+// When multiple tags match, it prefers semver tags over short semver or non-version tags.
 func (c *Controller) getLongVersionFromSHA(ctx context.Context, logger *slog.Logger, action *Action, sha string) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 100, //nolint:mnd
 	}
 	// Get long tag from commit hash
+	var candidate string
 	for range 10 {
 		tags, resp, err := c.repositoriesService.ListTags(ctx, logger, action.RepoOwner, action.RepoName, opts)
 		if err != nil {
@@ -431,16 +421,23 @@ func (c *Controller) getLongVersionFromSHA(ctx context.Context, logger *slog.Log
 					continue
 				}
 			}
-			if strings.HasPrefix(tagName, action.VersionComment) {
+			if !strings.HasPrefix(tagName, action.VersionComment) {
+				continue
+			}
+			// Prefer full semver tags (e.g. v3.5.2) over short semver (e.g. v3) or non-version tags (e.g. latest)
+			if getVersionType(tagName) == Semver {
 				return tagName, nil
+			}
+			if candidate == "" {
+				candidate = tagName
 			}
 		}
 		if resp.NextPage == 0 {
-			return "", nil
+			return candidate, nil
 		}
 		opts.Page = resp.NextPage
 	}
-	return "", nil
+	return candidate, nil
 }
 
 // parseActionName extracts repository owner and name from action name.

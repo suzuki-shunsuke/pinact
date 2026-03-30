@@ -236,10 +236,11 @@ func TestController_parseLine_addMissingComment(t *testing.T) {
 	t.Parallel()
 	sha := "8e5e7e5ab8b370d6c329ec480221332ada57f0ab"
 	data := []struct {
-		name string
-		tags []*github.RepositoryTag
-		line string
-		exp  string
+		name    string
+		tags    []*github.RepositoryTag
+		commits map[string]*github.GetCommitSHA1Result
+		line    string
+		exp     string
 	}{
 		{
 			name: "semver tag found directly",
@@ -263,12 +264,57 @@ func TestController_parseLine_addMissingComment(t *testing.T) {
 			line: "  - uses: actions/checkout@" + sha,
 			exp:  "  - uses: actions/checkout@" + sha + " # v3",
 		},
+		{
+			name: "non-semver tag before semver tag - pinned SHA",
+			tags: []*github.RepositoryTag{
+				{
+					Name:   new("latest"),
+					Commit: &github.Commit{SHA: new(sha)},
+				},
+				{
+					Name:   new("v2"),
+					Commit: &github.Commit{SHA: new(sha)},
+				},
+				{
+					Name:   new("v2.11.5"),
+					Commit: &github.Commit{SHA: new(sha)},
+				},
+			},
+			line: "  - uses: actions/checkout@" + sha,
+			exp:  "  - uses: actions/checkout@" + sha + " # v2.11.5",
+		},
+		{
+			name: "non-semver tag before semver tag - short version",
+			tags: []*github.RepositoryTag{
+				{
+					Name:   new("latest"),
+					Commit: &github.Commit{SHA: new(sha)},
+				},
+				{
+					Name:   new("v2"),
+					Commit: &github.Commit{SHA: new(sha)},
+				},
+				{
+					Name:   new("v2.11.5"),
+					Commit: &github.Commit{SHA: new(sha)},
+				},
+			},
+			commits: map[string]*github.GetCommitSHA1Result{
+				"actions/checkout/v2": {SHA: sha},
+			},
+			line: "  - uses: actions/checkout@v2",
+			exp:  "  - uses: actions/checkout@" + sha + " # v2.11.5",
+		},
 	}
 	logger := slog.New(slog.DiscardHandler)
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
+			commits := d.commits
+			if commits == nil {
+				commits = map[string]*github.GetCommitSHA1Result{}
+			}
 			ctrl := New(&github.RepositoriesServiceImpl{
 				Tags: map[string]*github.ListTagsResult{
 					"actions/checkout/0": {
@@ -282,7 +328,7 @@ func TestController_parseLine_addMissingComment(t *testing.T) {
 						Response: &github.Response{},
 					},
 				},
-				Commits: map[string]*github.GetCommitSHA1Result{},
+				Commits: commits,
 			}, nil, nil, fs, &config.Config{
 				Separator: " # ",
 			}, &ParamRun{})
