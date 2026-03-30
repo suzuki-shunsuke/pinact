@@ -149,6 +149,20 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			line: `  "uses": 'actions/checkout@v2'`,
 			exp:  `  "uses": 'actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5' # v2.7.0`,
 		},
+		{
+			name: "pinned SHA without comment",
+			line: "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+			exp:  "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2",
+		},
+		{
+			name: "pinned SHA without comment (quoted)",
+			line: `  - 'uses': "actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab"`,
+			exp:  `  - 'uses': "actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab" # v3.5.2`,
+		},
+		{
+			name: "pinned SHA without comment - no matching tag",
+			line: "  - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		},
 	}
 	logger := slog.New(slog.DiscardHandler)
 	for _, d := range data {
@@ -213,6 +227,71 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			}
 			if line != d.exp {
 				t.Fatalf(`wanted %s, got %s`, d.exp, line)
+			}
+		})
+	}
+}
+
+func TestController_parseLine_addMissingComment(t *testing.T) {
+	t.Parallel()
+	sha := "8e5e7e5ab8b370d6c329ec480221332ada57f0ab"
+	data := []struct {
+		name string
+		tags []*github.RepositoryTag
+		line string
+		exp  string
+	}{
+		{
+			name: "semver tag found directly",
+			tags: []*github.RepositoryTag{
+				{
+					Name:   new("v3.5.2"),
+					Commit: &github.Commit{SHA: new(sha)},
+				},
+			},
+			line: "  - uses: actions/checkout@" + sha,
+			exp:  "  - uses: actions/checkout@" + sha + " # v3.5.2",
+		},
+		{
+			name: "only short semver tag exists",
+			tags: []*github.RepositoryTag{
+				{
+					Name:   new("v3"),
+					Commit: &github.Commit{SHA: new(sha)},
+				},
+			},
+			line: "  - uses: actions/checkout@" + sha,
+			exp:  "  - uses: actions/checkout@" + sha + " # v3",
+		},
+	}
+	logger := slog.New(slog.DiscardHandler)
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			ctrl := New(&github.RepositoriesServiceImpl{
+				Tags: map[string]*github.ListTagsResult{
+					"actions/checkout/0": {
+						Tags:     d.tags,
+						Response: &github.Response{},
+					},
+				},
+				Releases: map[string]*github.ListReleasesResult{
+					"actions/checkout/0": {
+						Releases: []*github.RepositoryRelease{},
+						Response: &github.Response{},
+					},
+				},
+				Commits: map[string]*github.GetCommitSHA1Result{},
+			}, nil, nil, fs, &config.Config{
+				Separator: " # ",
+			}, &ParamRun{})
+			line, err := ctrl.parseLine(t.Context(), logger, d.line)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if line != d.exp {
+				t.Fatalf("wanted %s, got %s", d.exp, line)
 			}
 		})
 	}

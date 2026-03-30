@@ -202,7 +202,7 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, ac
 	switch typ {
 	case Shortsemver, Semver:
 	case FullCommitSHA:
-		return "", nil
+		return c.addMissingComment(ctx, logger, action)
 	default:
 		return "", ErrCantPinned
 	}
@@ -211,6 +211,30 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, ac
 		return c.updateToLatestVersion(ctx, logger, action)
 	}
 	return c.pinCurrentVersion(ctx, logger, action, typ)
+}
+
+// addMissingComment looks up the tag for a pinned commit SHA and adds the version comment.
+func (c *Controller) addMissingComment(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
+	v, err := c.getLongVersionFromSHA(ctx, logger, action, action.Version)
+	if err != nil {
+		return "", err
+	}
+	if v == "" {
+		return "", nil
+	}
+	// If the found tag is a short semver (e.g. v3), try to find the full version (e.g. v3.5.2)
+	if getVersionType(v) == Shortsemver {
+		a := *action
+		a.VersionComment = v
+		longV, err := c.getLongVersionFromSHA(ctx, logger, &a, action.Version)
+		if err != nil {
+			return "", err
+		}
+		if longV != "" {
+			v = longV
+		}
+	}
+	return c.patchLine(action, action.Version, v), nil
 }
 
 // updateToLatestVersion updates an action to its latest version.
