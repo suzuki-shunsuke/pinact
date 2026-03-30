@@ -424,8 +424,14 @@ func (c *Controller) getLongVersionFromSHA(ctx context.Context, logger *slog.Log
 			if !strings.HasPrefix(tagName, action.VersionComment) {
 				continue
 			}
+			// When there's no version comment prefix to filter by,
+			// only accept version-like tags to avoid annotations like "# latest".
+			tagType := getVersionType(tagName)
+			if action.VersionComment == "" && tagType != Semver && tagType != Shortsemver {
+				continue
+			}
 			// Prefer full semver tags (e.g. v3.5.2) over short semver (e.g. v3) or non-version tags (e.g. latest)
-			if getVersionType(tagName) == Semver {
+			if tagType == Semver {
 				return tagName, nil
 			}
 			if candidate == "" {

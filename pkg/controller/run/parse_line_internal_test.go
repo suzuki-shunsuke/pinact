@@ -327,6 +327,20 @@ func TestController_parseLine_addMissingComment(t *testing.T) {
 			line: "  - uses: actions/checkout@v2",
 			exp:  "  - uses: actions/checkout@" + sha + " # 2.11.5",
 		},
+		{
+			name: "only non-version tags - pinned SHA unchanged",
+			tags: []*github.RepositoryTag{
+				{
+					Name:   new("latest"),
+					Commit: &github.Commit{SHA: new(sha)},
+				},
+				{
+					Name:   new("nightly"),
+					Commit: &github.Commit{SHA: new(sha)},
+				},
+			},
+			line: "  - uses: actions/checkout@" + sha,
+		},
 	}
 	logger := slog.New(slog.DiscardHandler)
 	for _, d := range data {
