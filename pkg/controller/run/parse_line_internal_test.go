@@ -305,6 +305,28 @@ func TestController_parseLine_addMissingComment(t *testing.T) {
 			line: "  - uses: actions/checkout@v2",
 			exp:  "  - uses: actions/checkout@" + sha + " # v2.11.5",
 		},
+		{
+			name: "issue 1447 - svenstaro/upload-release-action picks latest instead of semver",
+			tags: []*github.RepositoryTag{
+				{
+					Name:   new("latest"),
+					Commit: &github.Commit{SHA: new(sha)},
+				},
+				{
+					Name:   new("v2"),
+					Commit: &github.Commit{SHA: new(sha)},
+				},
+				{
+					Name:   new("2.11.5"),
+					Commit: &github.Commit{SHA: new(sha)},
+				},
+			},
+			commits: map[string]*github.GetCommitSHA1Result{
+				"actions/checkout/v2": {SHA: sha},
+			},
+			line: "  - uses: actions/checkout@v2",
+			exp:  "  - uses: actions/checkout@" + sha + " # 2.11.5",
+		},
 	}
 	logger := slog.New(slog.DiscardHandler)
 	for _, d := range data {
