@@ -9,14 +9,15 @@ import (
 type Flags struct {
 	*gflag.GlobalFlags
 
-	Verify    bool
-	Check     bool
-	Update    bool
-	Review    bool
-	Fix       bool
-	Diff      bool
-	Format    string
-	Separator string
+	Verify          bool
+	Check           bool
+	Update          bool
+	Review          bool
+	Fix             bool
+	Diff            bool
+	AllowBranchPins bool
+	Format          string
+	Separator       string
 
 	IsGitHubActions bool
 	FallbackEnabled bool

@@ -19,11 +19,12 @@ import (
 )
 
 type Config struct {
-	Version       int             `json:"version,omitempty" jsonschema:"enum=2,enum=3"`
-	Files         []*File         `json:"files,omitempty" jsonschema:"description=Target files. If files are passed via positional command line arguments, this is ignored"`
-	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores"`
-	GHES          *GHES           `json:"ghes,omitempty" yaml:"ghes" jsonschema:"description=GitHub Enterprise Server configuration"`
-	Separator     string          `json:"separator,omitempty" jsonschema:"description=Separator between version and tag comment. Default is ' # '"`
+	Version         int             `json:"version,omitempty" jsonschema:"enum=2,enum=3"`
+	Files           []*File         `json:"files,omitempty" jsonschema:"description=Target files. If files are passed via positional command line arguments, this is ignored"`
+	IgnoreActions   []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores"`
+	GHES            *GHES           `json:"ghes,omitempty" yaml:"ghes" jsonschema:"description=GitHub Enterprise Server configuration"`
+	Separator       string          `json:"separator,omitempty" jsonschema:"description=Separator between version and tag comment. Default is ' # '"`
+	AllowBranchPins bool            `json:"allow_branch_pins,omitempty" yaml:"allow_branch_pins" jsonschema:"description=Allow pinning refs that resolve to branches rather than tags. Default is false - pinact will raise an error on branch-sourced refs"`
 }
 
 type GHES struct {

@@ -2,12 +2,18 @@ package github
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 
 	"github.com/google/go-github/v84/github"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
+
+// errNotATag indicates a ref did not resolve to a tag; pinact does not pin
+// branches by default. Callers can wrap or check for this via errors.Is.
+var errNotATag = errors.New("pinact does not pin branches by default")
 
 // RepositoriesService defines the interface for GitHub Repositories API operations.
 type RepositoriesService interface {
@@ -234,32 +240,48 @@ func (r *RepositoriesServiceImpl) GetCommitSHA1(ctx context.Context, logger *slo
 	return sha, resp, err
 }
 
-// ResolveCommitSHAPreferTag resolves a git ref to a commit SHA, preferring the
-// tag namespace when both a tag and branch share the same name.
+// ResolveTagSHA resolves a git ref to a commit SHA via the tag namespace.
 //
 // GitHub's /commits/{ref} endpoint follows git's native precedence — branches
 // before tags when the name is ambiguous — but the GitHub Actions runner
 // resolves @ref to a tag before a branch. Pinning via the bare endpoint would
 // therefore diverge from what Actions executes at runtime. We query the tag
-// namespace explicitly (tags/<ref>) first and fall back to the bare ref only
-// on 404 so that branch-only refs (e.g. a repo with a v1 branch but no v1 tag)
-// keep resolving.
+// namespace explicitly (tags/<ref>).
 //
-// The second return value reports whether the SHA came from the tag namespace.
-func (r *RepositoriesServiceImpl) ResolveCommitSHAPreferTag(ctx context.Context, logger *slog.Logger, owner, repo, ref string) (string, bool, error) {
+// By default, refs that do not resolve to a tag return errNotATag — pinact
+// will not silently pin branches, since branches are mutable and pinning them
+// masks this distinction. When allowBranch is true, a 404 on the tag lookup
+// falls back to bare-ref resolution (preserving the pre-refusal behavior) and
+// a warning is logged. Users with legitimate branch-only refs should enable
+// the allow_branch_pins configuration / --allow-branch-pins flag.
+//
+// The underlying Commits cache is keyed on (owner, repo, ref) and is
+// flag-invariant: a 404 cached under tags/<ref> from a prior allowBranch=false
+// call routes correctly through the fallback on a subsequent allowBranch=true
+// call, and vice versa.
+func (r *RepositoriesServiceImpl) ResolveTagSHA(ctx context.Context, logger *slog.Logger, owner, repo, ref string, allowBranch bool) (string, error) {
 	sha, resp, err := r.GetCommitSHA1(ctx, logger, owner, repo, "tags/"+ref, "")
 	if err == nil {
-		return sha, true, nil
+		return sha, nil
 	}
 	if !isNotFoundResponse(resp) {
-		return "", false, err
+		return "", err
 	}
-	logger.Debug("no matching tag; falling back to bare ref", "owner", owner, "repo", repo, "ref", ref)
+	if !allowBranch {
+		return "", slogerr.With(errNotATag, //nolint:wrapcheck
+			"owner", owner,
+			"repo", repo,
+			"ref", ref,
+			"help_docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/005.md",
+		)
+	}
+	logger.Warn("ref does not resolve to a tag; falling back to bare-ref resolution (allow_branch_pins is enabled)",
+		"owner", owner, "repo", repo, "ref", ref)
 	sha, _, err = r.GetCommitSHA1(ctx, logger, owner, repo, ref, "")
 	if err != nil {
-		return "", false, err
+		return "", err
 	}
-	return sha, false, nil
+	return sha, nil
 }
 
 // isNotFoundResponse reports whether a GitHub API response indicates 404.

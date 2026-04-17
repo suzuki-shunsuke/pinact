@@ -8,10 +8,11 @@ import (
 	"testing"
 )
 
-// TestRepositoriesServiceImpl_ResolveCommitSHAPreferTag covers the branch-vs-tag
-// precedence fix: when a ref exists as both a tag and a branch, pinact must
-// resolve to the tag to match what GitHub Actions executes at runtime.
-func TestRepositoriesServiceImpl_ResolveCommitSHAPreferTag(t *testing.T) { //nolint:funlen
+// TestRepositoriesServiceImpl_ResolveTagSHA covers tag-only resolution with the
+// opt-in branch fallback. By default, refs that don't resolve to a tag error
+// with errNotATag. When allowBranch is true, resolution falls back to the bare
+// ref (preserving the pre-refusal behavior) and a warning is logged.
+func TestRepositoriesServiceImpl_ResolveTagSHA(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
 	ctx := context.Background()
@@ -21,14 +22,15 @@ func TestRepositoriesServiceImpl_ResolveCommitSHAPreferTag(t *testing.T) { //nol
 	serverErr := &Response{Response: &http.Response{StatusCode: http.StatusInternalServerError}}
 
 	tests := []struct {
-		name        string
-		owner       string
-		repo        string
-		ref         string
-		cache       map[string]*GetCommitSHA1Result
-		wantSHA     string
-		wantFromTag bool
-		wantErr     bool
+		name          string
+		owner         string
+		repo          string
+		ref           string
+		allowBranch   bool
+		cache         map[string]*GetCommitSHA1Result
+		wantSHA       string
+		wantErr       bool
+		wantIsNotATag bool
 	}{
 		{
 			name:  "tag only - resolves via tag namespace",
@@ -38,11 +40,10 @@ func TestRepositoriesServiceImpl_ResolveCommitSHAPreferTag(t *testing.T) { //nol
 			cache: map[string]*GetCommitSHA1Result{
 				"example-owner/tag-only-action/tags/v3": {SHA: "tagSHA"},
 			},
-			wantSHA:     "tagSHA",
-			wantFromTag: true,
+			wantSHA: "tagSHA",
 		},
 		{
-			name:  "branch only - falls back after 404 on tag namespace",
+			name:  "branch only, allow_branch_pins disabled - errors with errNotATag",
 			owner: "example-owner",
 			repo:  "branch-only-action",
 			ref:   "v1",
@@ -53,8 +54,23 @@ func TestRepositoriesServiceImpl_ResolveCommitSHAPreferTag(t *testing.T) { //nol
 				},
 				"example-owner/branch-only-action/v1": {SHA: "branchSHA"},
 			},
-			wantSHA:     "branchSHA",
-			wantFromTag: false,
+			wantErr:       true,
+			wantIsNotATag: true,
+		},
+		{
+			name:        "branch only, allow_branch_pins enabled - falls back to branch",
+			owner:       "example-owner",
+			repo:        "branch-only-action",
+			ref:         "v1",
+			allowBranch: true,
+			cache: map[string]*GetCommitSHA1Result{
+				"example-owner/branch-only-action/tags/v1": {
+					Response: notFound,
+					err:      errors.New("404 Not Found"),
+				},
+				"example-owner/branch-only-action/v1": {SHA: "branchSHA"},
+			},
+			wantSHA: "branchSHA",
 		},
 		{
 			name:  "diverged tag and branch - tag wins",
@@ -65,8 +81,7 @@ func TestRepositoriesServiceImpl_ResolveCommitSHAPreferTag(t *testing.T) { //nol
 				"example-owner/diverged-action/v5":      {SHA: "branchSHADiverged"},
 				"example-owner/diverged-action/tags/v5": {SHA: "tagSHADiverged"},
 			},
-			wantSHA:     "tagSHADiverged",
-			wantFromTag: true,
+			wantSHA: "tagSHADiverged",
 		},
 		{
 			name:  "branch is ancestor of tag - tag still wins",
@@ -77,8 +92,7 @@ func TestRepositoriesServiceImpl_ResolveCommitSHAPreferTag(t *testing.T) { //nol
 				"example-owner/ancestor-action/v3":      {SHA: "branchSHAAncestor"},
 				"example-owner/ancestor-action/tags/v3": {SHA: "tagSHAAncestor"},
 			},
-			wantSHA:     "tagSHAAncestor",
-			wantFromTag: true,
+			wantSHA: "tagSHAAncestor",
 		},
 		{
 			name:  "non-404 error on tag lookup - propagates without fallback",
@@ -95,10 +109,11 @@ func TestRepositoriesServiceImpl_ResolveCommitSHAPreferTag(t *testing.T) { //nol
 			wantErr: true,
 		},
 		{
-			name:  "both lookups 404 - propagates error from fallback",
-			owner: "example-owner",
-			repo:  "missing-action",
-			ref:   "v9",
+			name:        "both lookups 404 with allow_branch_pins - propagates error from fallback",
+			owner:       "example-owner",
+			repo:        "missing-action",
+			ref:         "v9",
+			allowBranch: true,
 			cache: map[string]*GetCommitSHA1Result{
 				"example-owner/missing-action/tags/v9": {Response: notFound, err: errors.New("404 Not Found")},
 				"example-owner/missing-action/v9":      {Response: notFound, err: errors.New("404 Not Found")},
@@ -112,20 +127,20 @@ func TestRepositoriesServiceImpl_ResolveCommitSHAPreferTag(t *testing.T) { //nol
 			t.Parallel()
 			r := &RepositoriesServiceImpl{Commits: tt.cache}
 
-			sha, fromTag, err := r.ResolveCommitSHAPreferTag(ctx, logger, tt.owner, tt.repo, tt.ref)
+			sha, err := r.ResolveTagSHA(ctx, logger, tt.owner, tt.repo, tt.ref, tt.allowBranch)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ResolveCommitSHAPreferTag() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ResolveTagSHA() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if tt.wantIsNotATag && !errors.Is(err, errNotATag) {
+				t.Errorf("ResolveTagSHA() error = %v, want errors.Is(err, errNotATag)", err)
 			}
 			if tt.wantErr {
 				return
 			}
 			if sha != tt.wantSHA {
 				t.Errorf("sha = %q, want %q", sha, tt.wantSHA)
-			}
-			if fromTag != tt.wantFromTag {
-				t.Errorf("fromTag = %v, want %v", fromTag, tt.wantFromTag)
 			}
 		})
 	}

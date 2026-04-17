@@ -33,6 +33,10 @@
         "separator": {
           "type": "string",
           "description": "Separator between version and tag comment. Default is ' # '"
+        },
+        "allow_branch_pins": {
+          "type": "boolean",
+          "description": "Allow pinning refs that resolve to branches rather than tags. Default is false - pinact will raise an error on branch-sourced refs"
         }
       },
       "additionalProperties": false,

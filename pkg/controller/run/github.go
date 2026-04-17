@@ -18,8 +18,8 @@ type RepositoriesService interface {
 	ListTags(ctx context.Context, logger *slog.Logger, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error)
 	ListReleases(ctx context.Context, logger *slog.Logger, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error)
 	GetCommitSHA1(ctx context.Context, logger *slog.Logger, owner, repo, ref, lastSHA string) (string, *github.Response, error)
-	// ResolveCommitSHAPreferTag resolves a ref, preferring the tag namespace over branches; the bool reports whether the SHA came from a tag.
-	ResolveCommitSHAPreferTag(ctx context.Context, logger *slog.Logger, owner, repo, ref string) (string, bool, error)
+	// ResolveTagSHA resolves a ref via the tag namespace; returns github.ErrNotATag for non-tag refs unless allowBranch is true.
+	ResolveTagSHA(ctx context.Context, logger *slog.Logger, owner, repo, ref string, allowBranch bool) (string, error)
 }
 
 // GitService defines the interface for GitHub Git API operations

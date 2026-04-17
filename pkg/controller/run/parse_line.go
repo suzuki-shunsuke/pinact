@@ -219,7 +219,7 @@ func (c *Controller) updateToLatestVersion(ctx context.Context, logger *slog.Log
 	if err != nil {
 		return "", fmt.Errorf("get the latest version: %w", err)
 	}
-	sha, _, err := c.repositoriesService.ResolveCommitSHAPreferTag(ctx, logger, action.RepoOwner, action.RepoName, lv)
+	sha, err := c.repositoriesService.ResolveTagSHA(ctx, logger, action.RepoOwner, action.RepoName, lv, c.param.AllowBranchPins)
 	if err != nil {
 		return "", fmt.Errorf("get a reference: %w", err)
 	}
@@ -228,9 +228,10 @@ func (c *Controller) updateToLatestVersion(ctx context.Context, logger *slog.Log
 
 // pinCurrentVersion pins the current version to a commit SHA.
 func (c *Controller) pinCurrentVersion(ctx context.Context, logger *slog.Logger, action *Action, typ VersionType) (string, error) {
-	// Get commit hash from tag, preferring the tag namespace over any branch
-	// of the same name so the pin matches what the Actions runtime executes.
-	sha, _, err := c.repositoriesService.ResolveCommitSHAPreferTag(ctx, logger, action.RepoOwner, action.RepoName, action.Version)
+	// Get commit hash from tag. Branch-sourced refs raise ErrNotATag unless
+	// allow_branch_pins is enabled — pinact refuses to silently pin mutable
+	// branches by default.
+	sha, err := c.repositoriesService.ResolveTagSHA(ctx, logger, action.RepoOwner, action.RepoName, action.Version, c.param.AllowBranchPins)
 	if err != nil {
 		return "", fmt.Errorf("get a reference: %w", err)
 	}
@@ -289,7 +290,7 @@ func (c *Controller) parseSemverTagLineUpdate(ctx context.Context, logger *slog.
 func (c *Controller) handleCurrentVersionIsLatest(ctx context.Context, logger *slog.Logger, action *Action, lv string) (string, error) {
 	switch getVersionType(action.Version) {
 	case Semver, Shortsemver:
-		sha, _, err := c.repositoriesService.ResolveCommitSHAPreferTag(ctx, logger, action.RepoOwner, action.RepoName, lv)
+		sha, err := c.repositoriesService.ResolveTagSHA(ctx, logger, action.RepoOwner, action.RepoName, lv, c.param.AllowBranchPins)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
@@ -309,7 +310,7 @@ func (c *Controller) handleUpdateToNewerVersion(ctx context.Context, logger *slo
 		)
 		return "", nil
 	}
-	sha, _, err := c.repositoriesService.ResolveCommitSHAPreferTag(ctx, logger, action.RepoOwner, action.RepoName, lv)
+	sha, err := c.repositoriesService.ResolveTagSHA(ctx, logger, action.RepoOwner, action.RepoName, lv, c.param.AllowBranchPins)
 	if err != nil {
 		return "", fmt.Errorf("get the latest version: %w", err)
 	}
@@ -351,7 +352,7 @@ func (c *Controller) parseShortSemverTagLine(ctx context.Context, logger *slog.L
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
-		sha, _, err := c.repositoriesService.ResolveCommitSHAPreferTag(ctx, logger, action.RepoOwner, action.RepoName, lv)
+		sha, err := c.repositoriesService.ResolveTagSHA(ctx, logger, action.RepoOwner, action.RepoName, lv, c.param.AllowBranchPins)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
@@ -437,15 +438,9 @@ func (c *Controller) parseActionName(action *Action) bool {
 // It validates that the commit SHA in the action version matches the
 // commit SHA of the version specified in the comment.
 func (c *Controller) verify(ctx context.Context, logger *slog.Logger, action *Action) error {
-	sha, fromTag, err := c.repositoriesService.ResolveCommitSHAPreferTag(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment)
+	sha, err := c.repositoriesService.ResolveTagSHA(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment, c.param.AllowBranchPins)
 	if err != nil {
 		return fmt.Errorf("get a commit hash: %w", err)
-	}
-	if !fromTag {
-		logger.Warn("version annotation resolved via a branch, not a tag; GitHub Actions resolves @ref to a tag first at runtime, so this pin may diverge from what Actions executes if a tag of the same name is later published",
-			"action", action.Name,
-			"version_annotation", action.VersionComment,
-		)
 	}
 	if action.Version == sha {
 		return nil
