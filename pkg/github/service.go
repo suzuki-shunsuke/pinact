@@ -234,6 +234,44 @@ func (r *RepositoriesServiceImpl) GetCommitSHA1(ctx context.Context, logger *slo
 	return sha, resp, err
 }
 
+// ResolveCommitSHAPreferTag resolves a git ref to a commit SHA, preferring the
+// tag namespace when both a tag and branch share the same name.
+//
+// GitHub's /commits/{ref} endpoint follows git's native precedence — branches
+// before tags when the name is ambiguous — but the GitHub Actions runner
+// resolves @ref to a tag before a branch. Pinning via the bare endpoint would
+// therefore diverge from what Actions executes at runtime. We query the tag
+// namespace explicitly (tags/<ref>) first and fall back to the bare ref only
+// on 404 so that branch-only refs (e.g. a repo with a v1 branch but no v1 tag)
+// keep resolving.
+//
+// The second return value reports whether the SHA came from the tag namespace.
+func (r *RepositoriesServiceImpl) ResolveCommitSHAPreferTag(ctx context.Context, logger *slog.Logger, owner, repo, ref string) (string, bool, error) {
+	sha, resp, err := r.GetCommitSHA1(ctx, logger, owner, repo, "tags/"+ref, "")
+	if err == nil {
+		return sha, true, nil
+	}
+	if !isNotFoundResponse(resp) {
+		return "", false, err
+	}
+	logger.Debug("no matching tag; falling back to bare ref", "owner", owner, "repo", repo, "ref", ref)
+	sha, _, err = r.GetCommitSHA1(ctx, logger, owner, repo, ref, "")
+	if err != nil {
+		return "", false, err
+	}
+	return sha, false, nil
+}
+
+// isNotFoundResponse reports whether a GitHub API response indicates 404.
+// The embedded *http.Response can be nil in tests or on transport errors, so we
+// guard before reading StatusCode.
+func isNotFoundResponse(resp *Response) bool {
+	if resp == nil || resp.Response == nil {
+		return false
+	}
+	return resp.StatusCode == http.StatusNotFound
+}
+
 // GetCommitSHA1Result holds the cached result of a GetCommitSHA1 call.
 type GetCommitSHA1Result struct {
 	SHA      string

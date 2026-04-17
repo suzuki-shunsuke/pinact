@@ -149,6 +149,13 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			line: `  "uses": 'actions/checkout@v2'`,
 			exp:  `  "uses": 'actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5' # v2.7.0`,
 		},
+		{
+			// Repo with both a v1 tag and v1 branch pointing at different SHAs.
+			// pinact must pin to the tag SHA to match Actions runtime resolution.
+			name: "ambiguous ref with tag and branch - tag wins",
+			line: "  - uses: example-owner/example-action@v1",
+			exp:  "  - uses: example-owner/example-action@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa # v1.2.3",
+		},
 	}
 	logger := slog.New(slog.DiscardHandler)
 	for _, d := range data {
@@ -186,19 +193,47 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						},
 						Response: &github.Response{},
 					},
+					"example-owner/example-action/0": {
+						Tags: []*github.RepositoryTag{
+							{
+								Name: new("v1"),
+								Commit: &github.Commit{
+									SHA: new("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+								},
+							},
+							{
+								Name: new("v1.2.3"),
+								Commit: &github.Commit{
+									SHA: new("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+								},
+							},
+						},
+						Response: &github.Response{},
+					},
 				},
 				Releases: map[string]*github.ListReleasesResult{
 					"actions/checkout/0": {
 						Releases: []*github.RepositoryRelease{}, // Empty releases forces fallback to tags
 						Response: &github.Response{},
 					},
+					"example-owner/example-action/0": {
+						Releases: []*github.RepositoryRelease{},
+						Response: &github.Response{},
+					},
 				},
 				Commits: map[string]*github.GetCommitSHA1Result{
-					"actions/checkout/v3": {
+					"actions/checkout/tags/v3": {
 						SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
 					},
-					"actions/checkout/v2": {
+					"actions/checkout/tags/v2": {
 						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
+					},
+					// Both tag and branch entries seeded — the branch SHA must NOT be used.
+					"example-owner/example-action/tags/v1": {
+						SHA: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					},
+					"example-owner/example-action/v1": {
+						SHA: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 					},
 				},
 			}, nil, nil, fs, &config.Config{

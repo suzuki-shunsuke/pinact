@@ -171,6 +171,10 @@ func (m *mockRepoService) GetCommitSHA1(_ context.Context, _, _, _, _ string) (s
 	return "", nil, errors.New("not implemented")
 }
 
+func (m *mockRepoService) ResolveCommitSHAPreferTag(_ context.Context, _ *slog.Logger, _, _, _ string) (string, bool, error) {
+	return "", false, errors.New("not implemented")
+}
+
 func (m *mockRepoService) ListReleases(ctx context.Context, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
 	if m.listReleasesFunc != nil {
 		return m.listReleasesFunc(ctx, owner, repo, opts)
