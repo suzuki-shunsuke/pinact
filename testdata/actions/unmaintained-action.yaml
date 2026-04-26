@@ -1,0 +1,9 @@
+name: Release
+description: Release
+on:
+  push:
+    tags:
+      - "v*.*.*"
+runs:
+  steps:
+    - uses: actions/create-release@8d93430eddafb926c668181c71f579556f68668c # v1.0.0
