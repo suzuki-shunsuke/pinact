@@ -48,9 +48,10 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 	)
 
 	repoService := &github.RepositoriesServiceImpl{
-		Tags:     map[string]*github.ListTagsResult{},
-		Releases: map[string]*github.ListReleasesResult{},
-		Commits:  map[string]*github.GetCommitSHA1Result{},
+		Tags:         map[string]*github.ListTagsResult{},
+		Releases:     map[string]*github.ListReleasesResult{},
+		Commits:      map[string]*github.GetCommitSHA1Result{},
+		CheckedRepos: map[string]struct{}{},
 	}
 	repoService.SetResolver(resolver)
 

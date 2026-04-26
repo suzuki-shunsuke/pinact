@@ -198,15 +198,37 @@ type ListReleasesResult struct {
 
 // RepositoriesServiceImpl wraps a RepositoriesService with caching and GHES fallback support.
 type RepositoriesServiceImpl struct {
-	resolver *ClientResolver
-	Tags     map[string]*ListTagsResult
-	Commits  map[string]*GetCommitSHA1Result
-	Releases map[string]*ListReleasesResult
+	resolver     *ClientResolver
+	Tags         map[string]*ListTagsResult
+	Commits      map[string]*GetCommitSHA1Result
+	Releases     map[string]*ListReleasesResult
+	CheckedRepos map[string]struct{}
 }
 
 // SetResolver sets the ClientResolver for the RepositoriesServiceImpl.
 func (r *RepositoriesServiceImpl) SetResolver(resolver *ClientResolver) {
 	r.resolver = resolver
+}
+
+// warnIfArchived checks if a repository is archived and logs a warning if so.
+// It caches the result per repository to avoid redundant API calls.
+func (r *RepositoriesServiceImpl) warnIfArchived(ctx context.Context, logger *slog.Logger, owner, repo string) {
+	key := owner + "/" + repo
+	if _, ok := r.CheckedRepos[key]; ok {
+		return
+	}
+	r.CheckedRepos[key] = struct{}{}
+	service, err := r.resolver.GetRepositoriesService(ctx, logger, owner, repo)
+	if err != nil {
+		return
+	}
+	ghRepo, _, err := service.Get(ctx, owner, repo)
+	if err != nil {
+		return
+	}
+	if ghRepo.GetArchived() {
+		logger.Warn("repository is archived", "owner", owner, "repo", repo)
+	}
 }
 
 // Get fetches a repository to check its existence.
@@ -220,6 +242,7 @@ func (r *RepositoriesServiceImpl) Get(ctx context.Context, logger *slog.Logger, 
 
 // GetCommitSHA1 retrieves the commit SHA for a given reference with caching and GHES fallback.
 func (r *RepositoriesServiceImpl) GetCommitSHA1(ctx context.Context, logger *slog.Logger, owner, repo, ref, lastSHA string) (string, *Response, error) {
+	r.warnIfArchived(ctx, logger, owner, repo)
 	key := fmt.Sprintf("%s/%s/%s", owner, repo, ref)
 	if result, ok := r.Commits[key]; ok {
 		return result.SHA, result.Response, result.err
@@ -243,6 +266,7 @@ type GetCommitSHA1Result struct {
 
 // ListTags retrieves repository tags with caching and GHES fallback.
 func (r *RepositoriesServiceImpl) ListTags(ctx context.Context, logger *slog.Logger, owner string, repo string, opts *ListOptions) ([]*RepositoryTag, *Response, error) {
+	r.warnIfArchived(ctx, logger, owner, repo)
 	key := fmt.Sprintf("%s/%s/%v", owner, repo, opts.Page)
 	if result, ok := r.Tags[key]; ok {
 		return result.Tags, result.Response, result.err
@@ -259,6 +283,7 @@ func (r *RepositoriesServiceImpl) ListTags(ctx context.Context, logger *slog.Log
 
 // ListReleases retrieves repository releases with caching and GHES fallback.
 func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, logger *slog.Logger, owner string, repo string, opts *ListOptions) ([]*RepositoryRelease, *Response, error) {
+	r.warnIfArchived(ctx, logger, owner, repo)
 	key := fmt.Sprintf("%s/%s/%v", owner, repo, opts.Page)
 	if result, ok := r.Releases[key]; ok {
 		return result.Releases, result.Response, result.err
