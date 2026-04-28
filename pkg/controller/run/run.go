@@ -1,7 +1,7 @@
 package run
 
 import (
-	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -100,13 +100,13 @@ type Line struct {
 // It reads the file line by line, parses each line for actions,
 // applies transformations, and optionally writes changes back to the file.
 func (c *Controller) runWorkflow(ctx context.Context, logger *slog.Logger, workflowFilePath string) error {
-	lines, err := c.readWorkflow(workflowFilePath)
+	lines, format, err := c.readWorkflow(workflowFilePath)
 	if err != nil {
 		return err
 	}
 	changed, failed := c.processLines(ctx, logger, workflowFilePath, lines)
 	if changed && c.param.Fix {
-		if err := c.writeWorkflow(workflowFilePath, lines); err != nil {
+		if err := c.writeWorkflow(workflowFilePath, lines, format); err != nil {
 			return err
 		}
 	}
@@ -149,14 +149,45 @@ func (c *Controller) processLines(ctx context.Context, logger *slog.Logger, work
 	return changed, failed
 }
 
-// writeWorkflow writes the modified lines back to the workflow file.
-func (c *Controller) writeWorkflow(workflowFilePath string, lines []string) error {
+// fileFormat captures the line-ending style and trailing-newline state of a
+// workflow file so they can be preserved across read/write.
+type fileFormat struct {
+	lineEnding      string // "\n" or "\r\n"
+	trailingNewline bool
+}
+
+// detectFileFormat inspects the raw file content and returns its line-ending
+// style and whether it ends with a newline. The line-ending is determined by
+// the first '\n' encountered: if preceded by '\r', CRLF; otherwise LF. Files
+// with no '\n' default to LF.
+func detectFileFormat(content []byte) *fileFormat {
+	f := &fileFormat{lineEnding: "\n"}
+	if len(content) == 0 {
+		return f
+	}
+	if i := bytes.IndexByte(content, '\n'); i > 0 && content[i-1] == '\r' {
+		f.lineEnding = "\r\n"
+	}
+	if content[len(content)-1] == '\n' {
+		f.trailingNewline = true
+	}
+	return f
+}
+
+// writeWorkflow writes the modified lines back to the workflow file using the
+// given file format to preserve the original line endings and trailing-newline
+// state.
+func (c *Controller) writeWorkflow(workflowFilePath string, lines []string, format *fileFormat) error {
 	f, err := c.fs.Create(workflowFilePath)
 	if err != nil {
 		return fmt.Errorf("create a workflow file: %w", err)
 	}
 	defer f.Close()
-	if _, err := f.WriteString(strings.Join(lines, "\n") + "\n"); err != nil {
+	content := strings.Join(lines, format.lineEnding)
+	if format.trailingNewline {
+		content += format.lineEnding
+	}
+	if _, err := f.WriteString(content); err != nil {
 		return fmt.Errorf("write a workflow file: %w", err)
 	}
 	return nil
@@ -264,22 +295,21 @@ func (c *Controller) outputDiff(line *Line, newLine string) {
 	c.logger.Output(level, "", line, newLine)
 }
 
-// readWorkflow reads a workflow file and returns its lines.
-// It opens the file and scans it line by line, returning all lines
-// as a slice of strings.
-func (c *Controller) readWorkflow(workflowFilePath string) ([]string, error) {
-	workflowReadFile, err := os.Open(workflowFilePath)
+// readWorkflow reads a workflow file and returns its lines together with its
+// detected file format (line-ending style and trailing-newline state). Lines
+// are returned without their trailing line-ending characters.
+func (c *Controller) readWorkflow(workflowFilePath string) ([]string, *fileFormat, error) {
+	content, err := os.ReadFile(workflowFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("open a workflow file: %w", err)
+		return nil, nil, fmt.Errorf("read a workflow file: %w", err)
 	}
-	defer workflowReadFile.Close()
-	scanner := bufio.NewScanner(workflowReadFile)
-	lines := []string{}
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
+	format := detectFileFormat(content)
+	s := string(content)
+	if format.trailingNewline {
+		s = strings.TrimSuffix(s, format.lineEnding)
 	}
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("scan a workflow file: %w", err)
+	if s == "" {
+		return []string{}, format, nil
 	}
-	return lines, nil
+	return strings.Split(s, format.lineEnding), format, nil
 }
