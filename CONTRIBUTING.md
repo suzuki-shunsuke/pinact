@@ -38,7 +38,7 @@ cmdx l # golangci-lint
 In addition to Go's unit tests, we run integration tests in CI.
 
 - [testdata](testdata)
-- [workflow](https://github.com/suzuki-shunsuke/pinact/blob/b60761b24a99aa946c45623c2ef2e1e673c257cf/.github/workflows/wc-test.yaml#L34-L67)
+- [workflow](.github/workflows/workflow_call_integration_test.yaml)
 
 If you change pinact's behaviour, please add tests.
 Tests also make how the behaviour is changed clear.
