@@ -1,0 +1,14 @@
+---
+name: verify-test
+on: workflow_call
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      # This has the correct SHA for v3.5.1
+      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247 # v3.5.1
+      # This has the wrong SHA for v3.5.1 (it's actually v2.7.0)
+      - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      # This has the wrong SHA for v2.7.0 (it's actually v3.5.1)
+      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247 # v3.5.1
