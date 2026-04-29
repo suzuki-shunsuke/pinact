@@ -96,6 +96,11 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Usage:       "Output diff. By default, this is false",
 				Destination: &flags.Diff,
 			},
+			&cli.BoolFlag{
+				Name:        "allow-branch-pins",
+				Usage:       "Allow pinning refs that resolve to branches rather than tags. By default, pinact raises an error on branch-sourced refs",
+				Destination: &flags.AllowBranchPins,
+			},
 			&cli.StringFlag{
 				Name:        "format",
 				Usage:       "Output format. Currently only 'sarif' is supported. If sarif is specified, results are output in SARIF format to stdout",

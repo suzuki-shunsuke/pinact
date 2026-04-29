@@ -27,6 +27,7 @@ type ParamRun struct {
 	IsGitHubActions   bool
 	Fix               bool
 	Diff              bool
+	AllowBranchPins   bool
 	Stderr            io.Writer
 	Stdout            io.Writer
 	Review            *Review

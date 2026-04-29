@@ -46,6 +46,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 	if err := validateSeparator(cfg.Separator); err != nil {
 		return err
 	}
+	cfg.AllowBranchPins = flags.AllowBranchPins || cfg.AllowBranchPins
 
 	review := setupReview(fs, logger, flags)
 
@@ -128,6 +129,7 @@ func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
 		Update:            flags.Update,
 		Diff:              flags.Diff,
 		Fix:               true,
+		AllowBranchPins:   flags.AllowBranchPins,
 		IsGitHubActions:   flags.IsGitHubActions,
 		Stderr:            os.Stderr,
 		Stdout:            os.Stdout,
