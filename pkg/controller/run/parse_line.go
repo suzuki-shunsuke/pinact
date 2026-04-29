@@ -202,7 +202,7 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, ac
 	switch typ {
 	case Shortsemver, Semver:
 	case FullCommitSHA:
-		return "", nil
+		return c.addMissingComment(ctx, logger, action)
 	default:
 		return "", ErrCantPinned
 	}
@@ -211,6 +211,18 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, ac
 		return c.updateToLatestVersion(ctx, logger, action)
 	}
 	return c.pinCurrentVersion(ctx, logger, action, typ)
+}
+
+// addMissingComment looks up the tag for a pinned commit SHA and adds the version comment.
+func (c *Controller) addMissingComment(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
+	v, err := c.getLongVersionFromSHA(ctx, logger, action, action.Version)
+	if err != nil {
+		return "", err
+	}
+	if v == "" {
+		return "", nil
+	}
+	return c.patchLine(action, action.Version, v), nil
 }
 
 // updateToLatestVersion updates an action to its latest version.
@@ -383,11 +395,13 @@ func (c *Controller) patchLine(action *Action, version, tag string) string {
 // getLongVersionFromSHA finds the full semantic version tag for a commit SHA.
 // It searches through repository tags to find a tag that points to the given
 // commit and matches the version comment prefix.
+// When multiple tags match, it prefers semver tags over short semver or non-version tags.
 func (c *Controller) getLongVersionFromSHA(ctx context.Context, logger *slog.Logger, action *Action, sha string) (string, error) {
 	opts := &github.ListOptions{
 		PerPage: 100, //nolint:mnd
 	}
 	// Get long tag from commit hash
+	var candidate string
 	for range 10 {
 		tags, resp, err := c.repositoriesService.ListTags(ctx, logger, action.RepoOwner, action.RepoName, opts)
 		if err != nil {
@@ -407,16 +421,29 @@ func (c *Controller) getLongVersionFromSHA(ctx context.Context, logger *slog.Log
 					continue
 				}
 			}
-			if strings.HasPrefix(tagName, action.VersionComment) {
+			if !strings.HasPrefix(tagName, action.VersionComment) {
+				continue
+			}
+			// When there's no version comment prefix to filter by,
+			// only accept version-like tags to avoid annotations like "# latest".
+			tagType := getVersionType(tagName)
+			if action.VersionComment == "" && tagType != Semver && tagType != Shortsemver {
+				continue
+			}
+			// Prefer full semver tags (e.g. v3.5.2) over short semver (e.g. v3) or non-version tags (e.g. latest)
+			if tagType == Semver {
 				return tagName, nil
+			}
+			if candidate == "" {
+				candidate = tagName
 			}
 		}
 		if resp.NextPage == 0 {
-			return "", nil
+			return candidate, nil
 		}
 		opts.Page = resp.NextPage
 	}
-	return "", nil
+	return candidate, nil
 }
 
 // parseActionName extracts repository owner and name from action name.
