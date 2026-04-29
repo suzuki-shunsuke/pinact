@@ -1,7 +1,7 @@
 # pinact
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/suzuki-shunsuke/pinact)
-[NotebookLM](https://notebooklm.google.com/notebook/31982d97-104e-4778-9a8f-3b2c044a719d) | [Install](INSTALL.md) | [How to use](#how-to-use) | [Configuration](#configuration)
+[Install](INSTALL.md) | [How to use](#how-to-use) | [Configuration](#configuration)
 
 pinact is a CLI to edit GitHub Workflow and Composite action files and pin versions of Actions and Reusable Workflows.
 pinact can also [update their versions](#update-actions), [verify version annotations](docs/codes/001.md), and [create reviews](#create-reviews).
@@ -43,10 +43,6 @@ index 84bd67a..5d92e44 100644
 Creating reviews:
 
 ![review](https://github.com/user-attachments/assets/77e78d23-bd14-49ba-8097-751556fcf126)
-
-## :bulb: NotebookLM for pinact
-
-[You can ask any questions about pinact to NotebookLM.](https://notebooklm.google.com/notebook/31982d97-104e-4778-9a8f-3b2c044a719d)
 
 ## Motivation
 
