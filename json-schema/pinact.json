@@ -30,6 +30,10 @@
           "$ref": "#/$defs/GHES",
           "description": "GitHub Enterprise Server configuration"
         },
+        "updates": {
+          "$ref": "#/$defs/Updates",
+          "description": "Update behavior configuration"
+        },
         "separator": {
           "type": "string",
           "description": "Separator between version and tag comment. Default is ' # '"
@@ -78,6 +82,16 @@
       "required": [
         "name"
       ]
+    },
+    "Updates": {
+      "properties": {
+        "min_age": {
+          "type": "integer",
+          "description": "Skip versions released within the specified number of days. Default is 0"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
     }
   }
 }
