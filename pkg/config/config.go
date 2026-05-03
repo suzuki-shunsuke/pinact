@@ -23,6 +23,7 @@ type Config struct {
 	Files         []*File         `json:"files,omitempty" jsonschema:"description=Target files. If files are passed via positional command line arguments, this is ignored"`
 	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores"`
 	GHES          *GHES           `json:"ghes,omitempty" yaml:"ghes" jsonschema:"description=GitHub Enterprise Server configuration"`
+	Updates       *Updates        `json:"updates,omitempty" yaml:"updates" jsonschema:"description=Update behavior configuration"`
 	Separator     string          `json:"separator,omitempty" jsonschema:"description=Separator between version and tag comment. Default is ' # '"`
 }
 
@@ -33,6 +34,23 @@ type GHES struct {
 
 type File struct {
 	Pattern string `json:"pattern"`
+}
+
+// DefaultMinAge is the default minimum age in days for updates.
+// A value of 0 means no minimum age filter is applied.
+const DefaultMinAge = 0
+
+type Updates struct {
+	MinAge int `json:"min_age,omitempty" yaml:"min_age" jsonschema:"description=Skip versions released within the specified number of days. Default is 0"`
+}
+
+// EnsureUpdates returns the updates configuration.
+// If the updates configuration is nil, it initializes it.
+func (cfg *Config) EnsureUpdates() *Updates {
+	if cfg.Updates == nil {
+		cfg.Updates = &Updates{}
+	}
+	return cfg.Updates
 }
 
 var (
@@ -66,6 +84,20 @@ func validateSchemaVersion(v int) error {
 			"docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/004.md",
 		)
 	}
+}
+
+// ValidateMinAge validates the minimum age for updates.
+// The value must be a non-negative integer.
+//
+// Parameters:
+//   - age: minimum age in days
+//
+// Returns an error if the value is invalid.
+func ValidateMinAge(age int) error {
+	if age < 0 {
+		return errors.New("min_age must be a non-negative integer")
+	}
+	return nil
 }
 
 // Init initializes and validates a File configuration.
@@ -221,6 +253,17 @@ func (g *GHES) Validate() error {
 	return nil
 }
 
+// Validate validates the ensures update settings are valid.
+func (u *Updates) Validate() error {
+	if u == nil {
+		return nil
+	}
+	if err := ValidateMinAge(u.MinAge); err != nil {
+		return fmt.Errorf("updates min_age: %w", err)
+	}
+	return nil
+}
+
 // getConfigPath searches for a pinact configuration file in standard locations.
 // It checks for .pinact.yaml, .github/pinact.yaml, .pinact.yml, and .github/pinact.yml
 // in order of preference.
@@ -293,6 +336,9 @@ func (r *Reader) Read(cfg *Config, configFilePath string) error {
 func (cfg *Config) Init() error {
 	if err := validateSchemaVersion(cfg.Version); err != nil {
 		return err
+	}
+	if err := cfg.Updates.Validate(); err != nil {
+		return fmt.Errorf("validate updates: %w", err)
 	}
 	for _, file := range cfg.Files {
 		if err := file.Init(cfg.Version); err != nil {

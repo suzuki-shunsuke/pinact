@@ -12,8 +12,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/di"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
@@ -146,9 +148,11 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Usage:       "Skip versions released within the specified number of days (requires -u)",
 				Destination: &flags.MinAge,
 				Sources:     cli.EnvVars("PINACT_MIN_AGE"),
+				Value:       0,
+				DefaultText: strconv.Itoa(config.DefaultMinAge),
 				Validator: func(i int) error {
-					if i < 0 {
-						return errors.New("--min-age must be a non-negative integer")
+					if err := config.ValidateMinAge(i); err != nil {
+						return fmt.Errorf("--min-age: %w", err)
 					}
 					return nil
 				},

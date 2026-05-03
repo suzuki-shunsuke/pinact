@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/fatih/color"
@@ -42,6 +43,12 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 	if err != nil {
 		return err
 	}
+
+	cfg.EnsureUpdates().MinAge, err = getMinAge(cfg, flags, getEnv)
+	if err != nil {
+		return err
+	}
+
 	cfg.Separator = getSeparator(cfg, flags, getEnv)
 	if err := validateSeparator(cfg.Separator); err != nil {
 		return err
@@ -73,6 +80,29 @@ func getSeparator(cfg *config.Config, flags *Flags, getEnv func(string) string) 
 		return s
 	}
 	return " # "
+}
+
+// getMinAge retrieves the minimum update age set by the user.
+//
+// The --min-age flag takes precedence over everything (so long as it's set, i.e., != 0)
+// if --min-age isn't set (== 0), then env var takes the priority, if the env var is also
+// unset, then the config file value is taken. If minAge isn't set in the config (== 0),
+// then it returns the default value (config.DefaultMinAge).
+func getMinAge(cfg *config.Config, flags *Flags, getEnv func(string) string) (int, error) {
+	if flags.MinAge != 0 {
+		return flags.MinAge, nil
+	}
+	if s := getEnv("PINACT_MIN_AGE"); s != "" {
+		age, err := strconv.Atoi(s)
+		if err != nil {
+			return 0, fmt.Errorf("invalid value: %w", err)
+		}
+		return age, nil
+	}
+	if cfg.Updates != nil && cfg.Updates.MinAge != 0 {
+		return cfg.Updates.MinAge, nil
+	}
+	return config.DefaultMinAge, nil
 }
 
 var separatorPattern = regexp.MustCompile(` +# +(?:tag=)?`)
@@ -134,7 +164,6 @@ func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
 		Review:            review,
 		Includes:          includes,
 		Excludes:          excludes,
-		MinAge:            flags.MinAge,
 		Now:               time.Now(),
 		Format:            flags.Format,
 	}

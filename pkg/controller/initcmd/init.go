@@ -24,6 +24,9 @@ ignore_actions:
 #   ref: main
 # - name: suzuki-shunsuke/.*
 #   ref: release-.*
+
+updates:
+#  min_age: 21
 `
 	filePermission os.FileMode = 0o644
 )

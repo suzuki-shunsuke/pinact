@@ -32,7 +32,6 @@ type ParamRun struct {
 	Review            *Review
 	Includes          []*regexp.Regexp
 	Excludes          []*regexp.Regexp
-	MinAge            int
 	Now               time.Time
 	Format            string
 	Findings          []Finding

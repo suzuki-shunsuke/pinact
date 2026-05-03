@@ -34,8 +34,8 @@ func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, 
 
 	// Calculate cutoff once for min-age filtering
 	var cutoff time.Time
-	if c.param.MinAge > 0 {
-		cutoff = c.param.Now.AddDate(0, 0, -c.param.MinAge)
+	if c.cfg.Updates.MinAge > 0 {
+		cutoff = c.param.Now.AddDate(0, 0, -c.cfg.Updates.MinAge)
 	}
 
 	lv, versions, err := c.getLatestVersionFromReleases(ctx, logger, owner, repo, isStable, cutoff)
@@ -102,7 +102,8 @@ func (c *Controller) getLatestVersionFromReleases(ctx context.Context, logger *s
 		if !cutoff.IsZero() && release.GetPublishedAt().After(cutoff) {
 			logger.Info("skip release due to cooldown",
 				"tag", tag,
-				"published_at", release.GetPublishedAt())
+				"published_at", release.GetPublishedAt(),
+				"cutoff", cutoff)
 			continue
 		}
 		ls, lv, err := compare(latestSemver, latestVersion, tag)

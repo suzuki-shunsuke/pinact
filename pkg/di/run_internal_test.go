@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
+	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 )
 
 func Test_compileRegexps(t *testing.T) {
@@ -114,4 +115,82 @@ func Test_buildParam_invalidRegex(t *testing.T) {
 			t.Error("expected error, got nil")
 		}
 	})
+}
+
+//nolint:funlen
+func Test_getMinAge(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Invalid env var", func(t *testing.T) {
+		_, err := getMinAge(&config.Config{}, &Flags{}, func(string) string {
+			return "not an integer"
+		})
+
+		if err == nil {
+			t.Error("expected error, got nil")
+		}
+	})
+
+	data := []struct {
+		name        string
+		cfg         *config.Config
+		flags       *Flags
+		env         string
+		expectedAge int
+	}{
+		{
+			// Config has 'min_age: 14' but user passes '--min-age 7'
+			// => cooldown must be 7 days
+			name:        "flag takes precedence",
+			cfg:         &config.Config{Updates: &config.Updates{MinAge: 14}},
+			flags:       &Flags{MinAge: 7},
+			env:         "",
+			expectedAge: 7,
+		},
+		{
+			name:        "config is used when --min-age flag isn't provided",
+			cfg:         &config.Config{Updates: &config.Updates{MinAge: 14}},
+			flags:       &Flags{},
+			env:         "",
+			expectedAge: 14,
+		},
+		{
+			name:        "env value takes precedence over config",
+			cfg:         &config.Config{Updates: &config.Updates{MinAge: 14}},
+			flags:       &Flags{},
+			env:         "3",
+			expectedAge: 3,
+		},
+		{
+			// When env var + config + flag are provided, then the flag takes precedence
+			name:        "flag takes precedence over env var & over the config",
+			cfg:         &config.Config{Updates: &config.Updates{MinAge: 14}},
+			flags:       &Flags{MinAge: 3},
+			env:         "5",
+			expectedAge: 3,
+		},
+		{
+			// When MinAge isn't set (flags + config + env var), then it should use
+			// the default value
+			name:        "uses the default value when none provided",
+			cfg:         &config.Config{},
+			flags:       &Flags{},
+			env:         "",
+			expectedAge: config.DefaultMinAge,
+		},
+	}
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := getMinAge(d.cfg, d.flags, func(string) string {
+				return d.env
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != d.expectedAge {
+				t.Errorf("wanted %d, got %d", d.expectedAge, got)
+			}
+		})
+	}
 }
