@@ -56,7 +56,7 @@ func (c *Controller) buildSARIFResults() []sarif.Result {
 	results := make([]sarif.Result, 0, len(c.param.Findings))
 	for _, f := range c.param.Findings {
 		ruleID := ruleUnpinnedAction
-		level := "error"
+		level := levelError
 		var msg string
 		if f.Message != "" {
 			// Parse error

@@ -288,7 +288,7 @@ func (c *Controller) outputDiff(line *Line, newLine string) {
 	if !c.param.Check && c.param.Fix && !c.param.Diff {
 		return
 	}
-	level := "info"
+	level := levelInfo
 	if c.param.Check {
 		level = levelError
 	}

@@ -18,6 +18,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	pathPinactYaml       = ".pinact.yaml"
+	pathPinactYml        = ".pinact.yml"
+	pathGitHubPinactYaml = ".github/pinact.yaml"
+	pathGitHubPinactYml  = ".github/pinact.yml"
+)
+
 type Config struct {
 	Version       int             `json:"version,omitempty" jsonschema:"enum=2,enum=3"`
 	Files         []*File         `json:"files,omitempty" jsonschema:"description=Target files. If files are passed via positional command line arguments, this is ignored"`
@@ -226,7 +233,7 @@ func (g *GHES) Validate() error {
 // in order of preference.
 // Returns the path to the first found configuration file, empty string if none found, or an error.
 func getConfigPath(fs afero.Fs) (string, error) {
-	for _, path := range []string{".pinact.yaml", ".github/pinact.yaml", ".pinact.yml", ".github/pinact.yml"} {
+	for _, path := range []string{pathPinactYaml, pathGitHubPinactYaml, pathPinactYml, pathGitHubPinactYml} {
 		f, err := afero.Exists(fs, path)
 		if err != nil {
 			return "", fmt.Errorf("check if %s exists: %w", path, err)

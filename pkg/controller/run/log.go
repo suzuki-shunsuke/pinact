@@ -31,7 +31,14 @@ func NewLogger(stderr io.Writer) *Logger {
 	}
 }
 
-const levelError = "error"
+const (
+	levelError = "error"
+	levelInfo  = "info"
+)
+
+const (
+	logINFO = "INFO"
+)
 
 // Output writes formatted log messages with color coding and line information.
 // It displays the log level, message, file location, and optionally shows
@@ -43,7 +50,7 @@ const levelError = "error"
 //   - line: line information including file path and line number
 //   - newLine: new line content for diff display (empty for no diff)
 func (l *Logger) Output(level, message string, line *Line, newLine string) {
-	s := "INFO"
+	s := logINFO
 	if level == levelError {
 		s = l.red("ERROR")
 	}
