@@ -140,7 +140,7 @@ func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
 	}
 	if flags.FixCount > 0 {
 		param.Fix = flags.Fix
-	} else if param.Check || param.Diff {
+	} else if param.Check || param.Diff || param.IsVerify {
 		param.Fix = false
 	}
 	return param, nil

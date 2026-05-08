@@ -98,6 +98,36 @@ func Test_buildParam_explicitFix(t *testing.T) {
 	}
 }
 
+func Test_buildParam_verifyMode(t *testing.T) {
+	t.Parallel()
+	flags := &Flags{GlobalFlags: &flag.GlobalFlags{}, Verify: true}
+	got, err := buildParam(flags, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Fix {
+		t.Error("Fix: wanted false, got true")
+	}
+	if !got.IsVerify {
+		t.Error("IsVerify: wanted true, got false")
+	}
+}
+
+func Test_buildParam_verifyWithExplicitFix(t *testing.T) {
+	t.Parallel()
+	flags := &Flags{GlobalFlags: &flag.GlobalFlags{}, Verify: true, Fix: true, FixCount: 1}
+	got, err := buildParam(flags, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !got.Fix {
+		t.Error("Fix: wanted true, got false")
+	}
+	if !got.IsVerify {
+		t.Error("IsVerify: wanted true, got false")
+	}
+}
+
 func Test_buildParam_invalidRegex(t *testing.T) {
 	t.Parallel()
 	t.Run("invalid include", func(t *testing.T) {
