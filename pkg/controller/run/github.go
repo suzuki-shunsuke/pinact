@@ -30,8 +30,13 @@ type GitService interface {
 // It first tries to get the latest version from releases, and if that fails
 // or returns empty, it falls back to getting the latest version from tags.
 func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, owner, repo, currentVersion string) (string, error) {
-	isStable := isStableVersion(currentVersion)
+	return c.getLatestVersionWithStable(ctx, logger, owner, repo, isStableVersion(currentVersion))
+}
 
+// getLatestVersionWithStable is the same as getLatestVersion but takes an
+// explicit isStable flag instead of inferring it from currentVersion. Used by
+// branch-to-tag, which has no semver-shaped currentVersion to infer from.
+func (c *Controller) getLatestVersionWithStable(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool) (string, error) {
 	// Calculate cutoff once for min-age filtering
 	var cutoff time.Time
 	if c.param.MinAge > 0 {

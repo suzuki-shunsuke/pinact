@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/afero"
@@ -734,6 +735,157 @@ func TestController_excludeByIncludes(t *testing.T) { //nolint:funlen
 
 			if got := ctrl.excludeByIncludes(tt.actionName); got != tt.want {
 				t.Errorf("excludeByIncludes() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	// Tag/release setup used by all sub-tests: actions/checkout has a stable
+	// v3.5.2 release plus a v4.0.0-rc.1 pre-release. actions/no-stable has only
+	// a pre-release. actions/no-tag has neither.
+	tagsCheckout := &github.ListTagsResult{
+		Tags: []*github.RepositoryTag{
+			{Name: new("v3.5.2"), Commit: &github.Commit{SHA: new("8e5e7e5ab8b370d6c329ec480221332ada57f0ab")}},
+			{Name: new("v4.0.0-rc.1"), Commit: &github.Commit{SHA: new("rcrcrcrcrcrcrcrcrcrcrcrcrcrcrcrcrcrcrcrc")}},
+		},
+		Response: &github.Response{},
+	}
+	releasesCheckout := &github.ListReleasesResult{
+		Releases: []*github.RepositoryRelease{
+			{TagName: new("v3.5.2")},
+			{TagName: new("v4.0.0-rc.1"), Prerelease: new(true)},
+		},
+		Response: &github.Response{},
+	}
+	tagsNoStable := &github.ListTagsResult{
+		Tags: []*github.RepositoryTag{
+			{Name: new("v1.0.0-beta"), Commit: &github.Commit{SHA: new("bebebebebebebebebebebebebebebebebebebebe")}},
+		},
+		Response: &github.Response{},
+	}
+	releasesNoStable := &github.ListReleasesResult{
+		Releases: []*github.RepositoryRelease{
+			{TagName: new("v1.0.0-beta"), Prerelease: new(true)},
+		},
+		Response: &github.Response{},
+	}
+	tagsNoTag := &github.ListTagsResult{Tags: []*github.RepositoryTag{}, Response: &github.Response{}}
+	releasesNoTag := &github.ListReleasesResult{Releases: []*github.RepositoryRelease{}, Response: &github.Response{}}
+
+	// actions/min-age has v2.0.0 (recent, 1 day ago) and v1.0.0 (older, 30 days ago).
+	// With --min-age 7, v2.0.0 must be skipped and v1.0.0 chosen.
+	now := time.Date(2026, 5, 13, 0, 0, 0, 0, time.UTC)
+	tagsMinAge := &github.ListTagsResult{
+		Tags: []*github.RepositoryTag{
+			{Name: new("v2.0.0"), Commit: &github.Commit{SHA: new("2222222222222222222222222222222222222222")}},
+			{Name: new("v1.0.0"), Commit: &github.Commit{SHA: new("1111111111111111111111111111111111111111")}},
+		},
+		Response: &github.Response{},
+	}
+	releasesMinAge := &github.ListReleasesResult{
+		Releases: []*github.RepositoryRelease{
+			{TagName: new("v2.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -1)}},
+			{TagName: new("v1.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -30)}},
+		},
+		Response: &github.Response{},
+	}
+
+	commits := map[string]*github.GetCommitSHA1Result{
+		"actions/checkout/v3.5.2":       {SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab"},
+		"actions/no-stable/v1.0.0-beta": {SHA: "bebebebebebebebebebebebebebebebebebebebe"},
+		"actions/min-age/v1.0.0":        {SHA: "1111111111111111111111111111111111111111"},
+	}
+
+	data := []struct {
+		name        string
+		line        string
+		branchToTag []*regexp.Regexp
+		minAge      int
+		exp         string
+		isErr       bool
+	}{
+		{
+			name:        "main matches and is converted to latest stable tag",
+			line:        "  - uses: actions/checkout@main",
+			branchToTag: []*regexp.Regexp{regexp.MustCompile(`^main$`)},
+			exp:         "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2",
+		},
+		{
+			name:        "regex unmatched still errors",
+			line:        "  - uses: actions/checkout@main",
+			branchToTag: []*regexp.Regexp{regexp.MustCompile(`^master$`)},
+			isErr:       true,
+		},
+		{
+			name:        "no branch-to-tag configured still errors",
+			line:        "  - uses: actions/checkout@main",
+			branchToTag: nil,
+			isErr:       true,
+		},
+		{
+			name:        "falls back to pre-release when no stable tag exists",
+			line:        "  - uses: actions/no-stable@develop",
+			branchToTag: []*regexp.Regexp{regexp.MustCompile(`^develop$`)},
+			exp:         "  - uses: actions/no-stable@bebebebebebebebebebebebebebebebebebebebe # v1.0.0-beta",
+		},
+		{
+			name:        "errors when action has no tag at all",
+			line:        "  - uses: actions/no-tag@main",
+			branchToTag: []*regexp.Regexp{regexp.MustCompile(`^main$`)},
+			isErr:       true,
+		},
+		{
+			name:        "semver line is unaffected by branch-to-tag",
+			line:        "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3",
+			branchToTag: []*regexp.Regexp{regexp.MustCompile(`.*`)},
+			exp:         "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2",
+		},
+		{
+			name:        "min-age skips recent stable tag",
+			line:        "  - uses: actions/min-age@main",
+			branchToTag: []*regexp.Regexp{regexp.MustCompile(`^main$`)},
+			minAge:      7,
+			exp:         "  - uses: actions/min-age@1111111111111111111111111111111111111111 # v1.0.0",
+		},
+	}
+	logger := slog.New(slog.DiscardHandler)
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			ctrl := New(&github.RepositoriesServiceImpl{
+				Tags: map[string]*github.ListTagsResult{
+					"actions/checkout/0":  tagsCheckout,
+					"actions/no-stable/0": tagsNoStable,
+					"actions/no-tag/0":    tagsNoTag,
+					"actions/min-age/0":   tagsMinAge,
+				},
+				Releases: map[string]*github.ListReleasesResult{
+					"actions/checkout/0":  releasesCheckout,
+					"actions/no-stable/0": releasesNoStable,
+					"actions/no-tag/0":    releasesNoTag,
+					"actions/min-age/0":   releasesMinAge,
+				},
+				Commits: commits,
+			}, nil, nil, fs, &config.Config{Separator: " # "}, &ParamRun{
+				BranchToTags: d.branchToTag,
+				MinAge:       d.minAge,
+				Now:          now,
+			})
+			line, err := ctrl.parseLine(t.Context(), logger, d.line)
+			if err != nil {
+				if d.isErr {
+					return
+				}
+				t.Fatal(err)
+			}
+			if d.isErr {
+				t.Fatalf("expected error, got line %q", line)
+			}
+			if line != d.exp {
+				t.Fatalf("wanted %s, got %s", d.exp, line)
 			}
 		})
 	}

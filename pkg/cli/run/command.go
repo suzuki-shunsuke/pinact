@@ -140,10 +140,15 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Usage:       "A regular expression to exclude actions",
 				Destination: &flags.Exclude,
 			},
+			&cli.StringSliceFlag{
+				Name:        "branch-to-tag",
+				Usage:       "A regular expression to convert non-semver versions (e.g. branch names) to the latest stable tag. Anchor with ^$ for exact match",
+				Destination: &flags.BranchToTag,
+			},
 			&cli.IntFlag{
 				Name:        "min-age",
 				Aliases:     []string{"m"},
-				Usage:       "Skip versions released within the specified number of days (requires -u)",
+				Usage:       "Skip versions released within the specified number of days (requires -u or --branch-to-tag)",
 				Destination: &flags.MinAge,
 				Sources:     cli.EnvVars("PINACT_MIN_AGE"),
 				Validator: func(i int) error {

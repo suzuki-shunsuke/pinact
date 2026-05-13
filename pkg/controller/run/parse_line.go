@@ -204,6 +204,9 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, ac
 	case FullCommitSHA:
 		return "", nil
 	default:
+		if c.matchBranchToTag(action.Version) {
+			return c.convertBranchToLatestTag(ctx, logger, action)
+		}
 		return "", ErrCantPinned
 	}
 	// @v1, @v1.0.0
@@ -211,6 +214,41 @@ func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, ac
 		return c.updateToLatestVersion(ctx, logger, action)
 	}
 	return c.pinCurrentVersion(ctx, logger, action, typ)
+}
+
+// matchBranchToTag reports whether v matches any of the --branch-to-tag regexps.
+func (c *Controller) matchBranchToTag(v string) bool {
+	for _, re := range c.param.BranchToTags {
+		if re.MatchString(v) {
+			return true
+		}
+	}
+	return false
+}
+
+// convertBranchToLatestTag resolves an action's non-semver version (e.g. a
+// branch name) to the latest stable tag of the action's repository and pins
+// the line to its commit SHA. Falls back to including pre-releases only when
+// no stable tag exists.
+func (c *Controller) convertBranchToLatestTag(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
+	lv, err := c.getLatestVersionWithStable(ctx, logger, action.RepoOwner, action.RepoName, true)
+	if err != nil {
+		return "", fmt.Errorf("get the latest stable version: %w", err)
+	}
+	if lv == "" {
+		lv, err = c.getLatestVersionWithStable(ctx, logger, action.RepoOwner, action.RepoName, false)
+		if err != nil {
+			return "", fmt.Errorf("get the latest version: %w", err)
+		}
+		if lv == "" {
+			return "", ErrCantPinned
+		}
+	}
+	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
+	if err != nil {
+		return "", fmt.Errorf("get a reference: %w", err)
+	}
+	return c.patchLine(action, sha, lv), nil
 }
 
 // updateToLatestVersion updates an action to its latest version.
@@ -303,7 +341,8 @@ func (c *Controller) handleCurrentVersionIsLatest(ctx context.Context, logger *s
 // handleUpdateToNewerVersion handles updating to a newer version when available.
 func (c *Controller) handleUpdateToNewerVersion(ctx context.Context, logger *slog.Logger, action *Action, lv string) (string, error) {
 	if !compareVersion(action.VersionComment, lv) {
-		logger.Warn("skip updating because the current version is newer than the new version",
+		logger.Warn(
+			"skip updating because the current version is newer than the new version",
 			"current_version", action.VersionComment,
 			"new_version", lv,
 		)
@@ -444,7 +483,8 @@ func (c *Controller) verify(ctx context.Context, logger *slog.Logger, action *Ac
 	if action.Version == sha {
 		return nil
 	}
-	return slogerr.With(errors.New("action_version must be equal to commit_hash_of_version_annotation"), //nolint:wrapcheck
+	return slogerr.With( //nolint:wrapcheck
+		errors.New("action_version must be equal to commit_hash_of_version_annotation"),
 		"action", action.Name,
 		"action_version", action.Version,
 		"version_annotation", action.VersionComment,
