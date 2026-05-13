@@ -190,45 +190,55 @@ func (c *Controller) processPinnedVersion(ctx context.Context, logger *slog.Logg
 	switch getVersionType(action.VersionComment) {
 	case Semver:
 		// @<sha> # v1.0.0
-		if !c.param.Update {
-			return c.verifyIfNeeded(ctx, logger, action)
-		}
-		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment)
-		if err != nil {
-			return "", fmt.Errorf("get the latest version: %w", err)
-		}
-		if action.VersionComment == lv {
-			return c.verifyIfNeeded(ctx, logger, action)
-		}
-		if !compareVersion(action.VersionComment, lv) {
-			warnSkipOlderVersion(logger, action.VersionComment, lv)
-			return "", nil
-		}
-		return c.patchToLatestVersion(ctx, logger, action, lv)
+		return c.processPinnedSemverComment(ctx, logger, action)
 	case Shortsemver:
 		// @<sha> # v1
 		logger = attrs.Add(logger, "version_annotation", action.VersionComment)
-		if c.param.Update {
-			lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment)
-			if err != nil {
-				return "", fmt.Errorf("get the latest version: %w", err)
-			}
-			return c.patchToLatestVersion(ctx, logger, action, lv)
-		}
-		// replace Shortsemver to Semver
-		longVersion, err := c.getLongVersionFromSHA(ctx, logger, action, action.Version)
-		if err != nil {
-			return "", err
-		}
-		if longVersion == "" {
-			logger.Debug("a long tag whose SHA is same as SHA of the version annotation isn't found")
-			return "", nil
-		}
-		return c.patchLine(action, action.Version, longVersion), nil
+		return c.processPinnedShortsemverComment(ctx, logger, action)
 	default:
 		// Empty (@<sha>) or Other (@<sha> # hoge): already pinned, leave alone.
 		return "", nil
 	}
+}
+
+// processPinnedSemverComment handles @<sha> # v1.0.0.
+func (c *Controller) processPinnedSemverComment(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
+	if !c.param.Update {
+		return c.verifyIfNeeded(ctx, logger, action)
+	}
+	lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment)
+	if err != nil {
+		return "", fmt.Errorf("get the latest version: %w", err)
+	}
+	if action.VersionComment == lv {
+		return c.verifyIfNeeded(ctx, logger, action)
+	}
+	if !compareVersion(action.VersionComment, lv) {
+		warnSkipOlderVersion(logger, action.VersionComment, lv)
+		return "", nil
+	}
+	return c.patchToLatestVersion(ctx, logger, action, lv)
+}
+
+// processPinnedShortsemverComment handles @<sha> # v1.
+func (c *Controller) processPinnedShortsemverComment(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
+	if c.param.Update {
+		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment)
+		if err != nil {
+			return "", fmt.Errorf("get the latest version: %w", err)
+		}
+		return c.patchToLatestVersion(ctx, logger, action, lv)
+	}
+	// replace Shortsemver to Semver
+	longVersion, err := c.getLongVersionFromSHA(ctx, logger, action, action.Version)
+	if err != nil {
+		return "", err
+	}
+	if longVersion == "" {
+		logger.Debug("a long tag whose SHA is same as SHA of the version annotation isn't found")
+		return "", nil
+	}
+	return c.patchLine(action, action.Version, longVersion), nil
 }
 
 // processTaggedVersion handles actions whose Version is a semver or short
