@@ -308,6 +308,31 @@ INFO[0000] action isn't pinned
   pinact_version=v3.0.0-local program=pinact
 ```
 
+### Pin branches
+
+pinact >= v3.10.0, [#1529](https://github.com/suzuki-shunsuke/pinact/issues/1529)
+
+By default, pinact doesn't pin branches such as `main` or `master`.
+If you want to pin specific branches, you can use the `--branch-to-tag` option.
+
+```sh
+pinact run --branch-to-tag '<regular expression matching branch name>'
+```
+
+The value is evaluated as a regular expression with partial match, just like `--include` / `--exclude`.
+Anchor with `^...$` for an exact match — for short branch names like `main` this is recommended to avoid matching `mainline` etc.
+Versions that don't match any of the supplied regexps continue to error out as before.
+
+The branch is converted to the **latest stable tag** of the action. Pre-releases are used only when no stable tag exists.
+
+`--branch-to-tag` can be specified multiple times.
+
+e.g.
+
+```sh
+pinact run --branch-to-tag '^main$' --branch-to-tag '^release/.*$'
+```
+
 ### -diff, -check, -fix options
 
 The behaviour of `pinact run` command is changed by command line options `-diff`, `-check`, and `-fix`.
@@ -541,10 +566,13 @@ Or pinning version:
 
 ## Q. Why doesn't pinact pin some actions?
 
+> [!TIP]
+> Since v3.10.0, the [`--branch-to-tag`](#pin-branches) option lets you opt-in to pinning specific branches to the latest stable tag of an action.
+
 In some cases pinact doesn't pin versions intentionally, which may confuse you.
 So we describe the reason here.
 
-pinact doesn't pin actions whose versions aren't semver (e.g. `main`, `master`, `release/v1`).
+By default, pinact doesn't pin actions whose versions aren't semver (e.g. `main`, `master`, `release/v1`).
 This is because pinact is designed as a safe tool so that it doesn't change workflows behaviour.
 pinact pins actions but doesn't change SHA of actions at the moment when pinact pins versions.
 
