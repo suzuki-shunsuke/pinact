@@ -32,6 +32,7 @@ type ParamRun struct {
 	Review            *Review
 	Includes          []*regexp.Regexp
 	Excludes          []*regexp.Regexp
+	BranchToTags      []*regexp.Regexp
 	MinAge            int
 	Now               time.Time
 	Format            string
@@ -219,7 +220,8 @@ func (c *Controller) handleParseLineError(ctx context.Context, logger *slog.Logg
 		if code == http.StatusUnprocessableEntity {
 			level = slog.LevelWarn
 		}
-		slogerr.WithError(logger, err).Log(ctx, level, "create a review comment",
+		slogerr.WithError(logger, err).Log(
+			ctx, level, "create a review comment",
 			"review_repo_owner", c.param.Review.RepoOwner,
 			"review_repo_name", c.param.Review.RepoName,
 			"review_pr_number", c.param.Review.PullRequest,
@@ -260,7 +262,8 @@ func (c *Controller) tryCreateReview(ctx context.Context, logger *slog.Logger, l
 		if code == http.StatusUnprocessableEntity {
 			level = slog.LevelWarn
 		}
-		slogerr.WithError(logger, err).Log(ctx, level, "create a review comment",
+		slogerr.WithError(logger, err).Log(
+			ctx, level, "create a review comment",
 			"review_repo_owner", c.param.Review.RepoOwner,
 			"review_repo_name", c.param.Review.RepoName,
 			"review_pr_number", c.param.Review.PullRequest,

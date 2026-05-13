@@ -119,6 +119,10 @@ func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse exclude: %w", err)
 	}
+	branchToTags, err := compileRegexps(flags.BranchToTag)
+	if err != nil {
+		return nil, fmt.Errorf("parse branch-to-tag: %w", err)
+	}
 	param := &run.ParamRun{
 		WorkflowFilePaths: flags.Args,
 		ConfigFilePath:    flags.Config,
@@ -134,6 +138,7 @@ func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
 		Review:            review,
 		Includes:          includes,
 		Excludes:          excludes,
+		BranchToTags:      branchToTags,
 		MinAge:            flags.MinAge,
 		Now:               time.Now(),
 		Format:            flags.Format,

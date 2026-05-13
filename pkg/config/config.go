@@ -59,17 +59,20 @@ var (
 func validateSchemaVersion(v int) error {
 	switch v {
 	case 0:
-		return slogerr.With(errEmptyConfigVersion, //nolint:wrapcheck
+		return slogerr.With( //nolint:wrapcheck
+			errEmptyConfigVersion,
 			"docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/002.md",
 		)
 	case 2: //nolint:mnd
-		return slogerr.With(errAbandonedConfigVersion, //nolint:wrapcheck
+		return slogerr.With( //nolint:wrapcheck
+			errAbandonedConfigVersion,
 			"docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/003.md",
 		)
 	case 3: //nolint:mnd
 		return nil
 	default:
-		return slogerr.With(errUnsupportedConfigVersion, //nolint:wrapcheck
+		return slogerr.With( //nolint:wrapcheck
+			errUnsupportedConfigVersion,
 			"docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/004.md",
 		)
 	}
