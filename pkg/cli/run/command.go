@@ -148,7 +148,7 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 			&cli.IntFlag{
 				Name:        "min-age",
 				Aliases:     []string{"m"},
-				Usage:       "Skip versions released within the specified number of days (requires -u)",
+				Usage:       "Skip versions released within the specified number of days (requires -u or --branch-to-tag)",
 				Destination: &flags.MinAge,
 				Sources:     cli.EnvVars("PINACT_MIN_AGE"),
 				Validator: func(i int) error {

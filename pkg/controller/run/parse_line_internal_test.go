@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/afero"
@@ -773,15 +774,35 @@ func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
 	tagsNoTag := &github.ListTagsResult{Tags: []*github.RepositoryTag{}, Response: &github.Response{}}
 	releasesNoTag := &github.ListReleasesResult{Releases: []*github.RepositoryRelease{}, Response: &github.Response{}}
 
+	// actions/min-age has v2.0.0 (recent, 1 day ago) and v1.0.0 (older, 30 days ago).
+	// With --min-age 7, v2.0.0 must be skipped and v1.0.0 chosen.
+	now := time.Date(2026, 5, 13, 0, 0, 0, 0, time.UTC)
+	tagsMinAge := &github.ListTagsResult{
+		Tags: []*github.RepositoryTag{
+			{Name: new("v2.0.0"), Commit: &github.Commit{SHA: new("2222222222222222222222222222222222222222")}},
+			{Name: new("v1.0.0"), Commit: &github.Commit{SHA: new("1111111111111111111111111111111111111111")}},
+		},
+		Response: &github.Response{},
+	}
+	releasesMinAge := &github.ListReleasesResult{
+		Releases: []*github.RepositoryRelease{
+			{TagName: new("v2.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -1)}},
+			{TagName: new("v1.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -30)}},
+		},
+		Response: &github.Response{},
+	}
+
 	commits := map[string]*github.GetCommitSHA1Result{
 		"actions/checkout/v3.5.2":       {SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab"},
 		"actions/no-stable/v1.0.0-beta": {SHA: "bebebebebebebebebebebebebebebebebebebebe"},
+		"actions/min-age/v1.0.0":        {SHA: "1111111111111111111111111111111111111111"},
 	}
 
 	data := []struct {
 		name        string
 		line        string
 		branchToTag []*regexp.Regexp
+		minAge      int
 		exp         string
 		isErr       bool
 	}{
@@ -821,6 +842,13 @@ func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
 			branchToTag: []*regexp.Regexp{regexp.MustCompile(`.*`)},
 			exp:         "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2",
 		},
+		{
+			name:        "min-age skips recent stable tag",
+			line:        "  - uses: actions/min-age@main",
+			branchToTag: []*regexp.Regexp{regexp.MustCompile(`^main$`)},
+			minAge:      7,
+			exp:         "  - uses: actions/min-age@1111111111111111111111111111111111111111 # v1.0.0",
+		},
 	}
 	logger := slog.New(slog.DiscardHandler)
 	for _, d := range data {
@@ -832,15 +860,19 @@ func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
 					"actions/checkout/0":  tagsCheckout,
 					"actions/no-stable/0": tagsNoStable,
 					"actions/no-tag/0":    tagsNoTag,
+					"actions/min-age/0":   tagsMinAge,
 				},
 				Releases: map[string]*github.ListReleasesResult{
 					"actions/checkout/0":  releasesCheckout,
 					"actions/no-stable/0": releasesNoStable,
 					"actions/no-tag/0":    releasesNoTag,
+					"actions/min-age/0":   releasesMinAge,
 				},
 				Commits: commits,
 			}, nil, nil, fs, &config.Config{Separator: " # "}, &ParamRun{
 				BranchToTags: d.branchToTag,
+				MinAge:       d.minAge,
+				Now:          now,
 			})
 			line, err := ctrl.parseLine(t.Context(), logger, d.line)
 			if err != nil {

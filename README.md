@@ -325,6 +325,8 @@ Versions that don't match any of the supplied regexps continue to error out as b
 
 The branch is converted to the **latest stable tag** of the action. Pre-releases are used only when no stable tag exists.
 
+[`--min-age`](#skip-recently-released-versions) is honored: when set, tags released within the cooldown window are skipped.
+
 `--branch-to-tag` can be specified multiple times.
 
 e.g.
