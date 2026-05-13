@@ -11,7 +11,7 @@ USAGE:
    pinact [global options] [command [command options]]
 
 VERSION:
-   v3.0.0-local
+   3.9.2
 
 COMMANDS:
    init        Create .pinact.yaml if it doesn't exist
@@ -37,7 +37,7 @@ NAME:
    pinact init - Create .pinact.yaml if it doesn't exist
 
 USAGE:
-   pinact init [options]
+   pinact init
 
 DESCRIPTION:
    Create .pinact.yaml if it doesn't exist
@@ -53,10 +53,6 @@ DESCRIPTION:
 
 OPTIONS:
    --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
 ```
 
 ## pinact run
@@ -67,7 +63,7 @@ NAME:
    pinact run - Pin GitHub Actions versions
 
 USAGE:
-   pinact run [options] [files ...] 
+   pinact run [arguments...]
 
 DESCRIPTION:
    If no argument is passed, pinact searches GitHub Actions workflow files from .github/workflows.
@@ -95,14 +91,9 @@ OPTIONS:
    --pr int                                                     GitHub pull request number (default: 0)
    --include string, -i string [ --include string, -i string ]  A regular expression to fix actions
    --exclude string, -e string [ --exclude string, -e string ]  A regular expression to exclude actions
-   --branch-to-tag string [ --branch-to-tag string ]            A regular expression to convert non-semver versions (e.g. branch names) to the latest stable tag. Anchor with ^$ for exact match
-   --min-age int, -m int                                        Skip versions released within the specified number of days (requires -u or --branch-to-tag) (default: 0) [$PINACT_MIN_AGE]
+   --min-age int, -m int                                        Skip versions released within the specified number of days (requires -u) (default: 0) [$PINACT_MIN_AGE]
    --separator string, --sep string                             Separator between version and tag comment
    --help, -h                                                   show help
-
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
 ```
 
 ## pinact migrate
@@ -113,7 +104,7 @@ NAME:
    pinact migrate - Migrate .pinact.yaml
 
 USAGE:
-   pinact migrate [options]
+   pinact migrate
 
 DESCRIPTION:
    Migrate the version of .pinact.yaml
@@ -123,10 +114,6 @@ DESCRIPTION:
 
 OPTIONS:
    --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
 ```
 
 ## pinact token
@@ -158,7 +145,7 @@ NAME:
    pinact token set - Set GitHub Access token
 
 USAGE:
-   pinact token set [options]
+   pinact token set
 
 DESCRIPTION:
    Set GitHub Access token to keyring.
@@ -166,10 +153,6 @@ DESCRIPTION:
 OPTIONS:
    --stdin     Read GitHub Access token from stdin
    --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
 ```
 
 ### token remove
@@ -180,17 +163,13 @@ NAME:
    pinact token remove - Remove GitHub Access token
 
 USAGE:
-   pinact token remove [options]
+   pinact token remove
 
 DESCRIPTION:
    Remove GitHub Access token from keyring.
 
 OPTIONS:
    --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
 ```
 
 ## pinact version
@@ -201,15 +180,11 @@ NAME:
    pinact version - Show version
 
 USAGE:
-   pinact version [options]
+   pinact version
 
 OPTIONS:
    --json, -j  Output version in JSON format
    --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
 ```
 
 ## pinact completion
@@ -220,7 +195,7 @@ NAME:
    pinact completion - Output shell completion script for bash, zsh, fish, or Powershell
 
 USAGE:
-   pinact completion [options]
+   pinact completion
 
 DESCRIPTION:
    Output shell completion script for bash, zsh, fish, or Powershell.
@@ -241,8 +216,4 @@ DESCRIPTION:
 
 OPTIONS:
    --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
 ```
