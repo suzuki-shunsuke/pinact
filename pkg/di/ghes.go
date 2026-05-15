@@ -12,7 +12,8 @@ import (
 // It configures a ClientResolver that routes API requests to either GHES or github.com
 // based on the configuration. When GHES is enabled with fallback, repositories are first
 // checked on GHES and fall back to github.com if not found.
-func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Config, flags *Flags, token string) (*ghesServices, error) {
+// If reviewToken/ghesReviewToken is provided and flags.Review is true, the review token is used for PR comments.
+func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Config, flags *Flags, token, reviewToken, ghesReviewToken string) (*ghesServices, error) { //nolint:funlen
 	ghesConfig := cfg.GHES
 	if ghesConfig == nil {
 		ghesConfig = flags.GHESFromEnv()
@@ -38,6 +39,14 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 		ghesRepoService = client.Repositories
 		ghesGitService = client.Git
 		ghesPRService = client.PullRequests
+		// Use GHES review token for PR comments if provided
+		if ghesReviewToken != "" && flags.Review {
+			reviewClient, err := github.NewWithBaseURL(ctx, ghesConfig.APIURL, ghesReviewToken)
+			if err != nil {
+				return nil, fmt.Errorf("create GHES review client: %w", err)
+			}
+			ghesPRService = reviewClient.PullRequests
+		}
 		ghesFallback = ghesConfig.Fallback
 	}
 
@@ -60,7 +69,13 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 	gitService.SetResolver(resolver)
 
 	prService := &github.PullRequestsServiceImpl{}
-	prService.SetServices(gh.PullRequests, ghesPRService)
+	defaultPRService := gh.PullRequests
+	// Use review token for PR comments if provided
+	if reviewToken != "" && flags.Review {
+		reviewClient := github.New(ctx, nil, reviewToken, false)
+		defaultPRService = reviewClient.PullRequests
+	}
+	prService.SetServices(defaultPRService, ghesPRService)
 
 	return &ghesServices{
 		repoService: repoService,
