@@ -101,6 +101,17 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 				Quote:                   "",
 			},
 		},
+		{
+			name: "multi-space after dash",
+			line: "    -   uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3",
+			exp: &Action{
+				Uses:                    "    -   uses: ",
+				Name:                    "actions/checkout",
+				Version:                 "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+				VersionCommentSeparator: " # ",
+				VersionComment:          "v3",
+			},
+		},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
@@ -149,6 +160,11 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			name: "checkout v2 (single quote)",
 			line: `  "uses": 'actions/checkout@v2'`,
 			exp:  `  "uses": 'actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5' # v2.7.0`,
+		},
+		{
+			name: "multi-space after dash",
+			line: "      -   uses: actions/checkout@v3",
+			exp:  "      -   uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2",
 		},
 	}
 	logger := slog.New(slog.DiscardHandler)
