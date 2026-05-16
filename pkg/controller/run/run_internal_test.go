@@ -97,8 +97,9 @@ func TestController_processLines(t *testing.T) { //nolint:funlen
 }
 
 // TestController_outputDiff_alwaysOn verifies that the line diff is emitted to
-// stderr regardless of the -fix / -check / -diff flag combination (v4 spec:
-// "詳細の出力: true. 常に出力").
+// stderr regardless of the Fix value (v4 spec: detail output is always on).
+// -check / -diff are aliases for -fix=false and are translated by buildParam,
+// so the controller only needs to react to Fix.
 func TestController_outputDiff_alwaysOn(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -107,8 +108,6 @@ func TestController_outputDiff_alwaysOn(t *testing.T) {
 	}{
 		{name: "fix=true (default)", param: &ParamRun{Fix: true}},
 		{name: "fix=false", param: &ParamRun{Fix: false}},
-		{name: "fix=true, diff=true", param: &ParamRun{Fix: true, Diff: true}},
-		{name: "check=true", param: &ParamRun{Check: true, Fix: false}},
 	}
 
 	const oldLine = "    - uses: actions/checkout@v3.5.2"

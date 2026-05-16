@@ -69,9 +69,6 @@ func Test_buildParam_checkMode(t *testing.T) {
 	if got.Fix {
 		t.Error("Fix: wanted false, got true")
 	}
-	if !got.Check {
-		t.Error("Check: wanted true, got false")
-	}
 }
 
 func Test_buildParam_diffMode(t *testing.T) {

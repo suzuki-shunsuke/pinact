@@ -133,11 +133,9 @@ func buildParam(flags *Flags) (*run.ParamRun, error) {
 		ConfigFilePath:    flags.Config,
 		CWD:               flags.CWD,
 		IsVerify:          flags.VerifyComment,
-		Check:             flags.Check,
 		Update:            flags.Update,
-		Diff:              flags.Diff,
 		NoAPI:             flags.NoAPI,
-		Fix:               true,
+		Fix:               resolveFix(flags),
 		IsGitHubActions:   flags.IsGitHubActions,
 		Stderr:            os.Stderr,
 		Stdout:            os.Stdout,
@@ -148,18 +146,23 @@ func buildParam(flags *Flags) (*run.ParamRun, error) {
 		Now:               time.Now(),
 		Format:            flags.Format,
 	}
-	// Fix default is true. The legacy -check and -diff flags act as aliases for
-	// -fix=false (v4 spec). -format sarif also implies fix=false by default.
-	// Explicit -fix wins over all of these.
+	return param, nil
+}
+
+// resolveFix derives the controller-facing Fix value from the user's flags.
+// The default is true. The v3 -check and -diff flags act as silent aliases
+// for -fix=false. -format sarif also implies fix=false. An explicit -fix /
+// -fix=false wins over all of these.
+func resolveFix(flags *Flags) bool {
 	switch {
 	case flags.FixCount > 0:
-		param.Fix = flags.Fix
-	case param.Check || param.Diff:
-		param.Fix = false
-	case param.Format == formatSarif:
-		param.Fix = false
+		return flags.Fix
+	case flags.Check || flags.Diff:
+		return false
+	case flags.Format == formatSarif:
+		return false
 	}
-	return param, nil
+	return true
 }
 
 // validateFlagCombo enforces invalid CLI flag combinations defined by the v4 spec.

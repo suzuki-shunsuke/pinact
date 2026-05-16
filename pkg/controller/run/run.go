@@ -23,10 +23,8 @@ type ParamRun struct {
 	CWD               string
 	IsVerify          bool
 	Update            bool
-	Check             bool
 	IsGitHubActions   bool
 	Fix               bool
-	Diff              bool
 	NoAPI             bool
 	Stderr            io.Writer
 	Stdout            io.Writer
@@ -167,9 +165,10 @@ func (c *Controller) processLine(ctx context.Context, logger *slog.Logger, workf
 	}
 	lineLogger = lineLogger.With("new_line", l)
 	// When Fix is disabled, a changed line counts as "needs pinning" since the
-	// fix is not being auto-applied. The legacy -check flag has the same role.
+	// fix is not being auto-applied. -check and -diff are aliases for
+	// -fix=false (handled in di.buildParam), so this single check covers them.
 	code := ExitCodeOK
-	if !c.param.Fix || c.param.Check {
+	if !c.param.Fix {
 		code = ExitCodeNotPinned
 	}
 	lines[i] = l
@@ -288,7 +287,7 @@ func (c *Controller) outputGitHubActionsAnnotation(line *Line, newLine string) {
 		return
 	}
 	level := "notice"
-	if c.param.Check {
+	if !c.param.Fix {
 		level = levelError
 	}
 	fmt.Fprintf(c.param.Stderr, "::%s file=%s,line=%d,title=pinact error::%s\n", level, line.File, line.Number, newLine)
@@ -297,10 +296,10 @@ func (c *Controller) outputGitHubActionsAnnotation(line *Line, newLine string) {
 // outputDiff outputs the diff information for the changed line.
 // In v4, the detail output is always emitted regardless of -fix / -check / -diff
 // flag combinations. Error level is used when the run will exit non-zero
-// (Check or -fix=false), info level otherwise.
+// (Fix disabled), info level otherwise.
 func (c *Controller) outputDiff(line *Line, newLine string) {
 	level := levelInfo
-	if c.param.Check || !c.param.Fix {
+	if !c.param.Fix {
 		level = levelError
 	}
 	c.logger.Output(level, "", line, newLine)
