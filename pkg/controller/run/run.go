@@ -53,6 +53,15 @@ func (r *Review) Valid() bool {
 	return r != nil && r.RepoOwner != "" && r.RepoName != "" && r.PullRequest > 0
 }
 
+// Exit code classes for the v4 spec.
+// The Controller accumulates the highest code encountered across all files.
+const (
+	ExitCodeOK        = 0
+	ExitCodeNotPinned = 1 // auto-fixable: semver action that needs SHA pinning
+	ExitCodeUnfixable = 2 // not auto-fixable: branch, verify mismatch, min-age violation
+	ExitCodeAPIError  = 3 // GitHub API error or unexpected internal error
+)
+
 // Run executes the main pinact operation.
 // It searches for workflow files and processes each file
 // to pin GitHub Actions versions according to the specified parameters.
@@ -62,19 +71,17 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 		return fmt.Errorf("search target files: %w", err)
 	}
 
-	failed := false
+	exitCode := ExitCodeOK
 	for _, workflowFilePath := range workflowFilePaths {
 		logger := logger.With("workflow_file", workflowFilePath)
-		if err := c.runWorkflow(ctx, logger, workflowFilePath); err != nil {
-			failed = true
-			if errors.Is(err, ErrActionsNotPinned) {
-				continue
+		code, err := c.runWorkflow(ctx, logger, workflowFilePath)
+		if code > exitCode {
+			exitCode = code
+		}
+		if err != nil {
+			if code > ExitCodeNotPinned {
+				slogerr.WithError(logger, err).Error("process a workflow")
 			}
-			if c.param.Check {
-				slogerr.WithError(logger, err).Error("check a workflow")
-				continue
-			}
-			slogerr.WithError(logger, err).Error("update a workflow")
 		}
 	}
 	// Output SARIF if format is sarif
@@ -83,13 +90,26 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 			return fmt.Errorf("output SARIF: %w", err)
 		}
 	}
-	if failed {
+	if exitCode > ExitCodeOK {
+		// PR1: still return urfave.ErrSilent (binary exit 1).
+		// PR4 will replace this with ecerror.Wrap(err, exitCode) to wire 0/1/2/3.
 		return urfave.ErrSilent
 	}
 	return nil
 }
 
+// ErrActionsNotPinned is returned when a workflow contains actions that need to be pinned.
+// Kept as a public sentinel for external consumers; internally mapped to ExitCodeNotPinned.
 var ErrActionsNotPinned = errors.New("action aren't pinned")
+
+// ErrAPI is returned for GitHub API failures and other unexpected internal errors.
+// Maps to ExitCodeAPIError.
+var ErrAPI = errors.New("GitHub API error")
+
+// ErrUnfixable is returned when an action cannot be auto-fixed (e.g., a branch reference
+// without a matching -branch-to-tag rule, or a verify-comment mismatch).
+// Maps to ExitCodeUnfixable.
+var ErrUnfixable = errors.New("action cannot be auto-fixed")
 
 type Line struct {
 	File   string
@@ -100,26 +120,26 @@ type Line struct {
 // runWorkflow processes a single workflow file.
 // It reads the file line by line, parses each line for actions,
 // applies transformations, and optionally writes changes back to the file.
-func (c *Controller) runWorkflow(ctx context.Context, logger *slog.Logger, workflowFilePath string) error {
+// Returns the per-file exit code (max of any line's contribution) and any
+// unexpected internal error (file read/write failure).
+func (c *Controller) runWorkflow(ctx context.Context, logger *slog.Logger, workflowFilePath string) (int, error) {
 	lines, format, err := c.readWorkflow(workflowFilePath)
 	if err != nil {
-		return err
+		return ExitCodeAPIError, err
 	}
-	changed, failed := c.processLines(ctx, logger, workflowFilePath, lines)
+	changed, exitCode := c.processLines(ctx, logger, workflowFilePath, lines)
 	if changed && c.param.Fix {
 		if err := c.writeWorkflow(workflowFilePath, lines, format); err != nil {
-			return err
+			return ExitCodeAPIError, err
 		}
 	}
-	if failed {
-		return ErrActionsNotPinned
-	}
-	return nil
+	return exitCode, nil
 }
 
 // processLines processes each line in the workflow file.
-// It returns whether any lines were changed and whether any errors occurred.
-func (c *Controller) processLines(ctx context.Context, logger *slog.Logger, workflowFilePath string, lines []string) (changed, failed bool) {
+// It returns whether any lines were changed and the exit code (max of any line's
+// contribution: ExitCodeOK / ExitCodeNotPinned / ExitCodeUnfixable / ExitCodeAPIError).
+func (c *Controller) processLines(ctx context.Context, logger *slog.Logger, workflowFilePath string, lines []string) (changed bool, exitCode int) {
 	for i, lineS := range lines {
 		line := &Line{
 			File:   workflowFilePath,
@@ -132,7 +152,10 @@ func (c *Controller) processLines(ctx context.Context, logger *slog.Logger, work
 		)
 		l, err := c.parseLine(ctx, lineLogger, lineS)
 		if err != nil {
-			failed = true
+			code := classifyLineError(err)
+			if code > exitCode {
+				exitCode = code
+			}
 			c.handleParseLineError(ctx, lineLogger, line, err)
 			continue
 		}
@@ -141,13 +164,30 @@ func (c *Controller) processLines(ctx context.Context, logger *slog.Logger, work
 		}
 		lineLogger = lineLogger.With("new_line", l)
 		changed = true
-		if c.param.Check {
-			failed = true
+		// When Fix is disabled, a line that would be changed counts as
+		// "needs pinning" (exit code 1) since we are not auto-applying the fix.
+		if !c.param.Fix && exitCode < ExitCodeNotPinned {
+			exitCode = ExitCodeNotPinned
+		}
+		// Backward-compat: the legacy -check flag (handled separately in v3)
+		// also signals "needs pinning".
+		if c.param.Check && exitCode < ExitCodeNotPinned {
+			exitCode = ExitCodeNotPinned
 		}
 		lines[i] = l
 		c.handleChangedLine(ctx, lineLogger, line, l)
 	}
-	return changed, failed
+	return changed, exitCode
+}
+
+// classifyLineError maps a per-line parse/process error to an exit code class.
+//   - ErrCantPinned / ErrUnfixable / verify mismatch  -> ExitCodeUnfixable (2)
+//   - ErrAPI / anything else                          -> ExitCodeAPIError  (3)
+func classifyLineError(err error) int {
+	if errors.Is(err, ErrCantPinned) || errors.Is(err, ErrUnfixable) {
+		return ExitCodeUnfixable
+	}
+	return ExitCodeAPIError
 }
 
 // fileFormat captures the line-ending style and trailing-newline state of a
@@ -287,12 +327,12 @@ func (c *Controller) outputGitHubActionsAnnotation(line *Line, newLine string, r
 }
 
 // outputDiff outputs the diff information for the changed line.
+// In v4, the detail output is always emitted regardless of -fix / -check / -diff
+// flag combinations. Error level is used when the run will exit non-zero
+// (Check or -fix=false), info level otherwise.
 func (c *Controller) outputDiff(line *Line, newLine string) {
-	if !c.param.Check && c.param.Fix && !c.param.Diff {
-		return
-	}
 	level := levelInfo
-	if c.param.Check {
+	if c.param.Check || !c.param.Fix {
 		level = levelError
 	}
 	c.logger.Output(level, "", line, newLine)
