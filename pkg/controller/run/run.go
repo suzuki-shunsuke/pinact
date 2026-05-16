@@ -46,6 +46,26 @@ const (
 	ExitCodeAPIError  = 3 // GitHub API error or unexpected internal error
 )
 
+var (
+	// ErrActionsNotPinned is returned when a workflow contains actions that need to be pinned.
+	// Kept as a public sentinel for external consumers; internally mapped to ExitCodeNotPinned.
+	ErrActionsNotPinned = errors.New("action aren't pinned")
+
+	// ErrAPI is returned for GitHub API failures and other unexpected internal errors.
+	// Maps to ExitCodeAPIError.
+	ErrAPI = errors.New("GitHub API error")
+
+	// ErrUnfixable is returned when an action cannot be auto-fixed (e.g., a branch reference
+	// without a matching -branch-to-tag rule, or a verify-comment mismatch).
+	// Maps to ExitCodeUnfixable.
+	ErrUnfixable = errors.New("action cannot be auto-fixed")
+
+	// ErrMinAge is returned when an action's pinned commit was created after the
+	// -min-age cutoff. This is a soft error: the fix (if any) is still applied,
+	// but the run exits with ExitCodeUnfixable so CI can flag the violation.
+	ErrMinAge = errors.New("action version is younger than the min-age cutoff")
+)
+
 // Run executes the main pinact operation.
 // It searches for workflow files and processes each file
 // to pin GitHub Actions versions according to the specified parameters.
@@ -83,24 +103,6 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	}
 	return nil
 }
-
-// ErrActionsNotPinned is returned when a workflow contains actions that need to be pinned.
-// Kept as a public sentinel for external consumers; internally mapped to ExitCodeNotPinned.
-var ErrActionsNotPinned = errors.New("action aren't pinned")
-
-// ErrAPI is returned for GitHub API failures and other unexpected internal errors.
-// Maps to ExitCodeAPIError.
-var ErrAPI = errors.New("GitHub API error")
-
-// ErrUnfixable is returned when an action cannot be auto-fixed (e.g., a branch reference
-// without a matching -branch-to-tag rule, or a verify-comment mismatch).
-// Maps to ExitCodeUnfixable.
-var ErrUnfixable = errors.New("action cannot be auto-fixed")
-
-// ErrMinAge is returned when an action's pinned commit was created after the
-// -min-age cutoff. This is a soft error: the fix (if any) is still applied,
-// but the run exits with ExitCodeUnfixable so CI can flag the violation.
-var ErrMinAge = errors.New("action version is younger than the min-age cutoff")
 
 type Line struct {
 	File   string
