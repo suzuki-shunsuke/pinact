@@ -10,6 +10,9 @@ NAME:
 USAGE:
    pinact [global options] [command [command options]]
 
+VERSION:
+   3.10.1
+
 COMMANDS:
    init        Create .pinact.yaml if it doesn't exist
    run         Pin GitHub Actions versions
