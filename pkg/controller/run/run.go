@@ -27,6 +27,7 @@ type ParamRun struct {
 	IsGitHubActions   bool
 	Fix               bool
 	Diff              bool
+	NoAPI             bool
 	Stderr            io.Writer
 	Stdout            io.Writer
 	Review            *Review

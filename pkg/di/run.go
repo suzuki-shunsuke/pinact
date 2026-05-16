@@ -111,6 +111,9 @@ func compileRegexps(opts []string) ([]*regexp.Regexp, error) {
 }
 
 func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
+	if err := validateFlagCombo(flags); err != nil {
+		return nil, err
+	}
 	includes, err := compileRegexps(flags.Include)
 	if err != nil {
 		return nil, fmt.Errorf("parse include: %w", err)
@@ -123,14 +126,17 @@ func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse branch-to-tag: %w", err)
 	}
+	// -verify is a deprecated alias for -verify-comment; either one enables the check.
+	verifyComment := flags.VerifyComment || flags.Verify
 	param := &run.ParamRun{
 		WorkflowFilePaths: flags.Args,
 		ConfigFilePath:    flags.Config,
 		CWD:               flags.CWD,
-		IsVerify:          flags.Verify,
+		IsVerify:          verifyComment,
 		Check:             flags.Check,
 		Update:            flags.Update,
 		Diff:              flags.Diff,
+		NoAPI:             flags.NoAPI,
 		Fix:               true,
 		IsGitHubActions:   flags.IsGitHubActions,
 		Stderr:            os.Stderr,
@@ -143,10 +149,27 @@ func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
 		Now:               time.Now(),
 		Format:            flags.Format,
 	}
-	if flags.FixCount > 0 {
+	// Fix default is true. The legacy -check and -diff flags act as aliases for
+	// -fix=false (v4 spec). -format sarif also implies fix=false by default.
+	// Explicit -fix wins over all of these.
+	switch {
+	case flags.FixCount > 0:
 		param.Fix = flags.Fix
-	} else if param.Check || param.Diff {
+	case param.Check || param.Diff:
+		param.Fix = false
+	case param.Format == "sarif":
 		param.Fix = false
 	}
 	return param, nil
+}
+
+// validateFlagCombo enforces invalid CLI flag combinations defined by the v4 spec.
+// PR2 introduces the function skeleton; PR4 and PR6 expand the rule set.
+func validateFlagCombo(flags *Flags) error {
+	// -update with -fix=false is invalid (update implies modification) unless
+	// -format sarif is set, which acts as "produce report without writing files".
+	if flags.Update && flags.FixCount > 0 && !flags.Fix && flags.Format != "sarif" {
+		return fmt.Errorf("-update cannot be combined with -fix=false (use -format sarif to report update candidates without writing files)")
+	}
+	return nil
 }

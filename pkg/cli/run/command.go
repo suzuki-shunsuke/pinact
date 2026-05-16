@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
@@ -19,6 +20,22 @@ import (
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
+
+// warnDeprecatedFlags writes a deprecation warning to stderr for each v3-only
+// flag the user passed. The flags themselves still function as aliases for
+// their v4 equivalents (see di.buildParam). These warnings are scheduled to be
+// removed when the aliases are dropped in a future major release.
+func warnDeprecatedFlags(cmd *cli.Command, w io.Writer) {
+	if cmd.IsSet("check") {
+		fmt.Fprintln(w, "WARN: --check is deprecated; use -fix=false (and -no-api for offline check) instead")
+	}
+	if cmd.IsSet("diff") {
+		fmt.Fprintln(w, "WARN: --diff is deprecated; details are now always printed, so -fix=false alone is enough")
+	}
+	if cmd.IsSet("verify") {
+		fmt.Fprintln(w, "WARN: --verify is deprecated; use -verify-comment instead")
+	}
+}
 
 // New creates a new run command for the CLI.
 // It initializes a runner with the provided logger and returns
@@ -49,7 +66,8 @@ e.g.
 
 $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 `,
-		Action: func(ctx context.Context, _ *cli.Command) error {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			warnDeprecatedFlags(cmd, env.Stderr)
 			pwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("get the current directory: %w", err)
@@ -62,14 +80,24 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
+				Name:        "verify-comment",
+				Usage:       "Verify that the version comment matches the pinned SHA (the v4 name for --verify)",
+				Destination: &flags.VerifyComment,
+			},
+			&cli.BoolFlag{
 				Name:        "verify",
 				Aliases:     []string{"v"},
-				Usage:       "Verify if pairs of commit SHA and version are correct",
+				Usage:       "[DEPRECATED] Alias for -verify-comment; will be removed in a future major release",
 				Destination: &flags.Verify,
 			},
 			&cli.BoolFlag{
+				Name:        "no-api",
+				Usage:       "Skip GitHub API calls. In v4.0 only the syntactic pin check is performed; cache support (v4.1+) will enable offline fix/verify",
+				Destination: &flags.NoAPI,
+			},
+			&cli.BoolFlag{
 				Name:        "check",
-				Usage:       "Exit with a non-zero status code if actions are not pinned. If this is true, files aren't updated",
+				Usage:       "[DEPRECATED] Alias for -fix=false; will be removed in a future major release. For offline check use -fix=false -no-api",
 				Destination: &flags.Check,
 			},
 			&cli.BoolFlag{
@@ -93,7 +121,7 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 			},
 			&cli.BoolFlag{
 				Name:        "diff",
-				Usage:       "Output diff. By default, this is false",
+				Usage:       "[DEPRECATED] Alias for -fix=false; will be removed in a future major release. Details are now always printed",
 				Destination: &flags.Diff,
 			},
 			&cli.StringFlag{

@@ -9,12 +9,17 @@ import (
 type Flags struct {
 	*gflag.GlobalFlags
 
-	Verify    bool
-	Check     bool
+	// v4 flags
+	VerifyComment bool
+	NoAPI         bool
+
+	// Existing flags (some are deprecated in v4; see Run command for warnings)
+	Verify    bool // deprecated in v4: alias for VerifyComment
+	Check     bool // deprecated in v4: alias for -fix=false
 	Update    bool
 	Review    bool
 	Fix       bool
-	Diff      bool
+	Diff      bool // deprecated in v4: alias for -fix=false
 	Format    string
 	Separator string
 
