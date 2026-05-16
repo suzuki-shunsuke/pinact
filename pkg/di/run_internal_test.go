@@ -115,3 +115,70 @@ func Test_buildParam_invalidRegex(t *testing.T) {
 		}
 	})
 }
+
+func Test_validateFlagCombo(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		flags   *Flags
+		wantErr bool
+	}{
+		{
+			name:    "default flags are valid",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}},
+			wantErr: false,
+		},
+		{
+			name:    "-update -fix=false is invalid",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, Update: true, FixCount: 1, Fix: false},
+			wantErr: true,
+		},
+		{
+			name:    "-update -fix=false -format sarif is valid",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, Update: true, FixCount: 1, Fix: false, Format: "sarif"},
+			wantErr: false,
+		},
+		{
+			name:    "-no-api -update is invalid in v4.0",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, Update: true},
+			wantErr: true,
+		},
+		{
+			name:    "-no-api -verify-comment is invalid in v4.0",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, VerifyComment: true},
+			wantErr: true,
+		},
+		{
+			name:    "-no-api -verify (alias) is invalid in v4.0",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, Verify: true},
+			wantErr: true,
+		},
+		{
+			name:    "-no-api alone (implicit -fix=true) is invalid in v4.0",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true},
+			wantErr: true,
+		},
+		{
+			name:    "-no-api -fix=false is valid",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, FixCount: 1, Fix: false},
+			wantErr: false,
+		},
+		{
+			name:    "-no-api -format sarif is valid",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, Format: "sarif"},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := validateFlagCombo(tt.flags)
+			if tt.wantErr && err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}

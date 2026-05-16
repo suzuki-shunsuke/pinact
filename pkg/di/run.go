@@ -161,11 +161,13 @@ func buildParam(flags *Flags) (*run.ParamRun, error) {
 }
 
 // validateFlagCombo enforces invalid CLI flag combinations defined by the v4 spec.
-// PR2 introduces the function skeleton; PR4 wires the exit code; PR6 expands
-// the rule set with -no-api related checks.
 //
 // Returned errors are wrapped with exit code 3 (the "unexpected / misuse"
 // class in the v4 exit code spec) so the CLI surfaces it via ecerror.
+//
+// The -no-api rules are v4.0-specific: cache support arriving in v4.1+ will
+// let -no-api cooperate with -update / -verify-comment / -fix=true so these
+// combinations will become valid then.
 func validateFlagCombo(flags *Flags) error {
 	// -update with -fix=false is invalid (update implies modification) unless
 	// -format sarif is set, which acts as "produce report without writing files".
@@ -174,6 +176,30 @@ func validateFlagCombo(flags *Flags) error {
 			fmt.Errorf("-update cannot be combined with -fix=false (use -format sarif to report update candidates without writing files)"),
 			run.ExitCodeAPIError,
 		)
+	}
+	if flags.NoAPI {
+		if flags.Update {
+			return ecerror.Wrap(
+				fmt.Errorf("-no-api cannot be combined with -update in v4.0 (update needs the GitHub API to discover the latest version; cache support arrives in v4.1+)"),
+				run.ExitCodeAPIError,
+			)
+		}
+		if flags.VerifyComment || flags.Verify {
+			return ecerror.Wrap(
+				fmt.Errorf("-no-api cannot be combined with -verify-comment in v4.0 (verify needs the GitHub API to compare the SHA; cache support arrives in v4.1+)"),
+				run.ExitCodeAPIError,
+			)
+		}
+		// -no-api with the default fix mode would silently skip every action
+		// it cannot resolve via the syntactic check. Require an explicit
+		// opt-out via -fix=false or -format sarif.
+		fixExplicitlyFalse := flags.FixCount > 0 && !flags.Fix
+		if !fixExplicitlyFalse && flags.Format != "sarif" {
+			return ecerror.Wrap(
+				fmt.Errorf("-no-api requires -fix=false (or -format sarif) in v4.0 (cache support enabling fix arrives in v4.1+)"),
+				run.ExitCodeAPIError,
+			)
+		}
 	}
 	return nil
 }

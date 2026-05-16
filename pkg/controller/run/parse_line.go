@@ -185,9 +185,11 @@ func (c *Controller) finalPinnedSHA(action *Action, newLine string) string {
 
 // checkSHAMinAge looks up the commit date of sha and returns ErrMinAge if the
 // commit is younger than the -min-age cutoff. Returns nil when -min-age is
-// disabled, the git service is unavailable, or the commit is old enough.
+// disabled, the git service is unavailable, -no-api is set (no API call
+// allowed in v4.0; cache support arrives in v4.1+), or the commit is old
+// enough.
 func (c *Controller) checkSHAMinAge(ctx context.Context, logger *slog.Logger, owner, repo, sha string) error {
-	if c.param.MinAge <= 0 || c.gitService == nil {
+	if c.param.MinAge <= 0 || c.gitService == nil || c.param.NoAPI {
 		return nil
 	}
 	cutoff := c.param.Now.AddDate(0, 0, -c.param.MinAge)
@@ -231,7 +233,18 @@ func (c *Controller) shouldSkipAction(logger *slog.Logger, action *Action) bool 
 // processAction dispatches based on the action's version form. The version
 // is the primary determinant (already-pinned SHA vs. semver tag vs. branch);
 // the comment refines the behavior inside each branch.
+//
+// When -no-api is set, processAction short-circuits any GitHub API call:
+// already-pinned SHAs are accepted as-is and everything else is reported as
+// unfixable (ExitCodeUnfixable). v4.1+ cache support will let us resolve more
+// of these without an API call.
 func (c *Controller) processAction(ctx context.Context, logger *slog.Logger, action *Action, attrs *slogerr.Attrs) (string, error) {
+	if c.param.NoAPI {
+		if getVersionType(action.Version) == FullCommitSHA {
+			return "", nil
+		}
+		return "", ErrCantPinned
+	}
 	switch getVersionType(action.Version) {
 	case FullCommitSHA:
 		return c.processPinnedVersion(ctx, logger, action, attrs)
