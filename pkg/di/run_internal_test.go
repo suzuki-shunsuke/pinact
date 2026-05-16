@@ -116,7 +116,7 @@ func Test_buildParam_invalidRegex(t *testing.T) {
 	})
 }
 
-func Test_validateFlagCombo(t *testing.T) {
+func Test_validateFlagCombo(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	tests := []struct {
 		name    string

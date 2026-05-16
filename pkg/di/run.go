@@ -4,6 +4,7 @@ package di
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -18,6 +19,9 @@ import (
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 )
+
+// formatSarif is the only -format value supported by pinact.
+const formatSarif = "sarif"
 
 type ghesServices struct {
 	repoService *github.RepositoriesServiceImpl
@@ -154,7 +158,7 @@ func buildParam(flags *Flags) (*run.ParamRun, error) {
 		param.Fix = flags.Fix
 	case param.Check || param.Diff:
 		param.Fix = false
-	case param.Format == "sarif":
+	case param.Format == formatSarif:
 		param.Fix = false
 	}
 	return param, nil
@@ -169,37 +173,53 @@ func buildParam(flags *Flags) (*run.ParamRun, error) {
 // let -no-api cooperate with -update / -verify-comment / -fix=true so these
 // combinations will become valid then.
 func validateFlagCombo(flags *Flags) error {
-	// -update with -fix=false is invalid (update implies modification) unless
-	// -format sarif is set, which acts as "produce report without writing files".
-	if flags.Update && flags.FixCount > 0 && !flags.Fix && flags.Format != "sarif" {
+	if err := validateUpdateFix(flags); err != nil {
+		return err
+	}
+	if flags.NoAPI {
+		return validateNoAPI(flags)
+	}
+	return nil
+}
+
+// validateUpdateFix rejects -update -fix=false (modification is implied by
+// -update). -format sarif acts as "report without writing", so it is allowed
+// to coexist with -update -fix=false.
+func validateUpdateFix(flags *Flags) error {
+	if flags.Update && flags.FixCount > 0 && !flags.Fix && flags.Format != formatSarif {
 		return ecerror.Wrap(
-			fmt.Errorf("-update cannot be combined with -fix=false (use -format sarif to report update candidates without writing files)"),
+			errors.New("-update cannot be combined with -fix=false (use -format sarif to report update candidates without writing files)"),
 			run.ExitCodeAPIError,
 		)
 	}
-	if flags.NoAPI {
-		if flags.Update {
-			return ecerror.Wrap(
-				fmt.Errorf("-no-api cannot be combined with -update in v4.0 (update needs the GitHub API to discover the latest version; cache support arrives in v4.1+)"),
-				run.ExitCodeAPIError,
-			)
-		}
-		if flags.VerifyComment || flags.Verify {
-			return ecerror.Wrap(
-				fmt.Errorf("-no-api cannot be combined with -verify-comment in v4.0 (verify needs the GitHub API to compare the SHA; cache support arrives in v4.1+)"),
-				run.ExitCodeAPIError,
-			)
-		}
-		// -no-api with the default fix mode would silently skip every action
-		// it cannot resolve via the syntactic check. Require an explicit
-		// opt-out via -fix=false or -format sarif.
-		fixExplicitlyFalse := flags.FixCount > 0 && !flags.Fix
-		if !fixExplicitlyFalse && flags.Format != "sarif" {
-			return ecerror.Wrap(
-				fmt.Errorf("-no-api requires -fix=false (or -format sarif) in v4.0 (cache support enabling fix arrives in v4.1+)"),
-				run.ExitCodeAPIError,
-			)
-		}
+	return nil
+}
+
+// validateNoAPI rejects the v4.0 invalid combinations involving -no-api.
+// Without cache (introduced in v4.1+), -no-api cannot resolve a SHA, so it
+// cannot pair with -update / -verify-comment / implicit -fix=true.
+func validateNoAPI(flags *Flags) error {
+	if flags.Update {
+		return ecerror.Wrap(
+			errors.New("-no-api cannot be combined with -update in v4.0 (update needs the GitHub API to discover the latest version; cache support arrives in v4.1+)"),
+			run.ExitCodeAPIError,
+		)
+	}
+	if flags.VerifyComment || flags.Verify {
+		return ecerror.Wrap(
+			errors.New("-no-api cannot be combined with -verify-comment in v4.0 (verify needs the GitHub API to compare the SHA; cache support arrives in v4.1+)"),
+			run.ExitCodeAPIError,
+		)
+	}
+	// -no-api with the default fix mode would silently skip every action it
+	// cannot resolve via the syntactic check. Require an explicit opt-out via
+	// -fix=false or -format sarif.
+	fixExplicitlyFalse := flags.FixCount > 0 && !flags.Fix
+	if !fixExplicitlyFalse && flags.Format != formatSarif {
+		return ecerror.Wrap(
+			errors.New("-no-api requires -fix=false (or -format sarif) in v4.0 (cache support enabling fix arrives in v4.1+)"),
+			run.ExitCodeAPIError,
+		)
 	}
 	return nil
 }

@@ -134,53 +134,66 @@ func (c *Controller) runWorkflow(ctx context.Context, logger *slog.Logger, workf
 // contribution: ExitCodeOK / ExitCodeNotPinned / ExitCodeUnfixable / ExitCodeAPIError).
 func (c *Controller) processLines(ctx context.Context, logger *slog.Logger, workflowFilePath string, lines []string) (changed bool, exitCode int) {
 	for i, lineS := range lines {
-		line := &Line{
-			File:   workflowFilePath,
-			Number: i + 1,
-			Line:   lineS,
+		lineChanged, code := c.processLine(ctx, logger, workflowFilePath, lines, i, lineS)
+		if lineChanged {
+			changed = true
 		}
-		lineLogger := logger.With(
-			"line_number", i+1,
-			"line", lineS,
-		)
-		l, err := c.parseLine(ctx, lineLogger, lineS)
-		if err != nil {
-			code := classifyLineError(err)
-			if code > exitCode {
-				exitCode = code
-			}
-			// Min-age is a soft error: the fix (if any) is still applied,
-			// the warning is already in the logger, and exit code is 2.
-			if errors.Is(err, ErrMinAge) {
-				if l != "" && lineS != l {
-					changed = true
-					lines[i] = l
-					c.handleChangedLine(ctx, lineLogger, line, l)
-				}
-				continue
-			}
-			c.handleParseLineError(ctx, lineLogger, line, err)
-			continue
+		if code > exitCode {
+			exitCode = code
 		}
-		if l == "" || lineS == l {
-			continue
-		}
-		lineLogger = lineLogger.With("new_line", l)
-		changed = true
-		// When Fix is disabled, a line that would be changed counts as
-		// "needs pinning" (exit code 1) since we are not auto-applying the fix.
-		if !c.param.Fix && exitCode < ExitCodeNotPinned {
-			exitCode = ExitCodeNotPinned
-		}
-		// Backward-compat: the legacy -check flag (handled separately in v3)
-		// also signals "needs pinning".
-		if c.param.Check && exitCode < ExitCodeNotPinned {
-			exitCode = ExitCodeNotPinned
-		}
-		lines[i] = l
-		c.handleChangedLine(ctx, lineLogger, line, l)
 	}
 	return changed, exitCode
+}
+
+// processLine handles a single line of the workflow: parses it, classifies any
+// error into an exit code, and (when applicable) applies the patched line in
+// place.
+func (c *Controller) processLine(ctx context.Context, logger *slog.Logger, workflowFilePath string, lines []string, i int, lineS string) (changed bool, exitCode int) {
+	line := &Line{
+		File:   workflowFilePath,
+		Number: i + 1,
+		Line:   lineS,
+	}
+	lineLogger := logger.With(
+		"line_number", i+1,
+		"line", lineS,
+	)
+	l, err := c.parseLine(ctx, lineLogger, lineS)
+	if err != nil {
+		return c.handleLineError(ctx, lineLogger, line, lines, i, lineS, l, err)
+	}
+	if l == "" || lineS == l {
+		return false, ExitCodeOK
+	}
+	lineLogger = lineLogger.With("new_line", l)
+	// When Fix is disabled, a changed line counts as "needs pinning" since the
+	// fix is not being auto-applied. The legacy -check flag has the same role.
+	code := ExitCodeOK
+	if !c.param.Fix || c.param.Check {
+		code = ExitCodeNotPinned
+	}
+	lines[i] = l
+	c.handleChangedLine(ctx, lineLogger, line, l)
+	return true, code
+}
+
+// handleLineError dispatches the per-line error: min-age is a soft error
+// (apply the fix anyway, bump exit code), everything else is logged via
+// handleParseLineError.
+func (c *Controller) handleLineError(ctx context.Context, lineLogger *slog.Logger, line *Line, lines []string, i int, lineS, l string, err error) (changed bool, exitCode int) {
+	code := classifyLineError(err)
+	if errors.Is(err, ErrMinAge) {
+		// Min-age is a soft error: the fix (if any) is still applied,
+		// the warning is already in the logger, and exit code is bumped.
+		if l != "" && lineS != l {
+			lines[i] = l
+			c.handleChangedLine(ctx, lineLogger, line, l)
+			return true, code
+		}
+		return false, code
+	}
+	c.handleParseLineError(ctx, lineLogger, line, err)
+	return false, code
 }
 
 // classifyLineError maps a per-line parse/process error to an exit code class.

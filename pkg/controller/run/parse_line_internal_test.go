@@ -913,7 +913,7 @@ func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
 // check returns ErrMinAge when the commit is younger than the cutoff and
 // returns nil when it is older. The mock GitService is reused from
 // github_internal_test.go.
-func TestController_checkSHAMinAge_boundary(t *testing.T) {
+func TestController_checkSHAMinAge_boundary(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	now := time.Date(2026, 5, 16, 0, 0, 0, 0, time.UTC)
 	cutoff := now.AddDate(0, 0, -7) // 2026-05-09

@@ -199,12 +199,14 @@ func (c *Controller) checkSHAMinAge(ctx context.Context, logger *slog.Logger, ow
 	}
 	committedAt := commit.GetCommitter().GetDate().Time
 	if committedAt.After(cutoff) {
-		logger.Warn("min-age violation",
+		logger.Warn(
+			"min-age violation",
 			"sha", sha,
 			"committed_at", committedAt,
 			"cutoff", cutoff,
 		)
-		return fmt.Errorf("%w: %s/%s@%s committed at %s (cutoff %s)",
+		return fmt.Errorf(
+			"%w: %s/%s@%s committed at %s (cutoff %s)",
 			ErrMinAge, owner, repo, sha,
 			committedAt.Format("2006-01-02"),
 			cutoff.Format("2006-01-02"),
