@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/suzuki-shunsuke/go-error-with-exit-code/ecerror"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 )
@@ -76,9 +77,11 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 		}
 	}
 	if exitCode > ExitCodeOK {
-		// PR1: still return urfave.ErrSilent (binary exit 1).
-		// PR4 will replace this with ecerror.Wrap(err, exitCode) to wire 0/1/2/3.
-		return urfave.ErrSilent
+		// Wrap ErrSilent so urfave-cli-v3-util suppresses the trailing
+		// "pinact failed" log line (per-file errors have already been logged
+		// in detail by slogerr.WithError above). ecerror.Wrap surfaces the
+		// 0/1/2/3 exit code through ecerror.GetExitCode in main.
+		return ecerror.Wrap(urfave.ErrSilent, exitCode)
 	}
 	return nil
 }

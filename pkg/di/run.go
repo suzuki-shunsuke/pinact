@@ -11,6 +11,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/afero"
+	"github.com/suzuki-shunsuke/go-error-with-exit-code/ecerror"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
@@ -160,12 +161,19 @@ func buildParam(flags *Flags) (*run.ParamRun, error) {
 }
 
 // validateFlagCombo enforces invalid CLI flag combinations defined by the v4 spec.
-// PR2 introduces the function skeleton; PR4 and PR6 expand the rule set.
+// PR2 introduces the function skeleton; PR4 wires the exit code; PR6 expands
+// the rule set with -no-api related checks.
+//
+// Returned errors are wrapped with exit code 3 (the "unexpected / misuse"
+// class in the v4 exit code spec) so the CLI surfaces it via ecerror.
 func validateFlagCombo(flags *Flags) error {
 	// -update with -fix=false is invalid (update implies modification) unless
 	// -format sarif is set, which acts as "produce report without writing files".
 	if flags.Update && flags.FixCount > 0 && !flags.Fix && flags.Format != "sarif" {
-		return fmt.Errorf("-update cannot be combined with -fix=false (use -format sarif to report update candidates without writing files)")
+		return ecerror.Wrap(
+			fmt.Errorf("-update cannot be combined with -fix=false (use -format sarif to report update candidates without writing files)"),
+			run.ExitCodeAPIError,
+		)
 	}
 	return nil
 }
