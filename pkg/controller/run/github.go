@@ -191,4 +191,3 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.
 	}
 	return latestVersion, nil
 }
-

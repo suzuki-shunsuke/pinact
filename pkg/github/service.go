@@ -305,4 +305,3 @@ func filterDraftReleases(releases []*RepositoryRelease) []*RepositoryRelease {
 	}
 	return arr
 }
-
