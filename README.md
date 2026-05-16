@@ -4,7 +4,7 @@
 [Install](INSTALL.md) | [How to use](#how-to-use) | [Configuration](#configuration)
 
 pinact is a CLI to edit GitHub Workflow and Composite action files and pin versions of Actions and Reusable Workflows.
-pinact can also [update their versions](#update-actions), [verify version annotations](docs/codes/001.md), and [create reviews](#create-reviews).
+pinact can also [update their versions](#update-actions) and [verify version annotations](docs/codes/001.md).
 
 ```sh
 pinact run
@@ -40,9 +40,9 @@ index 84bd67a..5d92e44 100644
      permissions:
 ```
 
-Creating reviews:
+## Migrating from v3 to v4
 
-![review](https://github.com/user-attachments/assets/77e78d23-bd14-49ba-8097-751556fcf126)
+Most v3 invocations keep working in v4 unchanged — `--check`, `--diff`, `--verify`, and `-v` are kept as silent aliases. Only the `-review` family is removed; the recommended replacement is SARIF output piped to [reviewdog](#reviewdog). See [spec.md](spec.md#v3--v4-移行ガイド) and [#1538](https://github.com/suzuki-shunsuke/pinact/issues/1538) for the full migration guide.
 
 ## Motivation
 
@@ -205,38 +205,6 @@ pinact can fix example codes in documents too.
 pinact run README.md
 ```
 
-### Create reviews
-
-![review](https://github.com/user-attachments/assets/77e78d23-bd14-49ba-8097-751556fcf126)
-
-As of pinact v3.3.0, pinact can create reviews by GitHub API.
-A GitHub access token with `pull_requests:write` permission is required.
-
-> [!NOTE]
-> [As of pinact v3.7.1, pinact supports SARIF format output.](#sarif)
-> [We recommend using the SARIF format output with reviewdog rather than the `-review` option.](#reviewdog)
-
-```sh
-pinact run \
-  -review \
-  -repo-owner <repository owner> \
-  -repo-name <repository name> \
-  -pr <pull request number> \
-  -sha <commit SHA to be reviewed>
-```
-
-If pinact is run via GitHub Actions `pull_request` event, options are auto-completed.
-
-> [!WARNING]
-> GitHub can't create pull request reviews on files not changed by the pull request.
-> When pinact fails to create reviews, pinact outputs warning and creates [GitHub Actions error messages to log instead](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions#setting-an-error-message).
-> You can ignore the warning like this:
-> ```
-> WARN[0004] create a review comment                       error="create a review comment: POST https://api.github.com/repos/szksh-lab-2/test-github-action/pulls/317/comments: 422 Validation Failed [{Resource:PullRequestReviewComment Field:pull_request_review_thread.path Code:invalid Message:} {Resource:PullRequestReviewComment Field:pull_request_review_thread.diff_hunk Code:missing_field Message:}]" line="      - uses: suzuki-shunsuke/watch-star-action@feat/first-pr" line_number=14 pinact_version=3.3.0-5 program=pinact review_pr_number=317 review_repo_name=test-github-action review_repo_owner=szksh-lab-2 review_sha=92f0b04efdc10acb793e78bdd1f70958dd3fd9a3 workflow_file=.github/workflows/watch.yaml
-> ```
-
-![error-message-log](https://github.com/user-attachments/assets/0231dee4-4473-459b-8ea4-e4c6a1f417c8)
-
 ### Generate a configuration file `.pinact.yaml`
 
 A configuration file is optional.
@@ -256,42 +224,31 @@ About the configuration, please see [Configuration](#Configuration).
 
 ### Validation
 
-`pinact >= v1.6.0` [#816](https://github.com/suzuki-shunsuke/pinact/pull/816)
-
-Instead of fixing files, you can validate if actions are pinned by `--check` option:
+Validate that all actions are pinned without modifying any files:
 
 ```sh
-pinact run --check
+pinact run -fix=false
 ```
 
-Using this option, pinact doesn't fix files.
-If actions aren't pinned, the command fails.
+`-fix=false` keeps the files as-is and exits with code 1 when an action needs pinning. The detailed diff is still printed to stderr so you can see what would change.
 
 ```console
-$ pinact run --check
-ERRO[0000] parse a line                                  action=actions/checkout@v2 error="action isn't pinned" pinact_version= program=pinact workflow_file=testdata/foo.yaml
-ERRO[0000] parse a line                                  action=actions/cache@v3.3.1 error="action isn't pinned" pinact_version= program=pinact workflow_file=testdata/foo.yaml
-ERRO[0000] parse a line                                  action=rharkor/caching-for-turbo@v1.6 error="action isn't pinned" pinact_version= program=pinact workflow_file=testdata/foo.yaml
-ERRO[0000] parse a line                                  action=actions/checkout@v3 error="action isn't pinned" pinact_version= program=pinact workflow_file=testdata/foo.yaml
-ERRO[0000] parse a line                                  action=actions/checkout@v3 error="action isn't pinned" pinact_version= program=pinact workflow_file=testdata/foo.yaml
-ERRO[0000] parse a line                                  action=suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml@v0.5.0 error="action isn't pinned" pinact_version= program=pinact workflow_file=testdata/foo.yaml
+$ pinact run -fix=false
+.github/workflows/test.yaml:8
+- - uses: actions/checkout@v4
++ - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
 $ echo $?
 1
 ```
 
-If `-check` is set, files aren't fixed and no diff is outputted.
-If you want to fix files, please use `-fix` option.
+For an offline check (no GitHub API call, only the 40-character SHA syntactic check), add `-no-api`:
 
 ```sh
-pinact run -check -fix
+pinact run -fix=false -no-api
 ```
 
-And if you want to output diff, please use `-diff` option.
-
-```sh
-pinact run -check -diff
-```
+`--check` continues to work as a silent alias for `-fix=false` in v4.
 
 ### Verify version annotations
 
@@ -299,14 +256,16 @@ Please see [the document](docs/codes/001.md).
 
 ### Output diff
 
+The line-by-line diff is always printed to stderr — running `pinact run` with no options is enough:
+
 ```console
-$ pinact run -diff
-INFO[0000] action isn't pinned
+$ pinact run
 .github/workflows/test.yaml:8
--       - uses: actions/checkout@v4
-+       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-  pinact_version=v3.0.0-local program=pinact
+- - uses: actions/checkout@v4
++ - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 ```
+
+By default `pinact run` also writes the fix to disk. Use `-fix=false` to preview without writing.
 
 ### Pin branches
 
@@ -335,22 +294,37 @@ e.g.
 pinact run --branch-to-tag '^main$' --branch-to-tag '^release/.*$'
 ```
 
-### -diff, -check, -fix options
+### `-fix`, `-no-api`, `-format sarif`
 
-The behaviour of `pinact run` command is changed by command line options `-diff`, `-check`, and `-fix`.
+The behaviour of `pinact run` is controlled by these orthogonal options.
 
 Default behaviour:
 
-- Fix files
-- Exit with code 1 if actions aren't pinned
-- Don't output changes
+- Fix files (`-fix=true`)
+- Always print a line-by-line diff (or `file:line + line` for non-fixable actions) to stderr
+- Call the GitHub API to resolve SHAs
 
-Each option's behaviour:
+Each option:
 
-- `-check` disables to fix files
-  - If `-check` is used with `-fix`, it fixes files. In that case, `-check` has no meaning
-- `-diff` outputs changes and disables to fix files
-- `-fix` uses with `-diff` to output changes and fix files
+- `-fix=false` — don't write files. Exits with code 1 if there is something to pin.
+- `-no-api` — don't call the GitHub API. Only the syntactic SHA check is performed; combine with `-fix=false` or `-format sarif`.
+- `-format sarif` — write a SARIF report to stdout. Implies `-fix=false` unless `-fix` is also passed.
+- `-verify-comment` — verify that the SHA matches its version comment (e.g. `@<sha> # v1.2.3`).
+
+v3 aliases (still accepted, no deprecation warning):
+
+- `--check` → `-fix=false`
+- `--diff` → `-fix=false` (note: `-diff=false` is ignored because the diff is always printed; a warning is emitted)
+- `--verify`, `-v` → `-verify-comment`
+
+### Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| 0 | Everything is pinned, or pinact fixed it |
+| 1 | `-fix=false` was set and something needs pinning |
+| 2 | An action cannot be auto-fixed (branch reference, `-verify-comment` mismatch, or `-min-age` violation) |
+| 3 | GitHub API error, invalid CLI flag combination, or other unexpected error |
 
 ## Fix or exclude only specific actions
 
@@ -383,15 +357,17 @@ This format is useful to integration tools like [reviewdog](https://github.com/r
 
 ### Reviewdog
 
+`-format sarif` implies `-fix=false`, so files are not modified.
+
 ```sh
-pinact run --diff --format sarif |
+pinact run -format sarif |
   reviewdog -f sarif -name pinact -reporter github-pr-review
 ```
 
 ### GitHub SARIF Code Scanning
 
 ```yaml
-- run: pinact run --diff --format sarif > sarif.json || true
+- run: pinact run -format sarif > sarif.json || true
 - name: Upload SARIF file
   uses: github/codeql-action/upload-sarif@5d4e8d1aca955e8d8589aabd499c5cae939e33c7 # v4.31.9
   with:
