@@ -21,19 +21,18 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-// warnDeprecatedFlags writes a deprecation warning to stderr for each v3-only
-// flag the user passed. The flags themselves still function as aliases for
-// their v4 equivalents (see di.buildParam). These warnings are scheduled to be
-// removed when the aliases are dropped in a future major release.
+// warnDeprecatedFlags writes a warning to stderr for v3 flag usages whose v4
+// behavior differs from v3 in a way the user might not expect.
+//
+// -check, -verify (-v), and -diff (true) keep working as silent aliases for
+// their v4 equivalents (see di.buildParam), so no warning is emitted for them.
+//
+// -diff=false is the one exception: in v3 it suppressed diff output, but in
+// v4 detail output is always printed. The flag value is silently ignored and
+// a warning surfaces the difference.
 func warnDeprecatedFlags(cmd *cli.Command, w io.Writer) {
-	if cmd.IsSet("check") {
-		fmt.Fprintln(w, "WARN: --check is deprecated; use -fix=false (and -no-api for offline check) instead")
-	}
-	if cmd.IsSet("diff") {
-		fmt.Fprintln(w, "WARN: --diff is deprecated; details are now always printed, so -fix=false alone is enough")
-	}
-	if cmd.IsSet("verify") {
-		fmt.Fprintln(w, "WARN: --verify is deprecated; use -verify-comment instead")
+	if cmd.IsSet("diff") && !cmd.Bool("diff") {
+		fmt.Fprintln(w, "WARN: -diff=false is ignored in v4: detail output is always printed")
 	}
 }
 
@@ -81,14 +80,9 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:        "verify-comment",
-				Usage:       "Verify that the version comment matches the pinned SHA (the v4 name for --verify)",
+				Aliases:     []string{"verify", "v"},
+				Usage:       "Verify that the version comment matches the pinned SHA",
 				Destination: &flags.VerifyComment,
-			},
-			&cli.BoolFlag{
-				Name:        "verify",
-				Aliases:     []string{"v"},
-				Usage:       "[DEPRECATED] Alias for -verify-comment; will be removed in a future major release",
-				Destination: &flags.Verify,
 			},
 			&cli.BoolFlag{
 				Name:        "no-api",
@@ -97,7 +91,7 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 			},
 			&cli.BoolFlag{
 				Name:        "check",
-				Usage:       "[DEPRECATED] Alias for -fix=false; will be removed in a future major release. For offline check use -fix=false -no-api",
+				Usage:       "Alias for -fix=false. For offline check use -fix=false -no-api",
 				Destination: &flags.Check,
 			},
 			&cli.BoolFlag{
@@ -116,7 +110,7 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 			},
 			&cli.BoolFlag{
 				Name:        "diff",
-				Usage:       "[DEPRECATED] Alias for -fix=false; will be removed in a future major release. Details are now always printed",
+				Usage:       "Alias for -fix=false. Note: -diff=false is ignored because detail output is always printed in v4",
 				Destination: &flags.Diff,
 			},
 			&cli.StringFlag{

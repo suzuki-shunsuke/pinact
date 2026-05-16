@@ -116,7 +116,7 @@ func Test_buildParam_invalidRegex(t *testing.T) {
 	})
 }
 
-func Test_validateFlagCombo(t *testing.T) { //nolint:funlen
+func Test_validateFlagCombo(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
@@ -146,11 +146,6 @@ func Test_validateFlagCombo(t *testing.T) { //nolint:funlen
 		{
 			name:    "-no-api -verify-comment is invalid in v4.0",
 			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, VerifyComment: true},
-			wantErr: true,
-		},
-		{
-			name:    "-no-api -verify (alias) is invalid in v4.0",
-			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, Verify: true},
 			wantErr: true,
 		},
 		{

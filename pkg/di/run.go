@@ -128,13 +128,11 @@ func buildParam(flags *Flags) (*run.ParamRun, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse branch-to-tag: %w", err)
 	}
-	// -verify is a deprecated alias for -verify-comment; either one enables the check.
-	verifyComment := flags.VerifyComment || flags.Verify
 	param := &run.ParamRun{
 		WorkflowFilePaths: flags.Args,
 		ConfigFilePath:    flags.Config,
 		CWD:               flags.CWD,
-		IsVerify:          verifyComment,
+		IsVerify:          flags.VerifyComment,
 		Check:             flags.Check,
 		Update:            flags.Update,
 		Diff:              flags.Diff,
@@ -205,7 +203,7 @@ func validateNoAPI(flags *Flags) error {
 			run.ExitCodeAPIError,
 		)
 	}
-	if flags.VerifyComment || flags.Verify {
+	if flags.VerifyComment {
 		return ecerror.Wrap(
 			errors.New("-no-api cannot be combined with -verify-comment in v4.0 (verify needs the GitHub API to compare the SHA; cache support arrives in v4.1+)"),
 			run.ExitCodeAPIError,

@@ -10,15 +10,17 @@ type Flags struct {
 	*gflag.GlobalFlags
 
 	// v4 flags
+	// -verify and -v are urfave/cli aliases for -verify-comment, so they
+	// share VerifyComment and do not need a separate field.
 	VerifyComment bool
 	NoAPI         bool
 
-	// Existing flags (some are deprecated in v4; see Run command for warnings)
-	Verify    bool // deprecated in v4: alias for VerifyComment
-	Check     bool // deprecated in v4: alias for -fix=false
+	// -check and -diff are silent aliases for -fix=false in v4. They keep
+	// their own destinations so buildParam can translate them.
+	Check     bool
+	Diff      bool
 	Update    bool
 	Fix       bool
-	Diff      bool // deprecated in v4: alias for -fix=false
 	Format    string
 	Separator string
 
