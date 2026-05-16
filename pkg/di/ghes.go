@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 )
 
 // setupGHESServices creates GitHub API services with GHES (GitHub Enterprise Server) support.

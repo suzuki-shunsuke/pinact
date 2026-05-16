@@ -3,7 +3,7 @@ package di
 import (
 	"testing"
 
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/gflag"
 )
 
 func Test_compileRegexps(t *testing.T) {

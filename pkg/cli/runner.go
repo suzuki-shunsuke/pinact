@@ -8,11 +8,11 @@ package cli
 import (
 	"context"
 
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/initcmd"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/migrate"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/run"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/tokencmd"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/gflag"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/initcmd"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/migrate"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/run"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/tokencmd"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"

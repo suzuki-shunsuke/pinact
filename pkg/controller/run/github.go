@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
