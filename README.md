@@ -25,12 +25,13 @@ $ pinact run
 ## Features
 
 1. Pin GitHub Actions and Reusable Workflows
-1. Check if actions are pinned without editing files
-1. Update actions with a minimum release age
-1. [Verify version comments](docs/codes/001.md)
-1. Verify if actions meet the minimum release age
-1. [Pin branches](#pin-branches)
-1. [Include and exclude specific actions](#fix-or-exclude-only-specific-actions)
+1. [Check if actions are pinned without editing files](#just-validation--check--fixfalse)
+1. [Offline check without GitHub API](#offline-check--no-api)
+1. [Update actions](#update-actions--update) with a [minimum release age](#minimum-release-age-cooldown--min-age)
+1. [Verify version comments](docs/codes/001.md) ([`-verify-comment`](#verify-version-comments--verify-comment--verify--v))
+1. [Verify if actions meet the minimum release age](#minimum-release-age-cooldown--min-age)
+1. [Pin branches](#pin-branches--branch-to-tag)
+1. [Include and exclude specific actions](#include-and-exclude-specific-actions)
 1. [Generate SARIF](#sarif). This is useful to create reviews using [reviewdog](#reviewdog)
 1. [Read GitHub access token via keyrings or ghtkn](#github-access-token)
 1. [Support GitHub Enterprise Server](docs/ghes.md)
