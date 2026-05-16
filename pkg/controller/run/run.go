@@ -191,6 +191,19 @@ func (c *Controller) handleLineError(ctx context.Context, lineLogger *slog.Logge
 			c.handleChangedLine(ctx, lineLogger, line, l)
 			return true, code
 		}
+		// Already-pinned action whose SHA fails -min-age: no diff to emit,
+		// but surface file:line + the line in the human-readable output so
+		// the user can see which action triggered the exit-2.
+		c.param.Findings = append(c.param.Findings, Finding{
+			File:    line.File,
+			Line:    line.Number,
+			OldLine: line.Line,
+			Message: err.Error(),
+		})
+		c.logger.Output(levelError, "", line, "")
+		if c.param.IsGitHubActions {
+			fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact min-age violation::%s\n", line.File, line.Number, err)
+		}
 		return false, code
 	}
 	c.handleParseLineError(ctx, lineLogger, line, err)
