@@ -1,6 +1,8 @@
 package run
 
 import (
+	"context"
+	"errors"
 	"log/slog"
 	"regexp"
 	"testing"
@@ -902,6 +904,82 @@ func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
 			}
 			if line != d.exp {
 				t.Fatalf("wanted %s, got %s", d.exp, line)
+			}
+		})
+	}
+}
+
+// TestController_checkSHAMinAge_boundary verifies that the passive -min-age
+// check returns ErrMinAge when the commit is younger than the cutoff and
+// returns nil when it is older. The mock GitService is reused from
+// github_internal_test.go.
+func TestController_checkSHAMinAge_boundary(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 5, 16, 0, 0, 0, 0, time.UTC)
+	cutoff := now.AddDate(0, 0, -7) // 2026-05-09
+
+	tests := []struct {
+		name        string
+		committedAt time.Time
+		minAge      int
+		wantErr     bool
+	}{
+		{
+			name:        "committed 1 day before cutoff -> ok",
+			committedAt: cutoff.AddDate(0, 0, -1),
+			minAge:      7,
+			wantErr:     false,
+		},
+		{
+			name:        "committed exactly at cutoff -> ok",
+			committedAt: cutoff,
+			minAge:      7,
+			wantErr:     false,
+		},
+		{
+			name:        "committed 1 day after cutoff -> violation",
+			committedAt: cutoff.AddDate(0, 0, 1),
+			minAge:      7,
+			wantErr:     true,
+		},
+		{
+			name:        "minAge=0 disables the check",
+			committedAt: now,
+			minAge:      0,
+			wantErr:     false,
+		},
+	}
+	logger := slog.New(slog.DiscardHandler)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			committedAt := tt.committedAt
+			gs := &mockGitService{
+				getCommitFunc: func(_ context.Context, _, _, _ string) (*github.Commit, *github.Response, error) {
+					return &github.Commit{
+						Committer: &github.CommitAuthor{
+							Date: &github.Timestamp{Time: committedAt},
+						},
+					}, &github.Response{}, nil
+				},
+			}
+			ctrl := New(nil, gs, fs, &config.Config{}, &ParamRun{
+				MinAge: tt.minAge,
+				Now:    now,
+			})
+			err := ctrl.checkSHAMinAge(t.Context(), logger, "owner", "repo", "deadbeef")
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected ErrMinAge, got nil")
+				}
+				if !errors.Is(err, ErrMinAge) {
+					t.Fatalf("expected ErrMinAge, got %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
 			}
 		})
 	}

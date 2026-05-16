@@ -99,6 +99,11 @@ var ErrAPI = errors.New("GitHub API error")
 // Maps to ExitCodeUnfixable.
 var ErrUnfixable = errors.New("action cannot be auto-fixed")
 
+// ErrMinAge is returned when an action's pinned commit was created after the
+// -min-age cutoff. This is a soft error: the fix (if any) is still applied,
+// but the run exits with ExitCodeUnfixable so CI can flag the violation.
+var ErrMinAge = errors.New("action version is younger than the min-age cutoff")
+
 type Line struct {
 	File   string
 	Number int
@@ -144,6 +149,16 @@ func (c *Controller) processLines(ctx context.Context, logger *slog.Logger, work
 			if code > exitCode {
 				exitCode = code
 			}
+			// Min-age is a soft error: the fix (if any) is still applied,
+			// the warning is already in the logger, and exit code is 2.
+			if errors.Is(err, ErrMinAge) {
+				if l != "" && lineS != l {
+					changed = true
+					lines[i] = l
+					c.handleChangedLine(ctx, lineLogger, line, l)
+				}
+				continue
+			}
 			c.handleParseLineError(ctx, lineLogger, line, err)
 			continue
 		}
@@ -169,10 +184,10 @@ func (c *Controller) processLines(ctx context.Context, logger *slog.Logger, work
 }
 
 // classifyLineError maps a per-line parse/process error to an exit code class.
-//   - ErrCantPinned / ErrUnfixable / verify mismatch  -> ExitCodeUnfixable (2)
-//   - ErrAPI / anything else                          -> ExitCodeAPIError  (3)
+//   - ErrCantPinned / ErrUnfixable / ErrMinAge / verify mismatch -> ExitCodeUnfixable (2)
+//   - ErrAPI / anything else                                     -> ExitCodeAPIError  (3)
 func classifyLineError(err error) int {
-	if errors.Is(err, ErrCantPinned) || errors.Is(err, ErrUnfixable) {
+	if errors.Is(err, ErrCantPinned) || errors.Is(err, ErrUnfixable) || errors.Is(err, ErrMinAge) {
 		return ExitCodeUnfixable
 	}
 	return ExitCodeAPIError

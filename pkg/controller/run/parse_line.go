@@ -127,6 +127,11 @@ func (c *Controller) excludeByIncludes(actionName string) bool {
 // parseLine processes a single line from a workflow file.
 // It parses the line for action usage, applies filtering rules, and determines
 // what modifications (if any) should be made based on the operation mode.
+//
+// As of v4, parseLine also runs the passive -min-age check on the final pinned
+// SHA. The check is skipped when -min-age is not set or no git service is
+// available. On violation it returns the patched line together with ErrMinAge
+// so the caller can apply the fix and bump the exit code to ExitCodeUnfixable.
 func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line string) (s string, e error) {
 	attrs := slogerr.NewAttrs(2) //nolint:mnd
 	defer func() {
@@ -149,7 +154,61 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 		return "", nil
 	}
 
-	return c.processAction(ctx, logger, action, attrs)
+	newLine, err := c.processAction(ctx, logger, action, attrs)
+	if err != nil {
+		return newLine, err
+	}
+	if sha := c.finalPinnedSHA(action, newLine); sha != "" {
+		if minAgeErr := c.checkSHAMinAge(ctx, logger, action.RepoOwner, action.RepoName, sha); minAgeErr != nil {
+			return newLine, minAgeErr
+		}
+	}
+	return newLine, nil
+}
+
+// finalPinnedSHA returns the commit SHA that the action will resolve to after
+// pinact runs, or "" if no SHA is involved (e.g., an unpinnable branch that
+// will surface as ErrCantPinned elsewhere). If parseLine produced a patched
+// line, the SHA is extracted from the new line; otherwise it falls back to
+// action.Version when that is itself a full commit SHA.
+func (c *Controller) finalPinnedSHA(action *Action, newLine string) string {
+	if newLine != "" {
+		if m := fullCommitSHAPattern.FindString(newLine); m != "" {
+			return m
+		}
+	}
+	if getVersionType(action.Version) == FullCommitSHA {
+		return action.Version
+	}
+	return ""
+}
+
+// checkSHAMinAge looks up the commit date of sha and returns ErrMinAge if the
+// commit is younger than the -min-age cutoff. Returns nil when -min-age is
+// disabled, the git service is unavailable, or the commit is old enough.
+func (c *Controller) checkSHAMinAge(ctx context.Context, logger *slog.Logger, owner, repo, sha string) error {
+	if c.param.MinAge <= 0 || c.gitService == nil {
+		return nil
+	}
+	cutoff := c.param.Now.AddDate(0, 0, -c.param.MinAge)
+	commit, _, err := c.gitService.GetCommit(ctx, logger, owner, repo, sha)
+	if err != nil {
+		return fmt.Errorf("get commit for min-age check: %w", err)
+	}
+	committedAt := commit.GetCommitter().GetDate().Time
+	if committedAt.After(cutoff) {
+		logger.Warn("min-age violation",
+			"sha", sha,
+			"committed_at", committedAt,
+			"cutoff", cutoff,
+		)
+		return fmt.Errorf("%w: %s/%s@%s committed at %s (cutoff %s)",
+			ErrMinAge, owner, repo, sha,
+			committedAt.Format("2006-01-02"),
+			cutoff.Format("2006-01-02"),
+		)
+	}
+	return nil
 }
 
 // shouldSkipAction checks if an action should be skipped based on filtering rules.
