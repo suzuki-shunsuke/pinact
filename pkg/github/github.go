@@ -19,18 +19,17 @@ import (
 )
 
 type (
-	ListOptions        = github.ListOptions
-	Reference          = github.Reference
-	Response           = github.Response
-	Repository         = github.Repository
-	RepositoryTag      = github.RepositoryTag
-	RepositoryRelease  = github.RepositoryRelease
-	Client             = github.Client
-	GitObject          = github.GitObject
-	Commit             = github.Commit
-	CommitAuthor       = github.CommitAuthor
-	Timestamp          = github.Timestamp
-	PullRequestComment = github.PullRequestComment
+	ListOptions       = github.ListOptions
+	Reference         = github.Reference
+	Response          = github.Response
+	Repository        = github.Repository
+	RepositoryTag     = github.RepositoryTag
+	RepositoryRelease = github.RepositoryRelease
+	Client            = github.Client
+	GitObject         = github.GitObject
+	Commit            = github.Commit
+	CommitAuthor      = github.CommitAuthor
+	Timestamp         = github.Timestamp
 )
 
 // New creates a new GitHub API client with authentication.

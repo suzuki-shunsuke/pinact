@@ -47,7 +47,7 @@ func Test_compileRegexps(t *testing.T) {
 func Test_buildParam_default(t *testing.T) {
 	t.Parallel()
 	flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Args: []string{"test.yaml"}, CWD: "/tmp"}
-	got, err := buildParam(flags, nil)
+	got, err := buildParam(flags)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -62,7 +62,7 @@ func Test_buildParam_default(t *testing.T) {
 func Test_buildParam_checkMode(t *testing.T) {
 	t.Parallel()
 	flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Check: true}
-	got, err := buildParam(flags, nil)
+	got, err := buildParam(flags)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -77,7 +77,7 @@ func Test_buildParam_checkMode(t *testing.T) {
 func Test_buildParam_diffMode(t *testing.T) {
 	t.Parallel()
 	flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Diff: true}
-	got, err := buildParam(flags, nil)
+	got, err := buildParam(flags)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -89,7 +89,7 @@ func Test_buildParam_diffMode(t *testing.T) {
 func Test_buildParam_explicitFix(t *testing.T) {
 	t.Parallel()
 	flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Check: true, Fix: true, FixCount: 1}
-	got, err := buildParam(flags, nil)
+	got, err := buildParam(flags)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -103,14 +103,14 @@ func Test_buildParam_invalidRegex(t *testing.T) {
 	t.Run("invalid include", func(t *testing.T) {
 		t.Parallel()
 		flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Include: []string{"[invalid"}}
-		if _, err := buildParam(flags, nil); err == nil {
+		if _, err := buildParam(flags); err == nil {
 			t.Error("expected error, got nil")
 		}
 	})
 	t.Run("invalid exclude", func(t *testing.T) {
 		t.Parallel()
 		flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Exclude: []string{"[invalid"}}
-		if _, err := buildParam(flags, nil); err == nil {
+		if _, err := buildParam(flags); err == nil {
 			t.Error("expected error, got nil")
 		}
 	})

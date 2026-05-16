@@ -17,7 +17,6 @@ type Flags struct {
 	Verify    bool // deprecated in v4: alias for VerifyComment
 	Check     bool // deprecated in v4: alias for -fix=false
 	Update    bool
-	Review    bool
 	Fix       bool
 	Diff      bool // deprecated in v4: alias for -fix=false
 	Format    string
@@ -28,10 +27,6 @@ type Flags struct {
 	KeyringEnabled  bool
 	GHTKNEnabled    bool
 
-	RepoOwner string
-	RepoName  string
-	SHA       string
-
 	GitHubRepository string
 	GitHubAPIURL     string
 	GitHubEventPath  string
@@ -40,7 +35,6 @@ type Flags struct {
 	CWD string
 
 	FixCount    int
-	PR          int
 	MinAge      int
 	Include     []string
 	Exclude     []string

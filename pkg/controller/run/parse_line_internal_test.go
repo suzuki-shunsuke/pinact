@@ -218,7 +218,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
 					},
 				},
-			}, nil, nil, fs, &config.Config{
+			}, nil, fs, &config.Config{
 				Separator: " # ",
 			}, &ParamRun{})
 			line, err := ctrl.parseLine(t.Context(), logger, d.line)
@@ -276,7 +276,7 @@ func Test_patchLine(t *testing.T) {
 			cfg := &config.Config{
 				Separator: " # ",
 			}
-			ctrl := New(nil, nil, nil, fs, cfg, &ParamRun{})
+			ctrl := New(nil, nil, fs, cfg, &ParamRun{})
 			line := ctrl.patchLine(d.action, d.version, d.tag)
 			if line != d.exp {
 				t.Fatalf(`wanted %s, got %s`, d.exp, line)
@@ -326,7 +326,7 @@ func Test_patchLine_customSeparator(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
 			cfg := &config.Config{Separator: d.separator}
-			ctrl := New(nil, nil, nil, fs, cfg, &ParamRun{})
+			ctrl := New(nil, nil, fs, cfg, &ParamRun{})
 			line := ctrl.patchLine(d.action, d.version, d.tag)
 			if line != d.exp {
 				t.Fatalf(`wanted %s, got %s`, d.exp, line)
@@ -566,7 +566,7 @@ func TestController_shouldSkipAction(t *testing.T) { //nolint:funlen
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, nil, fs, tt.cfg, tt.param)
+			ctrl := New(nil, nil, fs, tt.cfg, tt.param)
 			logger := slog.New(slog.DiscardHandler)
 
 			if got := ctrl.shouldSkipAction(logger, tt.action); got != tt.want {
@@ -616,7 +616,7 @@ func TestController_parseActionName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, nil, fs, &config.Config{}, &ParamRun{})
+			ctrl := New(nil, nil, fs, &config.Config{}, &ParamRun{})
 
 			got := ctrl.parseActionName(tt.action)
 
@@ -682,7 +682,7 @@ func TestController_excludeAction(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, nil, fs, &config.Config{}, &ParamRun{Excludes: tt.excludes})
+			ctrl := New(nil, nil, fs, &config.Config{}, &ParamRun{Excludes: tt.excludes})
 
 			if got := ctrl.excludeAction(tt.actionName); got != tt.want {
 				t.Errorf("excludeAction() = %v, want %v", got, tt.want)
@@ -747,7 +747,7 @@ func TestController_excludeByIncludes(t *testing.T) { //nolint:funlen
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, nil, fs, &config.Config{}, &ParamRun{Includes: tt.includes})
+			ctrl := New(nil, nil, fs, &config.Config{}, &ParamRun{Includes: tt.includes})
 
 			if got := ctrl.excludeByIncludes(tt.actionName); got != tt.want {
 				t.Errorf("excludeByIncludes() = %v, want %v", got, tt.want)
@@ -885,7 +885,7 @@ func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
 					"actions/min-age/0":   releasesMinAge,
 				},
 				Commits: commits,
-			}, nil, nil, fs, &config.Config{Separator: " # "}, &ParamRun{
+			}, nil, fs, &config.Config{Separator: " # "}, &ParamRun{
 				BranchToTags: d.branchToTag,
 				MinAge:       d.minAge,
 				Now:          now,

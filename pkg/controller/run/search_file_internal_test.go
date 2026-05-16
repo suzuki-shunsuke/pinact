@@ -61,7 +61,7 @@ func TestController_searchFiles(t *testing.T) { //nolint:funlen
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, nil, fs, tt.cfg, tt.param)
+			ctrl := New(nil, nil, fs, tt.cfg, tt.param)
 			got, err := ctrl.searchFiles()
 
 			if (err != nil) != tt.wantErr {
@@ -92,7 +92,7 @@ func TestController_searchFiles_withWorkflowPaths(t *testing.T) {
 	param := &ParamRun{
 		WorkflowFilePaths: []string{"a.yml", "b.yml", "c.yml"},
 	}
-	ctrl := New(nil, nil, nil, fs, &config.Config{}, param)
+	ctrl := New(nil, nil, fs, &config.Config{}, param)
 
 	got, err := ctrl.searchFiles()
 	if err != nil {

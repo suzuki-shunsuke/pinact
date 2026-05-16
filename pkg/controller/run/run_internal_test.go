@@ -13,87 +13,6 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
 )
 
-func TestReview_Valid(t *testing.T) { //nolint:funlen
-	t.Parallel()
-	tests := []struct {
-		name   string
-		review *Review
-		want   bool
-	}{
-		{
-			name:   "nil review",
-			review: nil,
-			want:   false,
-		},
-		{
-			name:   "empty review",
-			review: &Review{},
-			want:   false,
-		},
-		{
-			name: "missing repo owner",
-			review: &Review{
-				RepoName:    "repo",
-				PullRequest: 1,
-			},
-			want: false,
-		},
-		{
-			name: "missing repo name",
-			review: &Review{
-				RepoOwner:   "owner",
-				PullRequest: 1,
-			},
-			want: false,
-		},
-		{
-			name: "missing pull request",
-			review: &Review{
-				RepoOwner: "owner",
-				RepoName:  "repo",
-			},
-			want: false,
-		},
-		{
-			name: "zero pull request",
-			review: &Review{
-				RepoOwner:   "owner",
-				RepoName:    "repo",
-				PullRequest: 0,
-			},
-			want: false,
-		},
-		{
-			name: "valid review",
-			review: &Review{
-				RepoOwner:   "owner",
-				RepoName:    "repo",
-				PullRequest: 123,
-			},
-			want: true,
-		},
-		{
-			name: "valid review with SHA",
-			review: &Review{
-				RepoOwner:   "owner",
-				RepoName:    "repo",
-				PullRequest: 456,
-				SHA:         "abc123",
-			},
-			want: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			if got := tt.review.Valid(); got != tt.want {
-				t.Errorf("Review.Valid() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestController_processLines(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	tests := []struct {
@@ -159,7 +78,7 @@ func TestController_processLines(t *testing.T) { //nolint:funlen
 					},
 				},
 				Commits: map[string]*github.GetCommitSHA1Result{},
-			}, nil, nil, fs, &config.Config{}, tt.param)
+			}, nil, fs, &config.Config{}, tt.param)
 
 			logger := slog.New(slog.DiscardHandler)
 			linesCopy := make([]string, len(tt.lines))

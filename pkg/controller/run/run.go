@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -30,7 +29,6 @@ type ParamRun struct {
 	NoAPI             bool
 	Stderr            io.Writer
 	Stdout            io.Writer
-	Review            *Review
 	Includes          []*regexp.Regexp
 	Excludes          []*regexp.Regexp
 	BranchToTags      []*regexp.Regexp
@@ -38,20 +36,6 @@ type ParamRun struct {
 	Now               time.Time
 	Format            string
 	Findings          []Finding
-}
-
-type Review struct {
-	RepoOwner   string
-	RepoName    string
-	PullRequest int
-	SHA         string
-}
-
-// Valid checks if the review configuration has all required fields.
-// It validates that repo owner, repo name, and pull request number are set,
-// returning true if the review configuration is valid for creating reviews.
-func (r *Review) Valid() bool {
-	return r != nil && r.RepoOwner != "" && r.RepoName != "" && r.PullRequest > 0
 }
 
 // Exit code classes for the v4 spec.
@@ -236,9 +220,8 @@ func (c *Controller) writeWorkflow(workflowFilePath string, lines []string, form
 }
 
 // handleParseLineError handles errors that occur during line parsing.
-// It outputs error messages, creates GitHub Actions annotations, and
-// optionally creates pull request review comments.
-func (c *Controller) handleParseLineError(ctx context.Context, logger *slog.Logger, line *Line, gErr error) {
+// It outputs error messages and creates GitHub Actions annotations when applicable.
+func (c *Controller) handleParseLineError(_ context.Context, _ *slog.Logger, line *Line, gErr error) {
 	// Collect finding for SARIF output
 	c.param.Findings = append(c.param.Findings, Finding{
 		File:    line.File,
@@ -248,37 +231,15 @@ func (c *Controller) handleParseLineError(ctx context.Context, logger *slog.Logg
 	})
 	// Output error
 	c.logger.Output(levelError, "failed to handle a line: "+gErr.Error(), line, "")
-	if c.param.Review == nil {
-		// Output GitHub Actions error
-		if c.param.IsGitHubActions {
-			fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact error::%s\n", line.File, line.Number, gErr)
-		}
-		return
-	}
-	// Create review
-	if code, err := c.review(ctx, line.File, c.param.Review.SHA, line.Number, "", gErr); err != nil {
-		level := slog.LevelError
-		if code == http.StatusUnprocessableEntity {
-			level = slog.LevelWarn
-		}
-		slogerr.WithError(logger, err).Log(
-			ctx, level, "create a review comment",
-			"review_repo_owner", c.param.Review.RepoOwner,
-			"review_repo_name", c.param.Review.RepoName,
-			"review_pr_number", c.param.Review.PullRequest,
-			"review_sha", c.param.Review.SHA,
-		)
-		// Output GitHub Actions error
-		if c.param.IsGitHubActions {
-			fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact error::%s\n", line.File, line.Number, gErr)
-		}
+	if c.param.IsGitHubActions {
+		fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact error::%s\n", line.File, line.Number, gErr)
 	}
 }
 
 // handleChangedLine handles lines that have been modified.
-// It creates review comments, GitHub Actions annotations, and outputs
-// diff information depending on the operation mode.
-func (c *Controller) handleChangedLine(ctx context.Context, logger *slog.Logger, line *Line, newLine string) {
+// It collects a SARIF finding, emits the GitHub Actions annotation if running
+// in Actions, and prints the detail diff to stderr.
+func (c *Controller) handleChangedLine(_ context.Context, _ *slog.Logger, line *Line, newLine string) {
 	// Collect finding for SARIF output
 	c.param.Findings = append(c.param.Findings, Finding{
 		File:    line.File,
@@ -286,38 +247,13 @@ func (c *Controller) handleChangedLine(ctx context.Context, logger *slog.Logger,
 		OldLine: line.Line,
 		NewLine: newLine,
 	})
-	reviewed := c.tryCreateReview(ctx, logger, line, newLine)
-	c.outputGitHubActionsAnnotation(line, newLine, reviewed)
+	c.outputGitHubActionsAnnotation(line, newLine)
 	c.outputDiff(line, newLine)
 }
 
-// tryCreateReview attempts to create a PR review comment for the changed line.
-// Returns true if the review was created successfully.
-func (c *Controller) tryCreateReview(ctx context.Context, logger *slog.Logger, line *Line, newLine string) bool {
-	if c.param.Review == nil {
-		return false
-	}
-	code, err := c.review(ctx, line.File, c.param.Review.SHA, line.Number, newLine, nil)
-	if err != nil {
-		level := slog.LevelError
-		if code == http.StatusUnprocessableEntity {
-			level = slog.LevelWarn
-		}
-		slogerr.WithError(logger, err).Log(
-			ctx, level, "create a review comment",
-			"review_repo_owner", c.param.Review.RepoOwner,
-			"review_repo_name", c.param.Review.RepoName,
-			"review_pr_number", c.param.Review.PullRequest,
-			"review_sha", c.param.Review.SHA,
-		)
-		return false
-	}
-	return true
-}
-
 // outputGitHubActionsAnnotation outputs a GitHub Actions annotation for the changed line.
-func (c *Controller) outputGitHubActionsAnnotation(line *Line, newLine string, reviewed bool) {
-	if !c.param.IsGitHubActions || reviewed {
+func (c *Controller) outputGitHubActionsAnnotation(line *Line, newLine string) {
+	if !c.param.IsGitHubActions {
 		return
 	}
 	level := "notice"

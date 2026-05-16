@@ -107,11 +107,6 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Destination: &flags.Update,
 			},
 			&cli.BoolFlag{
-				Name:        "review",
-				Usage:       "Create reviews",
-				Destination: &flags.Review,
-			},
-			&cli.BoolFlag{
 				Name:        "fix",
 				Usage:       "Fix code. By default, this is true. If -check or -diff is true, this is false by default",
 				Destination: &flags.Fix,
@@ -134,27 +129,6 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 					}
 					return nil
 				},
-			},
-			&cli.StringFlag{
-				Name:        "repo-owner",
-				Usage:       "GitHub repository owner",
-				Sources:     cli.EnvVars("GITHUB_REPOSITORY_OWNER"),
-				Destination: &flags.RepoOwner,
-			},
-			&cli.StringFlag{
-				Name:        "repo-name",
-				Usage:       "GitHub repository name",
-				Destination: &flags.RepoName,
-			},
-			&cli.StringFlag{
-				Name:        "sha",
-				Usage:       "Commit SHA to be reviewed",
-				Destination: &flags.SHA,
-			},
-			&cli.IntFlag{
-				Name:        "pr",
-				Usage:       "GitHub pull request number",
-				Destination: &flags.PR,
 			},
 			&cli.StringSliceFlag{
 				Name:        "include",

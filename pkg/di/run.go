@@ -21,7 +21,6 @@ import (
 type ghesServices struct {
 	repoService *github.RepositoriesServiceImpl
 	gitService  *github.GitServiceImpl
-	prService   *github.PullRequestsServiceImpl
 }
 
 // Run executes the main run command logic.
@@ -47,9 +46,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 		return err
 	}
 
-	review := setupReview(fs, logger, flags)
-
-	param, err := buildParam(flags, review)
+	param, err := buildParam(flags)
 	if err != nil {
 		return err
 	}
@@ -58,7 +55,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 		return err
 	}
 
-	ctrl := run.New(services.repoService, services.prService, services.gitService, fs, cfg, param)
+	ctrl := run.New(services.repoService, services.gitService, fs, cfg, param)
 	return ctrl.Run(ctx, logger.Logger) //nolint:wrapcheck
 }
 
@@ -110,7 +107,7 @@ func compileRegexps(opts []string) ([]*regexp.Regexp, error) {
 	return regexps, nil
 }
 
-func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
+func buildParam(flags *Flags) (*run.ParamRun, error) {
 	if err := validateFlagCombo(flags); err != nil {
 		return nil, err
 	}
@@ -141,7 +138,6 @@ func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
 		IsGitHubActions:   flags.IsGitHubActions,
 		Stderr:            os.Stderr,
 		Stdout:            os.Stdout,
-		Review:            review,
 		Includes:          includes,
 		Excludes:          excludes,
 		BranchToTags:      branchToTags,
