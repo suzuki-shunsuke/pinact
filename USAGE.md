@@ -26,6 +26,7 @@ GLOBAL OPTIONS:
    --log-level string          log level [$PINACT_LOG_LEVEL]
    --config string, -c string  configuration file path [$PINACT_CONFIG]
    --help, -h                  show help
+   --version, -v               print the version
 ```
 
 ## pinact init
@@ -81,13 +82,17 @@ DESCRIPTION:
 
 
 OPTIONS:
-   --verify-comment, --verify, -v                               Verify that the version comment matches the pinned SHA
-   --no-api                                                     Skip GitHub API calls. Only the syntactic pin check (40-character SHA) is performed
-   --check                                                      Alias for -fix=false. For offline check use -fix=false -no-api
+   --verify, -v                                                 Verify if pairs of commit SHA and version are correct
+   --check                                                      Exit with a non-zero status code if actions are not pinned. If this is true, files aren't updated
    --update, -u                                                 Update actions to latest versions
+   --review                                                     Create reviews
    --fix                                                        Fix code. By default, this is true. If -check or -diff is true, this is false by default
-   --diff                                                       Alias for -fix=false. Note: -diff=false is ignored because detail output is always printed in v4
+   --diff                                                       Output diff. By default, this is false
    --format string                                              Output format. Currently only 'sarif' is supported. If sarif is specified, results are output in SARIF format to stdout
+   --repo-owner string                                          GitHub repository owner [$GITHUB_REPOSITORY_OWNER]
+   --repo-name string                                           GitHub repository name
+   --sha string                                                 Commit SHA to be reviewed
+   --pr int                                                     GitHub pull request number (default: 0)
    --include string, -i string [ --include string, -i string ]  A regular expression to fix actions
    --exclude string, -e string [ --exclude string, -e string ]  A regular expression to exclude actions
    --branch-to-tag string [ --branch-to-tag string ]            A regular expression to convert non-semver versions (e.g. branch names) to the latest stable tag. Anchor with ^$ for exact match
