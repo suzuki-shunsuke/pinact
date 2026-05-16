@@ -166,10 +166,6 @@ func buildParam(flags *Flags) (*run.ParamRun, error) {
 //
 // Returned errors are wrapped with exit code 3 (the "unexpected / misuse"
 // class in the v4 exit code spec) so the CLI surfaces it via ecerror.
-//
-// The -no-api rules are v4.0-specific: cache support arriving in v4.1+ will
-// let -no-api cooperate with -update / -verify-comment / -fix=true so these
-// combinations will become valid then.
 func validateFlagCombo(flags *Flags) error {
 	if err := validateUpdateFix(flags); err != nil {
 		return err
@@ -193,19 +189,20 @@ func validateUpdateFix(flags *Flags) error {
 	return nil
 }
 
-// validateNoAPI rejects the v4.0 invalid combinations involving -no-api.
-// Without cache (introduced in v4.1+), -no-api cannot resolve a SHA, so it
-// cannot pair with -update / -verify-comment / implicit -fix=true.
+// validateNoAPI rejects -no-api combinations that cannot be satisfied without
+// a GitHub API call: discovering the latest version (-update), comparing the
+// pinned SHA against its version comment (-verify-comment), and resolving any
+// non-SHA reference to a SHA (the default -fix=true).
 func validateNoAPI(flags *Flags) error {
 	if flags.Update {
 		return ecerror.Wrap(
-			errors.New("-no-api cannot be combined with -update in v4.0 (update needs the GitHub API to discover the latest version; cache support arrives in v4.1+)"),
+			errors.New("-no-api cannot be combined with -update (update needs the GitHub API to discover the latest version)"),
 			run.ExitCodeAPIError,
 		)
 	}
 	if flags.VerifyComment {
 		return ecerror.Wrap(
-			errors.New("-no-api cannot be combined with -verify-comment in v4.0 (verify needs the GitHub API to compare the SHA; cache support arrives in v4.1+)"),
+			errors.New("-no-api cannot be combined with -verify-comment (verify needs the GitHub API to compare the SHA)"),
 			run.ExitCodeAPIError,
 		)
 	}
@@ -215,7 +212,7 @@ func validateNoAPI(flags *Flags) error {
 	fixExplicitlyFalse := flags.FixCount > 0 && !flags.Fix
 	if !fixExplicitlyFalse && flags.Format != formatSarif {
 		return ecerror.Wrap(
-			errors.New("-no-api requires -fix=false (or -format sarif) in v4.0 (cache support enabling fix arrives in v4.1+)"),
+			errors.New("-no-api requires -fix=false (or -format sarif)"),
 			run.ExitCodeAPIError,
 		)
 	}

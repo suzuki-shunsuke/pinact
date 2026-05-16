@@ -185,9 +185,8 @@ func (c *Controller) finalPinnedSHA(action *Action, newLine string) string {
 
 // checkSHAMinAge looks up the commit date of sha and returns ErrMinAge if the
 // commit is younger than the -min-age cutoff. Returns nil when -min-age is
-// disabled, the git service is unavailable, -no-api is set (no API call
-// allowed in v4.0; cache support arrives in v4.1+), or the commit is old
-// enough.
+// disabled, the git service is unavailable, -no-api is set, or the commit is
+// old enough.
 func (c *Controller) checkSHAMinAge(ctx context.Context, logger *slog.Logger, owner, repo, sha string) error {
 	if c.param.MinAge <= 0 || c.gitService == nil || c.param.NoAPI {
 		return nil
@@ -238,8 +237,7 @@ func (c *Controller) shouldSkipAction(logger *slog.Logger, action *Action) bool 
 //
 // When -no-api is set, processAction short-circuits any GitHub API call:
 // already-pinned SHAs are accepted as-is and everything else is reported as
-// unfixable (ExitCodeUnfixable). v4.1+ cache support will let us resolve more
-// of these without an API call.
+// unfixable (ExitCodeUnfixable).
 func (c *Controller) processAction(ctx context.Context, logger *slog.Logger, action *Action, attrs *slogerr.Attrs) (string, error) {
 	if c.param.NoAPI {
 		if getVersionType(action.Version) == FullCommitSHA {

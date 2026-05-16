@@ -139,17 +139,17 @@ func Test_validateFlagCombo(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "-no-api -update is invalid in v4.0",
+			name:    "-no-api -update is invalid",
 			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, Update: true},
 			wantErr: true,
 		},
 		{
-			name:    "-no-api -verify-comment is invalid in v4.0",
+			name:    "-no-api -verify-comment is invalid",
 			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, VerifyComment: true},
 			wantErr: true,
 		},
 		{
-			name:    "-no-api alone (implicit -fix=true) is invalid in v4.0",
+			name:    "-no-api alone (implicit -fix=true) is invalid",
 			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true},
 			wantErr: true,
 		},
