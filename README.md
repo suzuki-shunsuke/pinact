@@ -146,7 +146,7 @@ min_age:
   always: true # default is false
 ```
 
-On the other hand, when updating actions min_age setting is always applied.
+On the other hand, when updating actions min_age setting is always used to filter new versions.
 
 - For GitHub Releases, the `PublishedAt` date is checked
 - For tags, the commit's `Committer.Date` is checked (requires additional API call)
@@ -292,6 +292,30 @@ You can remove a GitHub Access token from keyring by `pinact token rm` command:
 pinact token rm
 ```
 
+## Configuration Priority
+
+1. Command line options
+2. Environment variables
+3. Local configuration file
+4. Global configuration file
+
+## Configuration File
+
+[JSON Schema](json-schema/pinact.json)
+
+A configuration file is optional.
+pinact supports a configuration file `.pinact.yaml`, `.github/pinact.yaml`, `.pinact.yml` or `.github/pinact.yml`.
+You can also specify the configuration file path by the environment variable `PINACT_CONFIG` or command line option `-c`.
+You can generate a configuration file by `pinact init`.
+
+```sh
+pinact init [<configuration file path>]
+```
+
+Furthermore, pinact supports a global configuration file for user-wide defaults.
+
+For more details, see [Configuration File](docs/config.md).
+
 ## Exit codes
 
 | Code | Meaning |
@@ -307,25 +331,10 @@ https://github.com/suzuki-shunsuke/pinact-action
 
 We develop GitHub Actions to pin GitHub Actions and reusable workflows by pinact.
 
-## Configuration File
-
-[JSON Schema](json-schema/pinact.json)
-
-A configuration file is optional.
-pinact supports a configuration file `.pinact.yaml`, `.github/pinact.yaml`, `.pinact.yml` or `.github/pinact.yml`.
-You can also specify the configuration file path by the environment variable `PINACT_CONFIG` or command line option `-c`.
-You can generate a configuration file by `pinact init`.
-
-```sh
-pinact init [<configuration file path>]
-```
-
-For more details, see [Configuration File](docs/config.md).
-
 ## Q. Why doesn't pinact pin some actions?
 
 > [!TIP]
-> Since v3.10.0, the [`--branch-to-tag`](#pin-branches) option lets you opt-in to pinning specific branches to the latest stable tag of an action.
+> Since v3.10.0, the [`--branch-to-tag`](#pin-branches--branch-to-tag) option lets you opt-in to pinning specific branches to the latest stable tag of an action.
 
 In some cases pinact doesn't pin versions intentionally, which may confuse you.
 For instance, pinact doesn't pin branches like `main` and `master` by default.

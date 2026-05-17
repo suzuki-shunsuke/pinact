@@ -27,7 +27,7 @@ In general, you should use the latest schema version.
 pinact migrate
 ```
 
-### JSON Schema
+## JSON Schema
 
 - [pinact.json](../json-schema/pinact.json)
 - https://raw.githubusercontent.com/suzuki-shunsuke/pinact/refs/heads/main/json-schema/pinact.json
@@ -38,7 +38,7 @@ If you look for a CLI tool to validate configuration with JSON Schema, [ajv-cli]
 ajv --spec=draft2020 -s json-schema/pinact.json -d pinact.yaml
 ```
 
-#### Input Complementation by YAML Language Server
+### Input Complementation by YAML Language Server
 
 [Please see the comment too.](https://github.com/szksh-lab/.github/issues/67#issuecomment-2564960491)
 
@@ -54,7 +54,26 @@ Or pinning version:
 # yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/v1.1.2/json-schema/pinact.json
 ```
 
-### Schema v3 (latest)
+## Global Configuration File
+
+pinact supports a global configuration file for user-wide defaults.
+
+Global Configuration File Paths:
+
+1. Linux, macOS:
+    1. `$XDG_CONFIG_HOME/pinact/pinact.yaml` if `$XDG_CONFIG_HOME` is set
+    2. `~/.config/pinact/pinact.yaml`
+2. Windows:
+    1. `%APPDATA%\pinact\pinact.yaml`
+
+A global configuration file is ignored if a local configuration file is found.
+`pinact init -g` creates a global configuration file if it doesn't exist.
+
+```sh
+pinact init -g
+```
+
+## Schema v3 (latest)
 
 pinact v2.2.0 or later supports this version.
 
@@ -107,12 +126,12 @@ rules:
           ActionName matches "suzuki-shunsuke/.*" && ActionVersion == "main"
 ```
 
-#### `files`
+### `files`
 
 This is optional.
 A list of target files.
 
-#### `files[].pattern`
+### `files[].pattern`
 
 This is required.
 A glob pattern of target files.
@@ -129,7 +148,7 @@ files:
   - pattern: README.md
 ```
 
-#### `rules`
+### `rules`
 
 pinact >= v4.0.0
 
@@ -155,21 +174,21 @@ rules:
           ActionRepoFullName == "actions/checkout"
 ```
 
-##### `rules[].ignore`
+#### `rules[].ignore`
 
 This is optional. If `true`, pinact skips pin/update/error reporting for the matched action.
 
-##### `rules[].min_age`
+#### `rules[].min_age`
 
 This is optional. Overrides the min-age threshold (in days) for the matched action. Setting it to `0` disables the min-age check for the action.
 
 The effective min-age for an action is resolved in this order: CLI flag `-min-age` > matching rules > top-level `min_age`.
 
-##### `rules[].conditions`
+#### `rules[].conditions`
 
 This is required. A list of match conditions. The rule matches if **any** of its conditions evaluates to `true` (OR semantics). Each rule must have at least one condition.
 
-##### `rules[].conditions[].expr`
+#### `rules[].conditions[].expr`
 
 This is required. A boolean expression evaluated against the action being processed. The [expr language](https://expr-lang.org/docs/language-definition) is used.
 
@@ -186,7 +205,7 @@ The following variables are available:
 
 Expressions are validated and compiled at startup. Syntax errors, references to undefined variables, and non-boolean expressions are surfaced as configuration errors.
 
-#### `min_age`
+### `min_age`
 
 pinact >= v4.0.0
 
@@ -194,14 +213,14 @@ This is optional. The default min-age in days for the min-age check. When set, p
 
 The top-level value can be overridden by the CLI flag `-min-age` (highest precedence) or per-action by `rules[].min_age`.
 
-#### `ignore_actions`
+### `ignore_actions`
 
 This is optional. A list of ignored actions and reusable workflows.
 
 > [!NOTE]
 > For new configurations, consider using [`rules`](#rules) with `ignore: true` instead. `rules` can match on the repository owner, full name, version comment, and arbitrary expressions, while `ignore_actions` only matches on name and ref regexps.
 
-#### `ignore_actions[].name`
+### `ignore_actions[].name`
 
 This is required.
 A regular expression of ignored actions and reusable workflows.
@@ -218,7 +237,7 @@ ignore_actions:
 
 Regarding regular expressions, [Go's regexp package is used.](https://pkg.go.dev/regexp)
 
-#### `ignore_actions[].ref`
+### `ignore_actions[].ref`
 
 This is required.
 A regular expression of ignored action versions (branch, tag, or commit hash).
@@ -227,11 +246,11 @@ A regular expression of ignored action versions (branch, tag, or commit hash).
 > Regular expressions must match with action versions exactly.
 > For instance, `ref: main` doesn't match with `malicious-main`
 
-#### `ghes`
+### `ghes`
 
-[See GitHub Enterprise Support](#github-enterprise-server-ghes-support).
+[See GitHub Enterprise Support](ghes.md).
 
-#### `separator`
+### `separator`
 
 pinact >= v3.9.0 [#1365](https://github.com/suzuki-shunsuke/pinact/pull/1365) [#1372](https://github.com/suzuki-shunsuke/pinact/pull/1372)
 
@@ -256,6 +275,6 @@ separator: "  # "
 # Results in: uses: actions/checkout@abc123...  # v3.5.0
 ```
 
-### Old Schemas
+## Old Schemas
 
 Please see [here](old_schema.md).

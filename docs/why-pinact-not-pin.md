@@ -1,7 +1,7 @@
 # Why doesn't pinact pin some actions?
 
 > [!TIP]
-> Since v3.10.0, the [`--branch-to-tag`](../README.md#pin-branches) option lets you opt-in to pinning specific branches to the latest stable tag of an action.
+> Since v3.10.0, the [`--branch-to-tag`](../README.md#pin-branches--branch-to-tag) option lets you opt-in to pinning specific branches to the latest stable tag of an action.
 
 In some cases pinact doesn't pin versions intentionally, which may confuse you.
 So we describe the reason here.
