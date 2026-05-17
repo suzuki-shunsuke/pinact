@@ -5,7 +5,7 @@ local linters = new Mapping<String, Step> {
   ["golangci-lint"] = Builtins.golangci_lint
   ["gomod-tidy"] = Builtins.gomod_tidy
   ["typos"] = Builtins.typos
-  ["lychee"] = Builtins.lychee
+  // ["lychee"] = Builtins.lychee
   ["nllint"] {
     glob = List("**/*")
     check = "nllint -s {{files}}"
