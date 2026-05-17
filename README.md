@@ -147,7 +147,7 @@ pinact run --branch-to-tag '<regular expression matching branch name>'
 ```
 
 The value is evaluated as a regular expression with partial match, just like `--include` / `--exclude`.
-Anchor with `^...$` for an exact match — for short branch names like `main` this is recommended to avoid matching `mainline` etc.
+Anchor with `^...$` for an exact match - for short branch names like `main` this is recommended to avoid matching `mainline` etc.
 Versions that don't match any of the supplied regexps continue to error out as before.
 
 The branch is converted to the **latest stable tag** of the action. Pre-releases are used only when no stable tag exists.
