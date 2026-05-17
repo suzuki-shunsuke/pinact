@@ -1025,18 +1025,19 @@ func TestController_effectiveMinAge(t *testing.T) {
 	t.Parallel()
 	zero := 0
 	five := 5
+	seven := 7
 	tests := []struct {
 		name         string
 		cliMinAge    int
-		topLevelMin  int
+		topLevelMin  *int
 		ruleOverride *int
 		want         int
 	}{
-		{name: "CLI / env flag wins over rules / top-level", cliMinAge: 14, topLevelMin: 7, ruleOverride: &five, want: 14},
-		{name: "rule overrides top-level when CLI unset", cliMinAge: 0, topLevelMin: 7, ruleOverride: &five, want: 5},
-		{name: "rule min_age 0 disables check when CLI unset", cliMinAge: 0, topLevelMin: 7, ruleOverride: &zero, want: 0},
-		{name: "top-level applies when no rule matched", cliMinAge: 0, topLevelMin: 7, ruleOverride: nil, want: 7},
-		{name: "default 0 when nothing is set", cliMinAge: 0, topLevelMin: 0, ruleOverride: nil, want: 0},
+		{name: "CLI / env flag wins over rules / top-level", cliMinAge: 14, topLevelMin: &seven, ruleOverride: &five, want: 14},
+		{name: "rule overrides top-level when CLI unset", cliMinAge: 0, topLevelMin: &seven, ruleOverride: &five, want: 5},
+		{name: "rule min_age 0 disables check when CLI unset", cliMinAge: 0, topLevelMin: &seven, ruleOverride: &zero, want: 0},
+		{name: "top-level applies when no rule matched", cliMinAge: 0, topLevelMin: &seven, ruleOverride: nil, want: 7},
+		{name: "default 0 when nothing is set", cliMinAge: 0, topLevelMin: nil, ruleOverride: nil, want: 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1058,15 +1059,17 @@ func TestController_effectiveMinAge(t *testing.T) {
 // filter inside getLatestVersionWithStable).
 func TestController_minAgeFallback(t *testing.T) {
 	t.Parallel()
+	seven := 7
+	sixty := 60
 	tests := []struct {
 		name        string
 		cliMinAge   int
-		topLevelMin int
+		topLevelMin *int
 		want        int
 	}{
-		{name: "CLI / env wins", cliMinAge: 14, topLevelMin: 7, want: 14},
-		{name: "config applies when CLI / env unset", cliMinAge: 0, topLevelMin: 60, want: 60},
-		{name: "default 0 when nothing is set", cliMinAge: 0, topLevelMin: 0, want: 0},
+		{name: "CLI / env wins", cliMinAge: 14, topLevelMin: &seven, want: 14},
+		{name: "config applies when CLI / env unset", cliMinAge: 0, topLevelMin: &sixty, want: 60},
+		{name: "default 0 when nothing is set", cliMinAge: 0, topLevelMin: nil, want: 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

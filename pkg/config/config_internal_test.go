@@ -340,11 +340,11 @@ min_age:
 		if err := reader.Read(cfg, ".pinact.yaml"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if cfg.MinAge.Value != 60 {
-			t.Errorf("MinAge.Value: wanted 60, got %d", cfg.MinAge.Value)
+		if cfg.MinAge.Value == nil || *cfg.MinAge.Value != 60 {
+			t.Errorf("MinAge.Value: wanted 60, got %v", cfg.MinAge.Value)
 		}
-		if !cfg.MinAge.Always {
-			t.Errorf("MinAge.Always: wanted true, got false")
+		if cfg.MinAge.Always == nil || !*cfg.MinAge.Always {
+			t.Errorf("MinAge.Always: wanted true, got %v", cfg.MinAge.Always)
 		}
 	})
 }
@@ -396,7 +396,7 @@ func TestConfig_Init(t *testing.T) {
 	})
 }
 
-func Test_getConfigPath(t *testing.T) {
+func Test_findProjectConfigPath(t *testing.T) {
 	t.Parallel()
 	data := []struct {
 		name  string
@@ -433,7 +433,7 @@ func Test_getConfigPath(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			got, err := getConfigPath(fs)
+			got, err := findProjectConfigPath(fs)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -631,4 +631,348 @@ func TestConfig_ResolveRules(t *testing.T) { //nolint:funlen
 			}
 		})
 	}
+}
+
+func TestMergeConfig(t *testing.T) { //nolint:funlen
+	t.Parallel()
+
+	ruleA := &Rule{MinAge: new(0), Conditions: []*Condition{{Expr: `true`}}}
+	ruleB := &Rule{Ignore: new(true), Conditions: []*Condition{{Expr: `true`}}}
+	ignoreA := &IgnoreAction{Name: "foo/.*", Ref: "main"}
+	ignoreB := &IgnoreAction{Name: "bar/.*", Ref: "main"}
+
+	tests := []struct {
+		name    string
+		global  *Config
+		project *Config
+		want    *Config
+	}{
+		{
+			name:    "both nil returns nil",
+			global:  nil,
+			project: nil,
+			want:    nil,
+		},
+		{
+			name:    "global only",
+			global:  &Config{Version: 3, Separator: " # "},
+			project: nil,
+			want:    &Config{Version: 3, Separator: " # "},
+		},
+		{
+			name:    "project only",
+			global:  nil,
+			project: &Config{Version: 3, Separator: " # "},
+			want:    &Config{Version: 3, Separator: " # "},
+		},
+		{
+			name: "min_age value and always merged independently",
+			global: &Config{
+				Version: 3,
+				MinAge:  &MinAge{Value: new(7), Always: new(true)},
+			},
+			project: &Config{
+				Version: 3,
+				MinAge:  &MinAge{Value: new(3)},
+			},
+			want: &Config{
+				Version: 3,
+				MinAge:  &MinAge{Value: new(3), Always: new(true)},
+			},
+		},
+		{
+			name: "project min_age.value 0 overrides global value",
+			global: &Config{
+				Version: 3,
+				MinAge:  &MinAge{Value: new(7)},
+			},
+			project: &Config{
+				Version: 3,
+				MinAge:  &MinAge{Value: new(0)},
+			},
+			want: &Config{
+				Version: 3,
+				MinAge:  &MinAge{Value: new(0)},
+			},
+		},
+		{
+			name: "project min_age nil keeps global min_age",
+			global: &Config{
+				Version: 3,
+				MinAge:  &MinAge{Value: new(7), Always: new(true)},
+			},
+			project: &Config{Version: 3},
+			want: &Config{
+				Version: 3,
+				MinAge:  &MinAge{Value: new(7), Always: new(true)},
+			},
+		},
+		{
+			name:    "rules concatenated global then project",
+			global:  &Config{Version: 3, Rules: []*Rule{ruleA}},
+			project: &Config{Version: 3, Rules: []*Rule{ruleB}},
+			want:    &Config{Version: 3, Rules: []*Rule{ruleA, ruleB}},
+		},
+		{
+			name:    "ignore_actions concatenated global then project",
+			global:  &Config{Version: 3, IgnoreActions: []*IgnoreAction{ignoreA}},
+			project: &Config{Version: 3, IgnoreActions: []*IgnoreAction{ignoreB}},
+			want:    &Config{Version: 3, IgnoreActions: []*IgnoreAction{ignoreA, ignoreB}},
+		},
+		{
+			name:    "project files replaces global files",
+			global:  &Config{Version: 3, Files: []*File{{Pattern: "global.yml"}}},
+			project: &Config{Version: 3, Files: []*File{{Pattern: "project.yml"}}},
+			want:    &Config{Version: 3, Files: []*File{{Pattern: "project.yml"}}},
+		},
+		{
+			name:    "global files used when project files empty",
+			global:  &Config{Version: 3, Files: []*File{{Pattern: "global.yml"}}},
+			project: &Config{Version: 3},
+			want:    &Config{Version: 3, Files: []*File{{Pattern: "global.yml"}}},
+		},
+		{
+			name:    "project separator replaces global separator",
+			global:  &Config{Version: 3, Separator: " # "},
+			project: &Config{Version: 3, Separator: " #tag="},
+			want:    &Config{Version: 3, Separator: " #tag="},
+		},
+		{
+			name:    "global ghes carried when project has none",
+			global:  &Config{Version: 3, GHES: &GHES{APIURL: "https://ghes.example.com"}},
+			project: &Config{Version: 3},
+			want:    &Config{Version: 3, GHES: &GHES{APIURL: "https://ghes.example.com"}},
+		},
+		{
+			name:    "project ghes replaces global ghes",
+			global:  &Config{Version: 3, GHES: &GHES{APIURL: "https://global.example.com"}},
+			project: &Config{Version: 3, GHES: &GHES{APIURL: "https://project.example.com"}},
+			want:    &Config{Version: 3, GHES: &GHES{APIURL: "https://project.example.com"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := mergeConfig(tt.global, tt.project)
+			assertConfigEqual(t, got, tt.want)
+		})
+	}
+}
+
+func assertConfigEqual(t *testing.T, got, want *Config) { //nolint:cyclop
+	t.Helper()
+	if (got == nil) != (want == nil) {
+		t.Fatalf("config: got %v, want %v", got, want)
+	}
+	if got == nil {
+		return
+	}
+	if got.Version != want.Version {
+		t.Errorf("Version: got %d, want %d", got.Version, want.Version)
+	}
+	if got.Separator != want.Separator {
+		t.Errorf("Separator: got %q, want %q", got.Separator, want.Separator)
+	}
+	if len(got.Files) != len(want.Files) {
+		t.Fatalf("Files len: got %d, want %d", len(got.Files), len(want.Files))
+	}
+	for i := range got.Files {
+		if got.Files[i].Pattern != want.Files[i].Pattern {
+			t.Errorf("Files[%d].Pattern: got %q, want %q", i, got.Files[i].Pattern, want.Files[i].Pattern)
+		}
+	}
+	if len(got.Rules) != len(want.Rules) {
+		t.Fatalf("Rules len: got %d, want %d", len(got.Rules), len(want.Rules))
+	}
+	for i := range got.Rules {
+		if got.Rules[i] != want.Rules[i] {
+			t.Errorf("Rules[%d]: got %p, want %p", i, got.Rules[i], want.Rules[i])
+		}
+	}
+	if len(got.IgnoreActions) != len(want.IgnoreActions) {
+		t.Fatalf("IgnoreActions len: got %d, want %d", len(got.IgnoreActions), len(want.IgnoreActions))
+	}
+	for i := range got.IgnoreActions {
+		if got.IgnoreActions[i] != want.IgnoreActions[i] {
+			t.Errorf("IgnoreActions[%d]: got %p, want %p", i, got.IgnoreActions[i], want.IgnoreActions[i])
+		}
+	}
+	if (got.GHES == nil) != (want.GHES == nil) {
+		t.Errorf("GHES presence: got %v, want %v", got.GHES, want.GHES)
+	}
+	if got.GHES != nil && want.GHES != nil && got.GHES.APIURL != want.GHES.APIURL {
+		t.Errorf("GHES.APIURL: got %q, want %q", got.GHES.APIURL, want.GHES.APIURL)
+	}
+	assertMinAgeEqual(t, got.MinAge, want.MinAge)
+}
+
+func assertMinAgeEqual(t *testing.T, got, want *MinAge) {
+	t.Helper()
+	if (got == nil) != (want == nil) {
+		t.Fatalf("MinAge presence: got %v, want %v", got, want)
+	}
+	if got == nil {
+		return
+	}
+	assertIntPtrEqual(t, "MinAge.Value", got.Value, want.Value)
+	assertBoolPtrEqual(t, "MinAge.Always", got.Always, want.Always)
+}
+
+func assertIntPtrEqual(t *testing.T, label string, got, want *int) {
+	t.Helper()
+	switch {
+	case got == nil && want == nil:
+	case got == nil || want == nil:
+		t.Errorf("%s: got %v, want %v", label, got, want)
+	case *got != *want:
+		t.Errorf("%s: got %d, want %d", label, *got, *want)
+	}
+}
+
+func assertBoolPtrEqual(t *testing.T, label string, got, want *bool) {
+	t.Helper()
+	switch {
+	case got == nil && want == nil:
+	case got == nil || want == nil:
+		t.Errorf("%s: got %v, want %v", label, got, want)
+	case *got != *want:
+		t.Errorf("%s: got %v, want %v", label, *got, *want)
+	}
+}
+
+func TestReader_ReadAndMerge(t *testing.T) { //nolint:funlen,gocognit,cyclop
+	t.Parallel()
+
+	t.Run("both files exist - project wins per field", func(t *testing.T) {
+		t.Parallel()
+		fs := afero.NewMemMapFs()
+		globalContent := `version: 3
+min_age:
+  value: 7
+  always: true
+rules:
+  - min_age: 0
+    conditions:
+      - expr: ActionRepoOwner == "suzuki-shunsuke"
+`
+		projectContent := `version: 3
+separator: " # "
+min_age:
+  value: 3
+`
+		if err := afero.WriteFile(fs, "global.yaml", []byte(globalContent), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := afero.WriteFile(fs, ".pinact.yaml", []byte(projectContent), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		reader := NewReader(fs)
+		cfg := &Config{}
+		if err := reader.ReadAndMerge(cfg, ".pinact.yaml", "global.yaml"); err != nil {
+			t.Fatalf("ReadAndMerge: %v", err)
+		}
+		if cfg.Separator != " # " {
+			t.Errorf("Separator: got %q, want %q", cfg.Separator, " # ")
+		}
+		if cfg.MinAge == nil || cfg.MinAge.Value == nil || *cfg.MinAge.Value != 3 {
+			t.Errorf("MinAge.Value: got %v, want 3", cfg.MinAge.Value)
+		}
+		if cfg.MinAge == nil || cfg.MinAge.Always == nil || !*cfg.MinAge.Always {
+			t.Errorf("MinAge.Always: got %v, want true (carried from global)", cfg.MinAge.Always)
+		}
+		if len(cfg.Rules) != 1 {
+			t.Fatalf("Rules len: got %d, want 1 (carried from global)", len(cfg.Rules))
+		}
+	})
+
+	t.Run("global only", func(t *testing.T) {
+		t.Parallel()
+		fs := afero.NewMemMapFs()
+		globalContent := `version: 3
+min_age:
+  always: true
+`
+		if err := afero.WriteFile(fs, "global.yaml", []byte(globalContent), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		reader := NewReader(fs)
+		cfg := &Config{}
+		if err := reader.ReadAndMerge(cfg, "", "global.yaml"); err != nil {
+			t.Fatalf("ReadAndMerge: %v", err)
+		}
+		if cfg.MinAge == nil || cfg.MinAge.Always == nil || !*cfg.MinAge.Always {
+			t.Errorf("MinAge.Always: got %v, want true", cfg.MinAge.Always)
+		}
+	})
+
+	t.Run("global with abandoned version errors", func(t *testing.T) {
+		t.Parallel()
+		fs := afero.NewMemMapFs()
+		globalContent := `version: 2
+`
+		projectContent := `version: 3
+separator: " # "
+`
+		if err := afero.WriteFile(fs, "global.yaml", []byte(globalContent), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := afero.WriteFile(fs, ".pinact.yaml", []byte(projectContent), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		reader := NewReader(fs)
+		cfg := &Config{}
+		err := reader.ReadAndMerge(cfg, ".pinact.yaml", "global.yaml")
+		if err == nil {
+			t.Fatal("expected error for abandoned global version, got nil")
+		}
+		if msg := err.Error(); !contains(msg, "global.yaml") {
+			t.Errorf("error should mention the source path: got %q", msg)
+		}
+	})
+
+	t.Run("project with abandoned version errors", func(t *testing.T) {
+		t.Parallel()
+		fs := afero.NewMemMapFs()
+		globalContent := `version: 3
+`
+		projectContent := `version: 2
+`
+		if err := afero.WriteFile(fs, "global.yaml", []byte(globalContent), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := afero.WriteFile(fs, ".pinact.yaml", []byte(projectContent), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		reader := NewReader(fs)
+		cfg := &Config{}
+		err := reader.ReadAndMerge(cfg, ".pinact.yaml", "global.yaml")
+		if err == nil {
+			t.Fatal("expected error for abandoned project version, got nil")
+		}
+		if msg := err.Error(); !contains(msg, ".pinact.yaml") {
+			t.Errorf("error should mention the source path: got %q", msg)
+		}
+	})
+
+	t.Run("neither file - cfg untouched", func(t *testing.T) {
+		t.Parallel()
+		fs := afero.NewMemMapFs()
+		reader := NewReader(fs)
+		cfg := &Config{Version: 99}
+		if err := reader.ReadAndMerge(cfg, "", ""); err != nil {
+			t.Fatalf("ReadAndMerge: %v", err)
+		}
+		if cfg.Version != 99 {
+			t.Errorf("cfg should be untouched when both paths empty, got version %d", cfg.Version)
+		}
+	})
+}
+
+func contains(s, substr string) bool {
+	for i := 0; i+len(substr) <= len(s); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

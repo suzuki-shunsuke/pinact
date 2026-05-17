@@ -67,7 +67,19 @@ Global Configuration File Paths (highest precedence first):
 3. Windows:
     1. `%APPDATA%\pinact\pinact.yaml`
 
-A global configuration file is ignored if a local configuration file is found.
+When both a project-level configuration (e.g. `.pinact.yaml`) and a global configuration exist, they are merged field-by-field. Project values win for scalars and the `min_age` / `ghes` blocks; list fields (`rules`, `ignore_actions`) are concatenated as `[global..., project...]`. Each file's schema version is validated independently; if either file uses an unsupported or abandoned version, pinact aborts with an error that names the offending path.
+
+| Field | Merge behavior |
+| --- | --- |
+| `version` | project if non-zero, otherwise global (both are validated independently) |
+| `files` | project if non-empty, otherwise global |
+| `separator` | project if non-empty, otherwise global |
+| `ghes` | project if set (whole-object replace), otherwise global |
+| `min_age.value` | project if set, otherwise global |
+| `min_age.always` | project if set, otherwise global (so a global `always: true` survives when the project doesn't mention it) |
+| `ignore_actions` | concatenated as `[global..., project...]` |
+| `rules` | concatenated as `[global..., project...]` (later rules win per-field under the existing rule resolution semantics) |
+
 `pinact init -g` creates a global configuration file if it doesn't exist (and honors `$PINACT_GLOBAL_CONFIG` for the target path).
 
 ```sh
