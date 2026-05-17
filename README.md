@@ -89,28 +89,6 @@ pinact run -fix=false -no-api
 With `-no-api`, pinact can't fetch action versions and SHA, so pinact can't pin actions.
 So it only checks if actions are pinned with full-length commit SHA.
 
-### Minimum Release Age (Cooldown): `-min-age`
-
-[#1266](https://github.com/suzuki-shunsuke/pinact/pull/1266) pinact >= v3.5.0
-
-You can skip recently released versions using the `--min-age` (`-m`) option or the environment variable `PINACT_MIN_AGE`.
-This helps avoid updating to potentially unstable versions that haven't had time to prove their stability.
-
-- For GitHub Releases, the `PublishedAt` date is checked
-- For tags, the commit's `Committer.Date` is checked (requires additional API call)
-
-If `-min-age` is specified, pinact checks if actions meet the given minimum release age.
-
-```sh
-pinact run -min-age 14 test.yaml
-```
-
-```
-May 16 23:12:02.152 WRN min-age violation program=pinact version="" workflow_file=test.yaml line_number=2 line="- uses: suzuki-shunsuke/release-doc-action@a9e1ea0c4ca8c62906ca2a7fd3fa33325ee43ec9 # v0.1.0" action=suzuki-shunsuke/release-doc-action@a9e1ea0c4ca8c62906ca2a7fd3fa33325ee43ec9 sha=a9e1ea0c4ca8c62906ca2a7fd3fa33325ee43ec9 committed_at=2026-05-03T03:08:49.000Z cutoff=2026-05-02T23:12:00.775+09:00
-test.yaml:2
-- uses: suzuki-shunsuke/release-doc-action@a9e1ea0c4ca8c62906ca2a7fd3fa33325ee43ec9 # v0.1.0
-```
-
 ### Update Actions: `-update`
 
 Update actions to latest versions:
@@ -119,13 +97,61 @@ Update actions to latest versions:
 pinact run -update
 ```
 
-You can also specify the cooldown period (minimum release age):
+### Minimum Release Age (Cooldown): `-min-age`, `-verify-min-age`
+
+[#1266](https://github.com/suzuki-shunsuke/pinact/pull/1266) pinact >= v3.5.0
+
+pinact supports two kinds of minimum release age checks:
+
+1. Verify current versions: Verify if current action versions meet the minimum release age requirement
+1. Verify new versions: Exclude versions that don't meet the minimum release age requirement when updating actions (`-update`)
+    1. If no release meeting the given minimum age is found, pinact will exit with an error.
+
+This helps redule supply chain security risks.
+
+By default, no minimum release age is set.
+You can set the minimum release age by some methods:
+
+1. `-min-age <minimum release age>`: Set the minimum release age in days
 
 ```sh
-pinact run -u -min-age 7
+pinact run -min-age 7
 ```
 
-If `-min-age` is specified but no release meeting the given minimum age is found, pinact will exit with an error.
+2. Environment variable `PINACT_MIN_AGE`
+3. Configuration file `.pinact.yml`
+    1. `.rules[].min_age`: A rule specific minimum release age in days
+    1. `.min_age.value`: The default minimum release age in days
+
+```yaml
+min_age:
+  value: 7
+rules:
+  - min_age: 0
+    conditions:
+      - expr: |
+          ActionRepoOwner == "suzuki-shunsuke"
+```
+
+It may be wasteful to verify all current versions against the minimum release age every time pinact runs.
+Therefore, current versions are verified using the min_age setting in .pinact.yml and `PINACT_MIN_AGE` only when --verify-min-age is set or .min_age.always is true.
+
+```sh
+pinact run -verify-min-age
+```
+
+Or
+
+```yaml
+min_age:
+  value: 7
+  always: true # default is false
+```
+
+On the other hand, when updating actions min_age setting is always applied.
+
+- For GitHub Releases, the `PublishedAt` date is checked
+- For tags, the commit's `Committer.Date` is checked (requires additional API call)
 
 ### Verify Version Comments: `-verify-comment` (`-verify`, `-v`)
 

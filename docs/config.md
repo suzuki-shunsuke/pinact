@@ -90,7 +90,9 @@ separator: " # "
 
 # Default min-age in days (optional)
 # pinact >= v4.0.0
-min_age: 7
+min_age:
+  value: 7
+  always: true
 
 rules:
   - ignore: true
