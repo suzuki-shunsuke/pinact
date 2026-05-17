@@ -225,6 +225,34 @@ func Test_resolveGlobalConfigPath(t *testing.T) { //nolint:funlen
 			homeDir: "",
 			want:    "",
 		},
+		{
+			name:    "PINACT_GLOBAL_CONFIG wins over linux XDG path",
+			goos:    "linux",
+			env:     map[string]string{"PINACT_GLOBAL_CONFIG": "/tmp/custom.yaml", "XDG_CONFIG_HOME": "/xdg"},
+			homeDir: "/home/user",
+			want:    "/tmp/custom.yaml",
+		},
+		{
+			name:    "PINACT_GLOBAL_CONFIG wins over macOS default",
+			goos:    "darwin",
+			env:     map[string]string{"PINACT_GLOBAL_CONFIG": "/Users/user/dotfiles/pinact.yaml"},
+			homeDir: "/Users/user",
+			want:    "/Users/user/dotfiles/pinact.yaml",
+		},
+		{
+			name:    "PINACT_GLOBAL_CONFIG wins over Windows APPDATA",
+			goos:    "windows",
+			env:     map[string]string{"PINACT_GLOBAL_CONFIG": `D:\config\pinact.yaml`, "APPDATA": `C:\Users\user\AppData\Roaming`},
+			homeDir: `C:\Users\user`,
+			want:    `D:\config\pinact.yaml`,
+		},
+		{
+			name:    "PINACT_GLOBAL_CONFIG empty string falls back to OS default",
+			goos:    "linux",
+			env:     map[string]string{"PINACT_GLOBAL_CONFIG": "", "XDG_CONFIG_HOME": "/xdg"},
+			homeDir: "/home/user",
+			want:    "/xdg/pinact/pinact.yaml",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

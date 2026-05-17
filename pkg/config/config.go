@@ -337,18 +337,26 @@ func GlobalConfigPath() string {
 	return resolveGlobalConfigPath(runtime.GOOS, os.Getenv, getHomeDir())
 }
 
-// resolveGlobalConfigPath returns the absolute path of the global config file
-// for the current platform, or "" if it cannot be resolved.
+// resolveGlobalConfigPath returns the path of the pinact global config file,
+// or "" if it cannot be resolved. Precedence:
 //
-// Linux / macOS: $XDG_CONFIG_HOME/pinact/pinact.yaml when XDG_CONFIG_HOME is
-// set, otherwise <home>/.config/pinact/pinact.yaml. macOS deliberately uses
-// the XDG layout rather than ~/Library/Application Support to avoid the
-// space in the path and to match what most developer tooling expects.
+//  1. PINACT_GLOBAL_CONFIG env var (used verbatim; absolute or relative).
+//  2. Platform-native location:
+//     - Linux / macOS: $XDG_CONFIG_HOME/pinact/pinact.yaml when
+//     XDG_CONFIG_HOME is set, otherwise <home>/.config/pinact/pinact.yaml.
+//     macOS deliberately uses the XDG layout rather than
+//     ~/Library/Application Support to avoid the space in the path and to
+//     match what most developer tooling expects.
+//     - Windows: %APPDATA%\pinact\pinact.yaml. APPDATA is the Roaming
+//     AppData folder, the standard location for user-specific config that
+//     should follow the user across machines.
 //
-// Windows: %APPDATA%\pinact\pinact.yaml. APPDATA is the Roaming AppData
-// folder, the standard location for user-specific config that should follow
-// the user across machines.
+// PINACT_GLOBAL_CONFIG is not subject to ~/$VAR expansion; callers can use
+// shell expansion at the point of invocation if they need it.
 func resolveGlobalConfigPath(goos string, getEnv func(string) string, homeDir string) string {
+	if p := getEnv("PINACT_GLOBAL_CONFIG"); p != "" {
+		return p
+	}
 	const windows = "windows"
 	if goos == windows {
 		appData := getEnv("APPDATA")
