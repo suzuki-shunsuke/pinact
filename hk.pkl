@@ -20,8 +20,8 @@ local linters = new Mapping<String, Step> {
   }
   ["ascii"] {
     glob = List("**/*")
-    check = "check-ascii {{files}}"
-    fix = "check-ascii {{files}}" // run as check in fix mode (no real fix possible)
+    check = "bash scripts/check-ascii {{files}}"
+    fix = "bash scripts/check-ascii {{files}}" // run as check in fix mode (no real fix possible)
     batch = true
   }
 }
@@ -35,7 +35,7 @@ hooks {
   ["commit-msg"] {
     steps {
       ["validate-commit-msg"] {
-        check = "perl -ne 'exit 1 if /[^\\x00-\\x7F]/' {{commit_msg_file}} || exit 1"
+        check = "bash scripts/validate-commit-msg {{commit_msg_file}}"
       }
     }
   }
