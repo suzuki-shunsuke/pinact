@@ -317,9 +317,6 @@ func Test_getConfigPath(t *testing.T) {
 	}
 }
 
-func boolPtr(b bool) *bool { return &b }
-func intPtr(i int) *int    { return &i }
-
 func TestRule_Init(t *testing.T) {
 	t.Parallel()
 	data := []struct {
@@ -382,7 +379,7 @@ func TestRule_Init(t *testing.T) {
 	}
 }
 
-func TestConfig_ResolveRules(t *testing.T) {
+func TestConfig_ResolveRules(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	input := &MatchInput{
 		ActionName:         "actions/checkout",
@@ -409,7 +406,7 @@ func TestConfig_ResolveRules(t *testing.T) {
 			name: "single matching rule sets ignore",
 			rules: []*Rule{
 				{
-					Ignore:     boolPtr(true),
+					Ignore:     new(true),
 					Conditions: []*Condition{{Expr: `ActionName == "actions/checkout"`}},
 				},
 			},
@@ -420,7 +417,7 @@ func TestConfig_ResolveRules(t *testing.T) {
 			name: "non-matching rule has no effect",
 			rules: []*Rule{
 				{
-					Ignore:     boolPtr(true),
+					Ignore:     new(true),
 					Conditions: []*Condition{{Expr: `ActionName == "octocat/hello-world"`}},
 				},
 			},
@@ -431,7 +428,7 @@ func TestConfig_ResolveRules(t *testing.T) {
 			name: "OR semantics across conditions",
 			rules: []*Rule{
 				{
-					Ignore: boolPtr(true),
+					Ignore: new(true),
 					Conditions: []*Condition{
 						{Expr: `ActionName == "octocat/hello-world"`},
 						{Expr: `ActionRepoOwner == "actions"`},
@@ -445,26 +442,26 @@ func TestConfig_ResolveRules(t *testing.T) {
 			name: "later rule overrides only the field it sets",
 			rules: []*Rule{
 				{
-					Ignore:     boolPtr(true),
+					Ignore:     new(true),
 					Conditions: []*Condition{{Expr: `ActionRepoOwner == "actions"`}},
 				},
 				{
-					MinAge:     intPtr(0),
+					MinAge:     new(0),
 					Conditions: []*Condition{{Expr: `ActionName == "actions/checkout"`}},
 				},
 			},
 			wantIgnore: true,
-			wantMinAge: intPtr(0),
+			wantMinAge: new(0),
 		},
 		{
 			name: "later matching rule overrides ignore",
 			rules: []*Rule{
 				{
-					Ignore:     boolPtr(true),
+					Ignore:     new(true),
 					Conditions: []*Condition{{Expr: `ActionRepoOwner == "actions"`}},
 				},
 				{
-					Ignore:     boolPtr(false),
+					Ignore:     new(false),
 					Conditions: []*Condition{{Expr: `ActionName == "actions/checkout"`}},
 				},
 			},
@@ -475,12 +472,12 @@ func TestConfig_ResolveRules(t *testing.T) {
 			name: "min_age 0 from rule disables check",
 			rules: []*Rule{
 				{
-					MinAge:     intPtr(0),
+					MinAge:     new(0),
 					Conditions: []*Condition{{Expr: `ActionRef == "v4"`}},
 				},
 			},
 			wantIgnore: false,
-			wantMinAge: intPtr(0),
+			wantMinAge: new(0),
 		},
 	}
 	for _, tt := range tests {
