@@ -3,6 +3,7 @@ module github.com/suzuki-shunsuke/pinact/v4
 go 1.26.3
 
 require (
+	github.com/expr-lang/expr v1.17.8
 	github.com/fatih/color v1.19.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/go-cmp v0.7.0
@@ -26,7 +27,6 @@ require (
 	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/danieljoos/wincred v1.2.2 // indirect
-	github.com/expr-lang/expr v1.17.8 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/google/go-github/v80 v80.0.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
