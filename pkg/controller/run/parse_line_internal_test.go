@@ -1017,8 +1017,9 @@ func TestController_checkSHAMinAge_disabledByDefault(t *testing.T) {
 	}
 }
 
-// TestController_effectiveMinAge verifies the CLI > rules > top-level
-// precedence for resolving the per-action min-age threshold.
+// TestController_effectiveMinAge verifies the CLI > rules > top-level >
+// PINACT_MIN_AGE env-var precedence for resolving the per-action min-age
+// threshold.
 func TestController_effectiveMinAge(t *testing.T) {
 	t.Parallel()
 	zero := 0
@@ -1026,22 +1027,25 @@ func TestController_effectiveMinAge(t *testing.T) {
 	tests := []struct {
 		name         string
 		cliMinAge    int
+		envMinAge    int // PINACT_MIN_AGE
 		topLevelMin  int
 		ruleOverride *int
 		want         int
 	}{
-		{name: "CLI flag wins over rules and top-level", cliMinAge: 14, topLevelMin: 7, ruleOverride: &five, want: 14},
+		{name: "CLI flag wins over rules / top-level / env", cliMinAge: 14, envMinAge: 3, topLevelMin: 7, ruleOverride: &five, want: 14},
 		{name: "rule overrides top-level when CLI unset", cliMinAge: 0, topLevelMin: 7, ruleOverride: &five, want: 5},
 		{name: "rule min_age 0 disables check when CLI unset", cliMinAge: 0, topLevelMin: 7, ruleOverride: &zero, want: 0},
 		{name: "top-level applies when no rule matched", cliMinAge: 0, topLevelMin: 7, ruleOverride: nil, want: 7},
-		{name: "default 0 when nothing is set", cliMinAge: 0, topLevelMin: 0, ruleOverride: nil, want: 0},
+		{name: "top-level wins over env-var", cliMinAge: 0, envMinAge: 3, topLevelMin: 60, ruleOverride: nil, want: 60},
+		{name: "env-var fills the gap when nothing else is set", cliMinAge: 0, envMinAge: 3, topLevelMin: 0, ruleOverride: nil, want: 3},
+		{name: "default 0 when nothing is set", cliMinAge: 0, envMinAge: 0, topLevelMin: 0, ruleOverride: nil, want: 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ctrl := &Controller{
-				cfg:   &config.Config{MinAge: config.MinAge{Value: tt.topLevelMin}},
-				param: &ParamRun{MinAge: tt.cliMinAge},
+				cfg:   &config.Config{MinAge: &config.MinAge{Value: tt.topLevelMin}},
+				param: &ParamRun{MinAge: tt.cliMinAge, MinAgeFromEnv: tt.envMinAge},
 			}
 			got := ctrl.effectiveMinAge(&config.Resolved{MinAge: tt.ruleOverride})
 			if got != tt.want {

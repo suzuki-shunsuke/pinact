@@ -144,6 +144,7 @@ func buildParam(flags *Flags) (*run.ParamRun, error) {
 		Excludes:          excludes,
 		BranchToTags:      branchToTags,
 		MinAge:            flags.MinAge,
+		MinAgeFromEnv:     flags.MinAgeFromEnv,
 		Now:               time.Now(),
 		Format:            flags.Format,
 	}

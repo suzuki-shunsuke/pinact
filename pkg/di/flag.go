@@ -37,12 +37,13 @@ type Flags struct {
 
 	CWD string
 
-	FixCount    int
-	MinAge      int
-	Include     []string
-	Exclude     []string
-	BranchToTag []string
-	Args        []string
+	FixCount      int
+	MinAge        int
+	MinAgeFromEnv int
+	Include       []string
+	Exclude       []string
+	BranchToTag   []string
+	Args          []string
 }
 
 const defaultGitHubAPIURL = "https://api.github.com"

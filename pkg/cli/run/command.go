@@ -73,9 +73,10 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 			// Setting -min-age on the CLI is an explicit signal that the user
 			// wants the passive audit to run; auto-enable -verify-min-age so
 			// they don't also have to type that flag. PINACT_MIN_AGE is a
-			// threshold-only fallback: it does not auto-enable the audit
-			// because env vars are typically used as repo-wide defaults and
-			// should not silently add a GetCommit call per pinned action.
+			// threshold-only fallback stored in a separate field so the
+			// config file's min_age.value can still take precedence over a
+			// stale shell env var, and so the env var does not implicitly
+			// enable the audit.
 			if cmd.IsSet("min-age") {
 				flags.VerifyMinAge = true
 			} else if v := env.Getenv("PINACT_MIN_AGE"); v != "" {
@@ -86,7 +87,7 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				if n < 0 {
 					return ecerror.Wrap(errors.New("PINACT_MIN_AGE must be a non-negative integer"), run.ExitCodeAPIError)
 				}
-				flags.MinAge = n
+				flags.MinAgeFromEnv = n
 			}
 			pwd, err := os.Getwd()
 			if err != nil {

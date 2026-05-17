@@ -180,9 +180,16 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 }
 
 // effectiveMinAge resolves the min-age threshold for a single action using the
-// precedence: CLI flag > rules > top-level config. A CLI value of 0 means the
-// flag was unset, so the config fallback applies. A rule that explicitly sets
-// min_age to 0 disables the check for the matched action.
+// precedence: CLI flag > rules > top-level config > PINACT_MIN_AGE env var.
+//
+// The env var sits at the bottom on purpose: a config file checked into the
+// repo represents a shared, deliberate policy and should not be silently
+// overridden by a stale shell environment. PINACT_MIN_AGE only kicks in when
+// no other source has set the threshold.
+//
+// A CLI value of 0 means the flag was unset, so the config fallback applies.
+// A rule that explicitly sets min_age to 0 disables the check for the matched
+// action.
 func (c *Controller) effectiveMinAge(resolved *config.Resolved) int {
 	if c.param.MinAge > 0 {
 		return c.param.MinAge
@@ -190,7 +197,10 @@ func (c *Controller) effectiveMinAge(resolved *config.Resolved) int {
 	if resolved.MinAge != nil {
 		return *resolved.MinAge
 	}
-	return c.cfg.MinAge.Value
+	if c.cfg.MinAge != nil && c.cfg.MinAge.Value > 0 {
+		return c.cfg.MinAge.Value
+	}
+	return c.param.MinAgeFromEnv
 }
 
 // finalPinnedSHA returns the commit SHA that the action will resolve to after
@@ -218,7 +228,8 @@ func (c *Controller) finalPinnedSHA(action *Action, newLine string) string {
 // config.min_age.always is true. Returns nil otherwise, or when minAge is 0
 // or negative, the git service is unavailable, or -no-api is set.
 func (c *Controller) checkSHAMinAge(ctx context.Context, logger *slog.Logger, owner, repo, sha string, minAge int) error {
-	if !c.param.VerifyMinAge && !c.cfg.MinAge.Always {
+	always := c.cfg.MinAge != nil && c.cfg.MinAge.Always
+	if !c.param.VerifyMinAge && !always {
 		return nil
 	}
 	if minAge <= 0 || c.gitService == nil || c.param.NoAPI {

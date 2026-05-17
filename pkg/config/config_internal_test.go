@@ -163,7 +163,7 @@ func TestFinder_Find(t *testing.T) {
 	})
 }
 
-func TestReader_Read(t *testing.T) {
+func TestReader_Read(t *testing.T) { //nolint:cyclop,funlen
 	t.Parallel()
 	t.Run("empty path", func(t *testing.T) {
 		t.Parallel()
@@ -218,6 +218,30 @@ files:
 		cfg := &Config{}
 		if err := reader.Read(cfg, ".pinact.yaml"); err == nil {
 			t.Error("expected error, got nil")
+		}
+	})
+
+	t.Run("min_age value and always populate", func(t *testing.T) {
+		t.Parallel()
+		fs := afero.NewMemMapFs()
+		content := `version: 3
+min_age:
+  value: 60
+  always: true
+`
+		if err := afero.WriteFile(fs, ".pinact.yaml", []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		reader := NewReader(fs)
+		cfg := &Config{}
+		if err := reader.Read(cfg, ".pinact.yaml"); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.MinAge.Value != 60 {
+			t.Errorf("MinAge.Value: wanted 60, got %d", cfg.MinAge.Value)
+		}
+		if !cfg.MinAge.Always {
+			t.Errorf("MinAge.Always: wanted true, got false")
 		}
 	})
 }
