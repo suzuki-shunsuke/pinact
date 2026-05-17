@@ -1,6 +1,7 @@
 package config
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -161,6 +162,80 @@ func TestFinder_Find(t *testing.T) {
 			t.Errorf("wanted %q, got %q", ".github/pinact.yaml", got)
 		}
 	})
+}
+
+func Test_resolveGlobalConfigPath(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	tests := []struct {
+		name    string
+		goos    string
+		env     map[string]string
+		homeDir string
+		want    string
+	}{
+		{
+			name:    "linux with XDG_CONFIG_HOME",
+			goos:    "linux",
+			env:     map[string]string{"XDG_CONFIG_HOME": "/xdg"},
+			homeDir: "/home/user",
+			want:    "/xdg/pinact/pinact.yaml",
+		},
+		{
+			name:    "linux without XDG falls back to ~/.config",
+			goos:    "linux",
+			env:     map[string]string{},
+			homeDir: "/home/user",
+			want:    "/home/user/.config/pinact/pinact.yaml",
+		},
+		{
+			name:    "macOS without XDG also falls back to ~/.config",
+			goos:    "darwin",
+			env:     map[string]string{},
+			homeDir: "/Users/user",
+			want:    "/Users/user/.config/pinact/pinact.yaml",
+		},
+		{
+			name:    "macOS XDG is honored",
+			goos:    "darwin",
+			env:     map[string]string{"XDG_CONFIG_HOME": "/Users/user/.cfg"},
+			homeDir: "/Users/user",
+			want:    "/Users/user/.cfg/pinact/pinact.yaml",
+		},
+		{
+			name: "windows uses APPDATA",
+			goos: "windows",
+			env:  map[string]string{"APPDATA": `C:\Users\user\AppData\Roaming`},
+			// homeDir is ignored on Windows; APPDATA wins.
+			homeDir: `C:\Users\user`,
+			// Use filepath.Join in the expected value too so the test passes
+			// on both POSIX (`/` separator) and Windows (`\` separator) hosts.
+			want: filepath.Join(`C:\Users\user\AppData\Roaming`, "pinact", "pinact.yaml"),
+		},
+		{
+			name:    "windows without APPDATA returns empty",
+			goos:    "windows",
+			env:     map[string]string{},
+			homeDir: `C:\Users\user`,
+			want:    "",
+		},
+		{
+			name:    "unix without home dir returns empty",
+			goos:    "linux",
+			env:     map[string]string{},
+			homeDir: "",
+			want:    "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			getEnv := func(k string) string { return tt.env[k] }
+			got := resolveGlobalConfigPath(tt.goos, getEnv, tt.homeDir)
+			if got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestReader_Read(t *testing.T) { //nolint:cyclop,funlen

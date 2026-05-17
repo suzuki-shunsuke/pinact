@@ -10,8 +10,11 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path"
+	"path/filepath"
 	"regexp"
+	"runtime"
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
@@ -306,7 +309,61 @@ func getConfigPath(fs afero.Fs) (string, error) {
 			return path, nil
 		}
 	}
+	// No project-level config found - try the user's global config file as a
+	// fallback. This lets users keep machine-wide defaults (e.g. min_age,
+	// rules for trusted owners) outside the repo. When a project config
+	// exists it is used as-is and the global file is ignored; merging across
+	// the two would surprise teammates by making behavior depend on whoever
+	// runs pinact.
+	globalPath := resolveGlobalConfigPath(runtime.GOOS, os.Getenv, getHomeDir())
+	if globalPath == "" {
+		return "", nil
+	}
+	f, err := afero.Exists(fs, globalPath)
+	if err != nil {
+		return "", fmt.Errorf("check if %s exists: %w", globalPath, err)
+	}
+	if f {
+		return globalPath, nil
+	}
 	return "", nil
+}
+
+// resolveGlobalConfigPath returns the absolute path of the global config file
+// for the current platform, or "" if it cannot be resolved.
+//
+// Linux / macOS: $XDG_CONFIG_HOME/pinact/pinact.yaml when XDG_CONFIG_HOME is
+// set, otherwise <home>/.config/pinact/pinact.yaml. macOS deliberately uses
+// the XDG layout rather than ~/Library/Application Support to avoid the
+// space in the path and to match what most developer tooling expects.
+//
+// Windows: %APPDATA%\pinact\pinact.yaml. APPDATA is the Roaming AppData
+// folder, the standard location for user-specific config that should follow
+// the user across machines.
+func resolveGlobalConfigPath(goos string, getEnv func(string) string, homeDir string) string {
+	const windows = "windows"
+	if goos == windows {
+		appData := getEnv("APPDATA")
+		if appData == "" {
+			return ""
+		}
+		return filepath.Join(appData, "pinact", "pinact.yaml")
+	}
+	if xdg := getEnv("XDG_CONFIG_HOME"); xdg != "" {
+		return filepath.Join(xdg, "pinact", "pinact.yaml")
+	}
+	if homeDir == "" {
+		return ""
+	}
+	return filepath.Join(homeDir, ".config", "pinact", "pinact.yaml")
+}
+
+func getHomeDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return home
 }
 
 type Finder struct {
