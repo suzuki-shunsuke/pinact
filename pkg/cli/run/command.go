@@ -13,8 +13,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
+	"github.com/suzuki-shunsuke/go-error-with-exit-code/ecerror"
 	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/gflag"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/v4/pkg/di"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
@@ -69,9 +72,21 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 			warnDeprecatedFlags(cmd, env.Stderr)
 			// Setting -min-age on the CLI is an explicit signal that the user
 			// wants the passive audit to run; auto-enable -verify-min-age so
-			// they don't also have to type that flag.
+			// they don't also have to type that flag. PINACT_MIN_AGE is a
+			// threshold-only fallback: it does not auto-enable the audit
+			// because env vars are typically used as repo-wide defaults and
+			// should not silently add a GetCommit call per pinned action.
 			if cmd.IsSet("min-age") {
 				flags.VerifyMinAge = true
+			} else if v := env.Getenv("PINACT_MIN_AGE"); v != "" {
+				n, err := strconv.Atoi(v)
+				if err != nil {
+					return ecerror.Wrap(fmt.Errorf("PINACT_MIN_AGE must be a non-negative integer: %w", err), run.ExitCodeAPIError)
+				}
+				if n < 0 {
+					return ecerror.Wrap(errors.New("PINACT_MIN_AGE must be a non-negative integer"), run.ExitCodeAPIError)
+				}
+				flags.MinAge = n
 			}
 			pwd, err := os.Getwd()
 			if err != nil {
@@ -155,9 +170,12 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 			&cli.IntFlag{
 				Name:        "min-age",
 				Aliases:     []string{"m"},
-				Usage:       "Skip versions released within the specified number of days (requires -u or --branch-to-tag)",
+				Usage:       "Minimum release age threshold in days. Setting this implicitly enables -verify-min-age. PINACT_MIN_AGE env var sets the threshold but does not enable the audit on its own",
 				Destination: &flags.MinAge,
-				Sources:     cli.EnvVars("PINACT_MIN_AGE"),
+				// PINACT_MIN_AGE is intentionally NOT a urfave Source: we read
+				// it manually below so the env var only provides the threshold
+				// and does not implicitly enable -verify-min-age the way a
+				// CLI -min-age does.
 				Validator: func(i int) error {
 					if i < 0 {
 						return errors.New("--min-age must be a non-negative integer")
