@@ -329,6 +329,14 @@ func getConfigPath(fs afero.Fs) (string, error) {
 	return "", nil
 }
 
+// GlobalConfigPath returns the absolute path of the pinact global config file
+// for the current platform, or "" if it cannot be resolved (e.g. APPDATA is
+// unset on Windows, or the user has no home directory). Callers that need to
+// surface a clear error to the user should check for the empty return.
+func GlobalConfigPath() string {
+	return resolveGlobalConfigPath(runtime.GOOS, os.Getenv, getHomeDir())
+}
+
 // resolveGlobalConfigPath returns the absolute path of the global config file
 // for the current platform, or "" if it cannot be resolved.
 //

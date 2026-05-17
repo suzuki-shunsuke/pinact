@@ -28,7 +28,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
 		Usage: "Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact",
 		Flags: globalFlags.Flags(),
 		Commands: []*cli.Command{
-			initcmd.New(logger, globalFlags),
+			initcmd.New(logger, globalFlags, env),
 			run.New(logger, globalFlags, env),
 			migrate.New(logger, globalFlags),
 			tokencmd.New(logger),
