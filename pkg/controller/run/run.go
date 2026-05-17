@@ -33,7 +33,6 @@ type ParamRun struct {
 	Excludes          []*regexp.Regexp
 	BranchToTags      []*regexp.Regexp
 	MinAge            int
-	MinAgeFromEnv     int
 	Now               time.Time
 	Format            string
 	Findings          []Finding

@@ -180,16 +180,14 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 }
 
 // effectiveMinAge resolves the min-age threshold for a single action using the
-// precedence: CLI flag > rules > top-level config > PINACT_MIN_AGE env var.
+// precedence: CLI flag / PINACT_MIN_AGE env var > rules > config.min_age.value.
 //
-// The env var sits at the bottom on purpose: a config file checked into the
-// repo represents a shared, deliberate policy and should not be silently
-// overridden by a stale shell environment. PINACT_MIN_AGE only kicks in when
-// no other source has set the threshold.
+// PINACT_MIN_AGE is wired into the same flag via urfave Sources, so the env
+// var and CLI flag share the param.MinAge slot.
 //
-// A CLI value of 0 means the flag was unset, so the config fallback applies.
-// A rule that explicitly sets min_age to 0 disables the check for the matched
-// action.
+// A CLI / env value of 0 means the source was unset, so the rules / config
+// fallback applies. A rule that explicitly sets min_age to 0 disables the
+// check for the matched action.
 func (c *Controller) effectiveMinAge(resolved *config.Resolved) int {
 	if c.param.MinAge > 0 {
 		return c.param.MinAge
@@ -197,10 +195,24 @@ func (c *Controller) effectiveMinAge(resolved *config.Resolved) int {
 	if resolved.MinAge != nil {
 		return *resolved.MinAge
 	}
-	if c.cfg.MinAge != nil && c.cfg.MinAge.Value > 0 {
+	return c.minAgeFallback()
+}
+
+// minAgeFallback returns the threshold for contexts where per-rule overrides
+// are not yet available (e.g. the update-target cooldown filter in
+// getLatestVersionWithStable, which runs inside processAction before rule
+// resolution is plumbed through). Precedence is CLI / env > config.min_age.value.
+//
+// TODO: thread the resolved rule into the update path so rules[].min_age can
+// also override the update-target cooldown filter (currently global-only).
+func (c *Controller) minAgeFallback() int {
+	if c.param.MinAge > 0 {
+		return c.param.MinAge
+	}
+	if c.cfg.MinAge != nil {
 		return c.cfg.MinAge.Value
 	}
-	return c.param.MinAgeFromEnv
+	return 0
 }
 
 // finalPinnedSHA returns the commit SHA that the action will resolve to after

@@ -36,10 +36,12 @@ func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, 
 // explicit isStable flag instead of inferring it from currentVersion. Used by
 // branch-to-tag, which has no semver-shaped currentVersion to infer from.
 func (c *Controller) getLatestVersionWithStable(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool) (string, error) {
-	// Calculate cutoff once for min-age filtering
+	// Calculate cutoff once for min-age filtering. We use the global fallback
+	// (CLI > config > env) rather than effectiveMinAge because rule resolution
+	// has not been threaded down here; see minAgeFallback's TODO.
 	var cutoff time.Time
-	if c.param.MinAge > 0 {
-		cutoff = c.param.Now.AddDate(0, 0, -c.param.MinAge)
+	if mAge := c.minAgeFallback(); mAge > 0 {
+		cutoff = c.param.Now.AddDate(0, 0, -mAge)
 	}
 
 	lv, versions, err := c.getLatestVersionFromReleases(ctx, logger, owner, repo, isStable, cutoff)
