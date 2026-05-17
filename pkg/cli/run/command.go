@@ -67,6 +67,12 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 `,
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			warnDeprecatedFlags(cmd, env.Stderr)
+			// Setting -min-age on the CLI is an explicit signal that the user
+			// wants the passive audit to run; auto-enable -verify-min-age so
+			// they don't also have to type that flag.
+			if cmd.IsSet("min-age") {
+				flags.VerifyMinAge = true
+			}
 			pwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("get the current directory: %w", err)
@@ -83,6 +89,11 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Aliases:     []string{"verify", "v"},
 				Usage:       "Verify that the version comment matches the pinned SHA",
 				Destination: &flags.VerifyComment,
+			},
+			&cli.BoolFlag{
+				Name:        "verify-min-age",
+				Usage:       "Audit every pinned action against the min-age threshold (calls the GitHub API). Auto-enabled when -min-age is set on the CLI",
+				Destination: &flags.VerifyMinAge,
 			},
 			&cli.BoolFlag{
 				Name:        "no-api",

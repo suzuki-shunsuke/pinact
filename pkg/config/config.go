@@ -33,8 +33,23 @@ type Config struct {
 	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores. For new configurations consider using 'rules' with 'ignore: true' for more flexibility"`
 	GHES          *GHES           `json:"ghes,omitempty" yaml:"ghes" jsonschema:"description=GitHub Enterprise Server configuration"`
 	Separator     string          `json:"separator,omitempty" jsonschema:"description=Separator between version and tag comment. Default is ' # '"`
-	MinAge        int             `json:"min_age,omitempty" yaml:"min_age" jsonschema:"description=Default min-age in days for the min-age check. Overridable by the -min-age CLI flag and rules"`
+	MinAge        MinAge          `json:"min_age,omitzero" yaml:"min_age" jsonschema:"description=Default min-age settings. value is the threshold in days; always opts every run into the passive audit. rules can override value per action"`
 	Rules         []*Rule         `json:"rules,omitempty" jsonschema:"description=Per-action setting overrides. Later matching rules override earlier ones at the field level"`
+}
+
+// MinAge controls both the threshold and whether the passive audit auto-runs.
+//
+// Value is the default min-age threshold in days. It is used as the update
+// target gate when -update is set, and as the cutoff for the passive audit
+// when the audit runs. rules[].min_age and the -min-age CLI flag can override
+// Value per action / per run.
+//
+// Always opts every `pinact run` into the passive audit even without the
+// -verify-min-age CLI flag. Default false so config.min_age alone does not
+// add a GetCommit call per pinned action on every run.
+type MinAge struct {
+	Value  int  `json:"value,omitempty" jsonschema:"description=Default min-age threshold in days"`
+	Always bool `json:"always,omitempty" jsonschema:"description=When true every run performs the passive min-age audit. Default false"`
 }
 
 type GHES struct {

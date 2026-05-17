@@ -13,6 +13,7 @@ type Flags struct {
 	// -verify and -v are urfave/cli aliases for -verify-comment, so they
 	// share VerifyComment and do not need a separate field.
 	VerifyComment bool
+	VerifyMinAge  bool
 	NoAPI         bool
 
 	// -check and -diff are silent aliases for -fix=false in v4. They keep

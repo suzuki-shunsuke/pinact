@@ -22,6 +22,7 @@ type ParamRun struct {
 	ConfigFilePath    string
 	CWD               string
 	IsVerify          bool
+	VerifyMinAge      bool
 	Update            bool
 	IsGitHubActions   bool
 	Fix               bool

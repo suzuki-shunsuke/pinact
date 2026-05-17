@@ -190,7 +190,7 @@ func (c *Controller) effectiveMinAge(resolved *config.Resolved) int {
 	if resolved.MinAge != nil {
 		return *resolved.MinAge
 	}
-	return c.cfg.MinAge
+	return c.cfg.MinAge.Value
 }
 
 // finalPinnedSHA returns the commit SHA that the action will resolve to after
@@ -213,9 +213,14 @@ func (c *Controller) finalPinnedSHA(action *Action, newLine string) string {
 // checkSHAMinAge looks up the commit date of sha and returns ErrMinAge if the
 // commit is younger than the min-age cutoff. minAge is the effective threshold
 // for this action, already merged across CLI flag, rules, and config defaults.
-// Returns nil when minAge is 0 or negative, the git service is unavailable, or
-// -no-api is set.
+//
+// The audit is opt-in: it runs only when -verify-min-age is set on the CLI or
+// config.min_age.always is true. Returns nil otherwise, or when minAge is 0
+// or negative, the git service is unavailable, or -no-api is set.
 func (c *Controller) checkSHAMinAge(ctx context.Context, logger *slog.Logger, owner, repo, sha string, minAge int) error {
+	if !c.param.VerifyMinAge && !c.cfg.MinAge.Always {
+		return nil
+	}
 	if minAge <= 0 || c.gitService == nil || c.param.NoAPI {
 		return nil
 	}

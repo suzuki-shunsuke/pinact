@@ -48,8 +48,8 @@
           "description": "Separator between version and tag comment. Default is ' # '"
         },
         "min_age": {
-          "type": "integer",
-          "description": "Default min-age in days for the min-age check. Overridable by the -min-age CLI flag and rules"
+          "$ref": "#/$defs/MinAge",
+          "description": "Default min-age settings. value is the threshold in days; always opts every run into the passive audit. rules can override value per action"
         },
         "rules": {
           "items": {
@@ -102,6 +102,20 @@
       "required": [
         "name"
       ]
+    },
+    "MinAge": {
+      "properties": {
+        "value": {
+          "type": "integer",
+          "description": "Default min-age threshold in days"
+        },
+        "always": {
+          "type": "boolean",
+          "description": "When true every run performs the passive min-age audit. Default false"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
     },
     "Rule": {
       "properties": {

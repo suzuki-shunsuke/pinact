@@ -133,6 +133,7 @@ func buildParam(flags *Flags) (*run.ParamRun, error) {
 		ConfigFilePath:    flags.Config,
 		CWD:               flags.CWD,
 		IsVerify:          flags.VerifyComment,
+		VerifyMinAge:      flags.VerifyMinAge,
 		Update:            flags.Update,
 		NoAPI:             flags.NoAPI,
 		Fix:               resolveFix(flags),
@@ -206,6 +207,12 @@ func validateNoAPI(flags *Flags) error {
 	if flags.VerifyComment {
 		return ecerror.Wrap(
 			errors.New("-no-api cannot be combined with -verify-comment (verify needs the GitHub API to compare the SHA)"),
+			run.ExitCodeAPIError,
+		)
+	}
+	if flags.VerifyMinAge {
+		return ecerror.Wrap(
+			errors.New("-no-api cannot be combined with -verify-min-age (the min-age audit calls GetCommit)"),
 			run.ExitCodeAPIError,
 		)
 	}

@@ -965,7 +965,8 @@ func TestController_checkSHAMinAge_boundary(t *testing.T) { //nolint:funlen
 				},
 			}
 			ctrl := New(nil, gs, fs, &config.Config{}, &ParamRun{
-				Now: now,
+				Now:          now,
+				VerifyMinAge: true, // enable the passive check for this test
 			})
 			err := ctrl.checkSHAMinAge(t.Context(), logger, "owner", "repo", "deadbeef", tt.minAge)
 			if tt.wantErr {
@@ -981,6 +982,38 @@ func TestController_checkSHAMinAge_boundary(t *testing.T) { //nolint:funlen
 				t.Fatalf("unexpected error: %v", err)
 			}
 		})
+	}
+}
+
+// TestController_checkSHAMinAge_disabledByDefault verifies that the passive
+// audit is skipped when neither ParamRun.VerifyMinAge nor cfg.VerifyMinAge is
+// set, even if the commit would otherwise violate the cutoff.
+func TestController_checkSHAMinAge_disabledByDefault(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 5, 16, 0, 0, 0, 0, time.UTC)
+	logger := slog.New(slog.DiscardHandler)
+	called := false
+	gs := &mockGitService{
+		getCommitFunc: func(_ context.Context, _, _, _ string) (*github.Commit, *github.Response, error) {
+			called = true
+			// Return a commit far younger than the cutoff so any check that
+			// runs would surface ErrMinAge.
+			return &github.Commit{
+				Committer: &github.CommitAuthor{
+					Date: &github.Timestamp{Time: now},
+				},
+			}, &github.Response{}, nil
+		},
+	}
+	ctrl := New(nil, gs, afero.NewMemMapFs(), &config.Config{}, &ParamRun{
+		Now: now,
+		// VerifyMinAge intentionally left false
+	})
+	if err := ctrl.checkSHAMinAge(t.Context(), logger, "owner", "repo", "deadbeef", 7); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if called {
+		t.Fatal("checkSHAMinAge called GetCommit even though VerifyMinAge is false")
 	}
 }
 
@@ -1007,7 +1040,7 @@ func TestController_effectiveMinAge(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ctrl := &Controller{
-				cfg:   &config.Config{MinAge: tt.topLevelMin},
+				cfg:   &config.Config{MinAge: config.MinAge{Value: tt.topLevelMin}},
 				param: &ParamRun{MinAge: tt.cliMinAge},
 			}
 			got := ctrl.effectiveMinAge(&config.Resolved{MinAge: tt.ruleOverride})
