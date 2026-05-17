@@ -9,7 +9,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-version"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
@@ -84,14 +85,9 @@ var ErrCantPinned = errors.New("action can't be pinned")
 
 // ignoreAction checks if an action should be ignored based on configuration.
 // It evaluates the action against all ignore rules in the configuration.
-func (c *Controller) ignoreAction(logger *slog.Logger, action *Action) bool {
+func (c *Controller) ignoreAction(action *Action) bool {
 	for _, ignoreAction := range c.cfg.IgnoreActions {
-		f, err := ignoreAction.Match(action.Name, action.Version, c.cfg.Version)
-		if err != nil {
-			slogerr.WithError(logger, err).Warn("match the action")
-			continue
-		}
-		if f {
+		if ignoreAction.Match(action.Name, action.Version) {
 			return true
 		}
 	}
@@ -127,6 +123,11 @@ func (c *Controller) excludeByIncludes(actionName string) bool {
 // parseLine processes a single line from a workflow file.
 // It parses the line for action usage, applies filtering rules, and determines
 // what modifications (if any) should be made based on the operation mode.
+//
+// As of v4, parseLine also runs the passive -min-age check on the final pinned
+// SHA. The check is skipped when -min-age is not set or no git service is
+// available. On violation it returns the patched line together with ErrMinAge
+// so the caller can apply the fix and bump the exit code to ExitCodeUnfixable.
 func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line string) (s string, e error) {
 	attrs := slogerr.NewAttrs(2) //nolint:mnd
 	defer func() {
@@ -149,12 +150,129 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 		return "", nil
 	}
 
-	return c.processAction(ctx, logger, action, attrs)
+	resolved, err := c.cfg.ResolveRules(&config.MatchInput{
+		ActionName:         action.Name,
+		ActionRepoOwner:    action.RepoOwner,
+		ActionRepoName:     action.RepoName,
+		ActionRepoFullName: action.RepoOwner + "/" + action.RepoName,
+		ActionVersion:      action.Version,
+		VersionComment:     action.VersionComment,
+	})
+	if err != nil {
+		return "", fmt.Errorf("resolve rules: %w", err)
+	}
+	if resolved.Ignore {
+		logger.Debug("ignore the action by a rule")
+		return "", nil
+	}
+
+	newLine, err := c.processAction(ctx, logger, action, attrs)
+	if err != nil {
+		return newLine, err
+	}
+	if sha := c.finalPinnedSHA(action, newLine); sha != "" {
+		minAge := c.effectiveMinAge(resolved)
+		if minAgeErr := c.checkSHAMinAge(ctx, logger, action.RepoOwner, action.RepoName, sha, minAge); minAgeErr != nil {
+			return newLine, minAgeErr
+		}
+	}
+	return newLine, nil
+}
+
+// effectiveMinAge resolves the min-age threshold for a single action using the
+// precedence: CLI flag / PINACT_MIN_AGE env var > rules > config.min_age.value.
+//
+// PINACT_MIN_AGE is wired into the same flag via urfave Sources, so the env
+// var and CLI flag share the param.MinAge slot.
+//
+// A CLI / env value of 0 means the source was unset, so the rules / config
+// fallback applies. A rule that explicitly sets min_age to 0 disables the
+// check for the matched action.
+func (c *Controller) effectiveMinAge(resolved *config.Resolved) int {
+	if c.param.MinAge > 0 {
+		return c.param.MinAge
+	}
+	if resolved.MinAge != nil {
+		return *resolved.MinAge
+	}
+	return c.minAgeFallback()
+}
+
+// minAgeFallback returns the threshold for contexts where per-rule overrides
+// are not yet available (e.g. the update-target cooldown filter in
+// getLatestVersionWithStable, which runs inside processAction before rule
+// resolution is plumbed through). Precedence is CLI / env > config.min_age.value.
+//
+// TODO: thread the resolved rule into the update path so rules[].min_age can
+// also override the update-target cooldown filter (currently global-only).
+func (c *Controller) minAgeFallback() int {
+	if c.param.MinAge > 0 {
+		return c.param.MinAge
+	}
+	if c.cfg.MinAge != nil {
+		return c.cfg.MinAge.Value
+	}
+	return 0
+}
+
+// finalPinnedSHA returns the commit SHA that the action will resolve to after
+// pinact runs, or "" if no SHA is involved (e.g., an unpinnable branch that
+// will surface as ErrCantPinned elsewhere). If parseLine produced a patched
+// line, the SHA is extracted from the new line; otherwise it falls back to
+// action.Version when that is itself a full commit SHA.
+func (c *Controller) finalPinnedSHA(action *Action, newLine string) string {
+	if newLine != "" {
+		if m := fullCommitSHAPattern.FindString(newLine); m != "" {
+			return m
+		}
+	}
+	if getVersionType(action.Version) == FullCommitSHA {
+		return action.Version
+	}
+	return ""
+}
+
+// checkSHAMinAge looks up the commit date of sha and returns ErrMinAge if the
+// commit is younger than the min-age cutoff. minAge is the effective threshold
+// for this action, already merged across CLI flag, rules, and config defaults.
+//
+// The audit is opt-in: it runs only when -verify-min-age is set on the CLI or
+// config.min_age.always is true. Returns nil otherwise, or when minAge is 0
+// or negative, the git service is unavailable, or -no-api is set.
+func (c *Controller) checkSHAMinAge(ctx context.Context, logger *slog.Logger, owner, repo, sha string, minAge int) error {
+	always := c.cfg.MinAge != nil && c.cfg.MinAge.Always
+	if !c.param.VerifyMinAge && !always {
+		return nil
+	}
+	if minAge <= 0 || c.gitService == nil || c.param.NoAPI {
+		return nil
+	}
+	cutoff := c.param.Now.AddDate(0, 0, -minAge)
+	commit, _, err := c.gitService.GetCommit(ctx, logger, owner, repo, sha)
+	if err != nil {
+		return fmt.Errorf("get commit for min-age check: %w", err)
+	}
+	committedAt := commit.GetCommitter().GetDate().Time
+	if committedAt.After(cutoff) {
+		logger.Warn(
+			"min-age violation",
+			"sha", sha,
+			"committed_at", committedAt,
+			"cutoff", cutoff,
+		)
+		return fmt.Errorf(
+			"%w: %s/%s@%s committed at %s (cutoff %s)",
+			ErrMinAge, owner, repo, sha,
+			committedAt.Format("2006-01-02"),
+			cutoff.Format("2006-01-02"),
+		)
+	}
+	return nil
 }
 
 // shouldSkipAction checks if an action should be skipped based on filtering rules.
 func (c *Controller) shouldSkipAction(logger *slog.Logger, action *Action) bool {
-	if c.ignoreAction(logger, action) {
+	if c.ignoreAction(action) {
 		logger.Debug("ignore the action")
 		return true
 	}
@@ -172,7 +290,17 @@ func (c *Controller) shouldSkipAction(logger *slog.Logger, action *Action) bool 
 // processAction dispatches based on the action's version form. The version
 // is the primary determinant (already-pinned SHA vs. semver tag vs. branch);
 // the comment refines the behavior inside each branch.
+//
+// When -no-api is set, processAction short-circuits any GitHub API call:
+// already-pinned SHAs are accepted as-is and everything else is reported as
+// unfixable (ExitCodeUnfixable).
 func (c *Controller) processAction(ctx context.Context, logger *slog.Logger, action *Action, attrs *slogerr.Attrs) (string, error) {
+	if c.param.NoAPI {
+		if getVersionType(action.Version) == FullCommitSHA {
+			return "", nil
+		}
+		return "", ErrCantPinned
+	}
 	switch getVersionType(action.Version) {
 	case FullCommitSHA:
 		return c.processPinnedVersion(ctx, logger, action, attrs)

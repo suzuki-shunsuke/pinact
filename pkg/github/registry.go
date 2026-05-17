@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
 )
 
 // ClientRegistry manages GitHub clients for github.com and a GHES instance.

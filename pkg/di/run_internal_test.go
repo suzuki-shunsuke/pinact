@@ -3,7 +3,7 @@ package di
 import (
 	"testing"
 
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/gflag"
 )
 
 func Test_compileRegexps(t *testing.T) {
@@ -47,7 +47,7 @@ func Test_compileRegexps(t *testing.T) {
 func Test_buildParam_default(t *testing.T) {
 	t.Parallel()
 	flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Args: []string{"test.yaml"}, CWD: "/tmp"}
-	got, err := buildParam(flags, nil)
+	got, err := buildParam(flags)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -62,22 +62,19 @@ func Test_buildParam_default(t *testing.T) {
 func Test_buildParam_checkMode(t *testing.T) {
 	t.Parallel()
 	flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Check: true}
-	got, err := buildParam(flags, nil)
+	got, err := buildParam(flags)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if got.Fix {
 		t.Error("Fix: wanted false, got true")
 	}
-	if !got.Check {
-		t.Error("Check: wanted true, got false")
-	}
 }
 
 func Test_buildParam_diffMode(t *testing.T) {
 	t.Parallel()
 	flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Diff: true}
-	got, err := buildParam(flags, nil)
+	got, err := buildParam(flags)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -89,7 +86,7 @@ func Test_buildParam_diffMode(t *testing.T) {
 func Test_buildParam_explicitFix(t *testing.T) {
 	t.Parallel()
 	flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Check: true, Fix: true, FixCount: 1}
-	got, err := buildParam(flags, nil)
+	got, err := buildParam(flags)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -103,15 +100,77 @@ func Test_buildParam_invalidRegex(t *testing.T) {
 	t.Run("invalid include", func(t *testing.T) {
 		t.Parallel()
 		flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Include: []string{"[invalid"}}
-		if _, err := buildParam(flags, nil); err == nil {
+		if _, err := buildParam(flags); err == nil {
 			t.Error("expected error, got nil")
 		}
 	})
 	t.Run("invalid exclude", func(t *testing.T) {
 		t.Parallel()
 		flags := &Flags{GlobalFlags: &gflag.GlobalFlags{}, Exclude: []string{"[invalid"}}
-		if _, err := buildParam(flags, nil); err == nil {
+		if _, err := buildParam(flags); err == nil {
 			t.Error("expected error, got nil")
 		}
 	})
+}
+
+func Test_validateFlagCombo(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		flags   *Flags
+		wantErr bool
+	}{
+		{
+			name:    "default flags are valid",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}},
+			wantErr: false,
+		},
+		{
+			name:    "-update -fix=false is invalid",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, Update: true, FixCount: 1, Fix: false},
+			wantErr: true,
+		},
+		{
+			name:    "-update -fix=false -format sarif is valid",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, Update: true, FixCount: 1, Fix: false, Format: "sarif"},
+			wantErr: false,
+		},
+		{
+			name:    "-no-api -update is invalid",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, Update: true},
+			wantErr: true,
+		},
+		{
+			name:    "-no-api -verify-comment is invalid",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, VerifyComment: true},
+			wantErr: true,
+		},
+		{
+			name:    "-no-api alone (implicit -fix=true) is invalid",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true},
+			wantErr: true,
+		},
+		{
+			name:    "-no-api -fix=false is valid",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, FixCount: 1, Fix: false},
+			wantErr: false,
+		},
+		{
+			name:    "-no-api -format sarif is valid",
+			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, Format: "sarif"},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := validateFlagCombo(tt.flags)
+			if tt.wantErr && err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
 }

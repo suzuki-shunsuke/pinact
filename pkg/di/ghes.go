@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 )
 
 // setupGHESServices creates GitHub API services with GHES (GitHub Enterprise Server) support.
@@ -26,7 +26,6 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 
 	var ghesRepoService github.RepositoriesService
 	var ghesGitService github.GitService
-	var ghesPRService github.PullRequestsService
 	var ghesFallback bool
 
 	if ghesConfig.IsEnabled() {
@@ -37,7 +36,6 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 		client := registry.GetGHESClient()
 		ghesRepoService = client.Repositories
 		ghesGitService = client.Git
-		ghesPRService = client.PullRequests
 		ghesFallback = ghesConfig.Fallback
 	}
 
@@ -59,12 +57,8 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 	}
 	gitService.SetResolver(resolver)
 
-	prService := &github.PullRequestsServiceImpl{}
-	prService.SetServices(gh.PullRequests, ghesPRService)
-
 	return &ghesServices{
 		repoService: repoService,
 		gitService:  gitService,
-		prService:   prService,
 	}, nil
 }

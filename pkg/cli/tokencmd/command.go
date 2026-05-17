@@ -7,7 +7,7 @@
 package tokencmd
 
 import (
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/keyring/ghtoken"
 	"github.com/urfave/cli/v3"

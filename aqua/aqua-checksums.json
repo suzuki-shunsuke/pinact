@@ -26,28 +26,28 @@
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/crate-ci/typos/v1.46.1/typos-v1.46.1-aarch64-apple-darwin.tar.gz",
-      "checksum": "BB5E07DF5C938F41B95903CA8943D9230EB5A4CFBC8A2FF1F3A029D5370926A8",
+      "id": "github_release/github.com/crate-ci/typos/v1.46.2/typos-v1.46.2-aarch64-apple-darwin.tar.gz",
+      "checksum": "4B15EE9548CD68CF22D6E67AF8A12CEB608EA4DBC34E0346792D09994222D694",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/crate-ci/typos/v1.46.1/typos-v1.46.1-aarch64-unknown-linux-musl.tar.gz",
-      "checksum": "70A8E5A2C6272E25438ED8A9F10C40C9BECF79F2800183FD34603A0840162EAC",
+      "id": "github_release/github.com/crate-ci/typos/v1.46.2/typos-v1.46.2-aarch64-unknown-linux-musl.tar.gz",
+      "checksum": "311F2A15E8433C895CD9EE3198530BBFF552F59609EBA739F5BD9CEB2A2C0887",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/crate-ci/typos/v1.46.1/typos-v1.46.1-x86_64-apple-darwin.tar.gz",
-      "checksum": "BC585C22F2C4F5963AD782DF1D4764A91476D3079477A08833FF87DFA416BB72",
+      "id": "github_release/github.com/crate-ci/typos/v1.46.2/typos-v1.46.2-x86_64-apple-darwin.tar.gz",
+      "checksum": "3652F90D82D38F64E40C1791D2D82209979048EF3ABD715B0EB1488CF483CE1D",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/crate-ci/typos/v1.46.1/typos-v1.46.1-x86_64-pc-windows-msvc.zip",
-      "checksum": "A7B042FC79BF7B73B00ECE054EC3109858E001136C2642F28004544B571D37A2",
+      "id": "github_release/github.com/crate-ci/typos/v1.46.2/typos-v1.46.2-x86_64-pc-windows-msvc.zip",
+      "checksum": "DDC4AE26822E806CE84BC410643D02A3DAC53AAC9AB2A5F389624418C5654A17",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/crate-ci/typos/v1.46.1/typos-v1.46.1-x86_64-unknown-linux-musl.tar.gz",
-      "checksum": "C574FA505596922BA2E7B1027A0A5B2DF528F399B86B6915D85748186A65CA44",
+      "id": "github_release/github.com/crate-ci/typos/v1.46.2/typos-v1.46.2-x86_64-unknown-linux-musl.tar.gz",
+      "checksum": "D68C1A9C5ABD8DE11F7749EDFA414087C8BC828E89064714487D23C89F36B06E",
       "algorithm": "sha256"
     },
     {
@@ -103,6 +103,31 @@
     {
       "id": "github_release/github.com/goreleaser/goreleaser/v2.15.4/goreleaser_Windows_x86_64.zip",
       "checksum": "146695F49717DFD79D64D5D6F4B1D25E2B56D73E723BBF68A8DC13CE5CF69693",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/lycheeverse/lychee/lychee-v0.24.2/lychee-aarch64-apple-darwin.tar.gz",
+      "checksum": "C9D3740EA2D891854D37116C9FBA840F37B6E7C89D330E7DB84AC333631C4977",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/lycheeverse/lychee/lychee-v0.24.2/lychee-aarch64-unknown-linux-musl.tar.gz",
+      "checksum": "5D0B0E3AEAB240F41920C633A6EAF97599BE6EEDDA034B36E858EDE7DBA5E535",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/lycheeverse/lychee/lychee-v0.24.2/lychee-x86_64-apple-darwin.tar.gz",
+      "checksum": "887503A9CFF667D322B8D0892B40BF49976EB9507AF8483220A3706CDAD55978",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/lycheeverse/lychee/lychee-v0.24.2/lychee-x86_64-pc-windows-msvc.zip",
+      "checksum": "32975D1493EE1A975D6BB41E4FB56FE419CB442DED628BB772BA2E614ACFACAD",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/lycheeverse/lychee/lychee-v0.24.2/lychee-x86_64-unknown-linux-musl.tar.gz",
+      "checksum": "73657A111819A30C47C08352896796F23D64E4EB2B3ED39B6D32149241566FC5",
       "algorithm": "sha256"
     },
     {

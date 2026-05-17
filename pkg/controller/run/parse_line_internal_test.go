@@ -1,6 +1,8 @@
 package run
 
 import (
+	"context"
+	"errors"
 	"log/slog"
 	"regexp"
 	"testing"
@@ -8,8 +10,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 )
 
 func Test_parseAction(t *testing.T) { //nolint:funlen
@@ -218,7 +220,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
 					},
 				},
-			}, nil, nil, fs, &config.Config{
+			}, nil, fs, &config.Config{
 				Separator: " # ",
 			}, &ParamRun{})
 			line, err := ctrl.parseLine(t.Context(), logger, d.line)
@@ -276,7 +278,7 @@ func Test_patchLine(t *testing.T) {
 			cfg := &config.Config{
 				Separator: " # ",
 			}
-			ctrl := New(nil, nil, nil, fs, cfg, &ParamRun{})
+			ctrl := New(nil, nil, fs, cfg, &ParamRun{})
 			line := ctrl.patchLine(d.action, d.version, d.tag)
 			if line != d.exp {
 				t.Fatalf(`wanted %s, got %s`, d.exp, line)
@@ -326,7 +328,7 @@ func Test_patchLine_customSeparator(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
 			cfg := &config.Config{Separator: d.separator}
-			ctrl := New(nil, nil, nil, fs, cfg, &ParamRun{})
+			ctrl := New(nil, nil, fs, cfg, &ParamRun{})
 			line := ctrl.patchLine(d.action, d.version, d.tag)
 			if line != d.exp {
 				t.Fatalf(`wanted %s, got %s`, d.exp, line)
@@ -566,7 +568,7 @@ func TestController_shouldSkipAction(t *testing.T) { //nolint:funlen
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, nil, fs, tt.cfg, tt.param)
+			ctrl := New(nil, nil, fs, tt.cfg, tt.param)
 			logger := slog.New(slog.DiscardHandler)
 
 			if got := ctrl.shouldSkipAction(logger, tt.action); got != tt.want {
@@ -616,7 +618,7 @@ func TestController_parseActionName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, nil, fs, &config.Config{}, &ParamRun{})
+			ctrl := New(nil, nil, fs, &config.Config{}, &ParamRun{})
 
 			got := ctrl.parseActionName(tt.action)
 
@@ -682,7 +684,7 @@ func TestController_excludeAction(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, nil, fs, &config.Config{}, &ParamRun{Excludes: tt.excludes})
+			ctrl := New(nil, nil, fs, &config.Config{}, &ParamRun{Excludes: tt.excludes})
 
 			if got := ctrl.excludeAction(tt.actionName); got != tt.want {
 				t.Errorf("excludeAction() = %v, want %v", got, tt.want)
@@ -747,7 +749,7 @@ func TestController_excludeByIncludes(t *testing.T) { //nolint:funlen
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, nil, fs, &config.Config{}, &ParamRun{Includes: tt.includes})
+			ctrl := New(nil, nil, fs, &config.Config{}, &ParamRun{Includes: tt.includes})
 
 			if got := ctrl.excludeByIncludes(tt.actionName); got != tt.want {
 				t.Errorf("excludeByIncludes() = %v, want %v", got, tt.want)
@@ -885,7 +887,7 @@ func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
 					"actions/min-age/0":   releasesMinAge,
 				},
 				Commits: commits,
-			}, nil, nil, fs, &config.Config{Separator: " # "}, &ParamRun{
+			}, nil, fs, &config.Config{Separator: " # "}, &ParamRun{
 				BranchToTags: d.branchToTag,
 				MinAge:       d.minAge,
 				Now:          now,
@@ -902,6 +904,179 @@ func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
 			}
 			if line != d.exp {
 				t.Fatalf("wanted %s, got %s", d.exp, line)
+			}
+		})
+	}
+}
+
+// TestController_checkSHAMinAge_boundary verifies that the passive -min-age
+// check returns ErrMinAge when the commit is younger than the cutoff and
+// returns nil when it is older. The mock GitService is reused from
+// github_internal_test.go.
+func TestController_checkSHAMinAge_boundary(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	now := time.Date(2026, 5, 16, 0, 0, 0, 0, time.UTC)
+	cutoff := now.AddDate(0, 0, -7) // 2026-05-09
+
+	tests := []struct {
+		name        string
+		committedAt time.Time
+		minAge      int
+		wantErr     bool
+	}{
+		{
+			name:        "committed 1 day before cutoff -> ok",
+			committedAt: cutoff.AddDate(0, 0, -1),
+			minAge:      7,
+			wantErr:     false,
+		},
+		{
+			name:        "committed exactly at cutoff -> ok",
+			committedAt: cutoff,
+			minAge:      7,
+			wantErr:     false,
+		},
+		{
+			name:        "committed 1 day after cutoff -> violation",
+			committedAt: cutoff.AddDate(0, 0, 1),
+			minAge:      7,
+			wantErr:     true,
+		},
+		{
+			name:        "minAge=0 disables the check",
+			committedAt: now,
+			minAge:      0,
+			wantErr:     false,
+		},
+	}
+	logger := slog.New(slog.DiscardHandler)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			committedAt := tt.committedAt
+			gs := &mockGitService{
+				getCommitFunc: func(_ context.Context, _, _, _ string) (*github.Commit, *github.Response, error) {
+					return &github.Commit{
+						Committer: &github.CommitAuthor{
+							Date: &github.Timestamp{Time: committedAt},
+						},
+					}, &github.Response{}, nil
+				},
+			}
+			ctrl := New(nil, gs, fs, &config.Config{}, &ParamRun{
+				Now:          now,
+				VerifyMinAge: true, // enable the passive check for this test
+			})
+			err := ctrl.checkSHAMinAge(t.Context(), logger, "owner", "repo", "deadbeef", tt.minAge)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected ErrMinAge, got nil")
+				}
+				if !errors.Is(err, ErrMinAge) {
+					t.Fatalf("expected ErrMinAge, got %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+// TestController_checkSHAMinAge_disabledByDefault verifies that the passive
+// audit is skipped when neither ParamRun.VerifyMinAge nor cfg.VerifyMinAge is
+// set, even if the commit would otherwise violate the cutoff.
+func TestController_checkSHAMinAge_disabledByDefault(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 5, 16, 0, 0, 0, 0, time.UTC)
+	logger := slog.New(slog.DiscardHandler)
+	called := false
+	gs := &mockGitService{
+		getCommitFunc: func(_ context.Context, _, _, _ string) (*github.Commit, *github.Response, error) {
+			called = true
+			// Return a commit far younger than the cutoff so any check that
+			// runs would surface ErrMinAge.
+			return &github.Commit{
+				Committer: &github.CommitAuthor{
+					Date: &github.Timestamp{Time: now},
+				},
+			}, &github.Response{}, nil
+		},
+	}
+	ctrl := New(nil, gs, afero.NewMemMapFs(), &config.Config{}, &ParamRun{
+		Now: now,
+		// VerifyMinAge intentionally left false
+	})
+	if err := ctrl.checkSHAMinAge(t.Context(), logger, "owner", "repo", "deadbeef", 7); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if called {
+		t.Fatal("checkSHAMinAge called GetCommit even though VerifyMinAge is false")
+	}
+}
+
+// TestController_effectiveMinAge verifies the CLI/env > rules > config
+// precedence for resolving the per-action min-age threshold. PINACT_MIN_AGE
+// is wired into param.MinAge via urfave Sources, so it shares the slot with
+// the CLI -min-age flag and the "cliMinAge" column models either source.
+func TestController_effectiveMinAge(t *testing.T) {
+	t.Parallel()
+	zero := 0
+	five := 5
+	tests := []struct {
+		name         string
+		cliMinAge    int
+		topLevelMin  int
+		ruleOverride *int
+		want         int
+	}{
+		{name: "CLI / env flag wins over rules / top-level", cliMinAge: 14, topLevelMin: 7, ruleOverride: &five, want: 14},
+		{name: "rule overrides top-level when CLI unset", cliMinAge: 0, topLevelMin: 7, ruleOverride: &five, want: 5},
+		{name: "rule min_age 0 disables check when CLI unset", cliMinAge: 0, topLevelMin: 7, ruleOverride: &zero, want: 0},
+		{name: "top-level applies when no rule matched", cliMinAge: 0, topLevelMin: 7, ruleOverride: nil, want: 7},
+		{name: "default 0 when nothing is set", cliMinAge: 0, topLevelMin: 0, ruleOverride: nil, want: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := &Controller{
+				cfg:   &config.Config{MinAge: &config.MinAge{Value: tt.topLevelMin}},
+				param: &ParamRun{MinAge: tt.cliMinAge},
+			}
+			got := ctrl.effectiveMinAge(&config.Resolved{MinAge: tt.ruleOverride})
+			if got != tt.want {
+				t.Errorf("got %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestController_minAgeFallback verifies the CLI/env > config.min_age.value
+// precedence used by contexts without rule resolution (the -update cooldown
+// filter inside getLatestVersionWithStable).
+func TestController_minAgeFallback(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		cliMinAge   int
+		topLevelMin int
+		want        int
+	}{
+		{name: "CLI / env wins", cliMinAge: 14, topLevelMin: 7, want: 14},
+		{name: "config applies when CLI / env unset", cliMinAge: 0, topLevelMin: 60, want: 60},
+		{name: "default 0 when nothing is set", cliMinAge: 0, topLevelMin: 0, want: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := &Controller{
+				cfg:   &config.Config{MinAge: &config.MinAge{Value: tt.topLevelMin}},
+				param: &ParamRun{MinAge: tt.cliMinAge},
+			}
+			if got := ctrl.minAgeFallback(); got != tt.want {
+				t.Errorf("got %d, want %d", got, tt.want)
 			}
 		})
 	}

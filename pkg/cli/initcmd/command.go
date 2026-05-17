@@ -7,71 +7,102 @@ package initcmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/initcmd"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/gflag"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/controller/initcmd"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
 
 type Flags struct {
 	*gflag.GlobalFlags
 
+	Global   bool
 	Args     []string
 	FirstArg string
 }
 
 // New creates a new init command instance with the provided logger.
 // It returns a CLI command that can be registered with the main CLI application.
-func New(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags) *cli.Command {
+func New(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags, env *urfave.Env) *cli.Command {
 	r := &runner{}
-	return r.Command(logger, globalFlags)
+	return r.Command(logger, globalFlags, env)
 }
 
 type runner struct{}
 
 // Command returns the CLI command definition for the init subcommand.
 // It defines the command name, usage, description, and action handler.
-func (r *runner) Command(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags) *cli.Command {
+func (r *runner) Command(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags, env *urfave.Env) *cli.Command {
 	flags := &Flags{GlobalFlags: globalFlags}
 	return &cli.Command{
 		Name:  "init",
-		Usage: "Create .pinact.yaml if it doesn't exist",
-		Description: `Create .pinact.yaml if it doesn't exist
+		Usage: "Create a pinact configuration file if it doesn't exist",
+		Description: `Create a pinact configuration file if it doesn't exist. The resolved path is printed to stdout.
 
-$ pinact init
-
-You can also pass configuration file path.
-
-e.g.
-
-$ pinact init .github/pinact.yaml
+$ pinact init                          # creates .pinact.yaml in the current directory
+$ pinact init .github/pinact.yaml      # explicit path
+$ pinact init -g                       # creates the user-wide global config
 `,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:        "global",
+				Aliases:     []string{"g"},
+				Usage:       "Create the user-wide global config file (~/.config/pinact/pinact.yaml on Unix, %APPDATA%\\pinact\\pinact.yaml on Windows). The parent directory is created if it does not exist.",
+				Destination: &flags.Global,
+			},
+		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			flags.Args = cmd.Args().Slice()
 			flags.FirstArg = cmd.Args().First()
-			return r.action(ctx, logger, flags)
+			return r.action(ctx, logger, flags, env.Stdout)
 		},
 	}
 }
 
 // action handles the execution of the init command.
-// It creates a default .pinact.yaml configuration file in the specified location.
-// The function sets up the necessary controllers and services, determines the output
-// path for the configuration file, and delegates to the controller's Init method.
-func (r *runner) action(_ context.Context, logger *slogutil.Logger, flags *Flags) error {
+// It resolves the target configuration file path (either an explicit argument,
+// the user's global config when -g is set, or the default .pinact.yaml),
+// delegates creation to the controller, and prints the resolved path to
+// stdout so callers can use it in shell scripts.
+func (r *runner) action(_ context.Context, logger *slogutil.Logger, flags *Flags, stdout io.Writer) error {
 	if err := logger.SetLevel(flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
-	configFilePath := flags.FirstArg
-	if configFilePath == "" {
-		configFilePath = flags.Config
-	}
-	if configFilePath == "" {
-		configFilePath = ".pinact.yaml"
+	configFilePath, err := resolveInitPath(flags)
+	if err != nil {
+		return err
 	}
 	ctrl := initcmd.New(afero.NewOsFs())
-	return ctrl.Init(configFilePath) //nolint:wrapcheck
+	if err := ctrl.Init(configFilePath); err != nil {
+		return err //nolint:wrapcheck
+	}
+	fmt.Fprintln(stdout, configFilePath)
+	return nil
+}
+
+// resolveInitPath determines where the config file should be created.
+// Precedence: explicit positional argument > -g (global) > -c global flag >
+// default ".pinact.yaml" in the current directory.
+func resolveInitPath(flags *Flags) (string, error) {
+	if flags.FirstArg != "" {
+		return flags.FirstArg, nil
+	}
+	if flags.Global {
+		p := config.GlobalConfigPath()
+		if p == "" {
+			return "", errors.New("cannot resolve the global config path: APPDATA (Windows) or the home directory is unavailable")
+		}
+		return p, nil
+	}
+	if flags.Config != "" {
+		return flags.Config, nil
+	}
+	return ".pinact.yaml", nil
 }

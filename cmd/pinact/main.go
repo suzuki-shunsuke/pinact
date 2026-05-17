@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 )
 

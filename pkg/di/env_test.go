@@ -3,7 +3,7 @@ package di_test
 import (
 	"testing"
 
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/di"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/di"
 )
 
 func TestSecrets_SetFromEnv(t *testing.T) {

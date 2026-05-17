@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/sarif"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/sarif"
 )
 
 const (

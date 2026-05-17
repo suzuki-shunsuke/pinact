@@ -4,6 +4,7 @@ package di
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -11,17 +12,20 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/controller/run"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/go-error-with-exit-code/ecerror"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/controller/run"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 )
 
+// formatSarif is the only -format value supported by pinact.
+const formatSarif = "sarif"
+
 type ghesServices struct {
 	repoService *github.RepositoriesServiceImpl
 	gitService  *github.GitServiceImpl
-	prService   *github.PullRequestsServiceImpl
 }
 
 // Run executes the main run command logic.
@@ -47,9 +51,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 		return err
 	}
 
-	review := setupReview(fs, logger, flags)
-
-	param, err := buildParam(flags, review)
+	param, err := buildParam(flags)
 	if err != nil {
 		return err
 	}
@@ -58,7 +60,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 		return err
 	}
 
-	ctrl := run.New(services.repoService, services.prService, services.gitService, fs, cfg, param)
+	ctrl := run.New(services.repoService, services.gitService, fs, cfg, param)
 	return ctrl.Run(ctx, logger.Logger) //nolint:wrapcheck
 }
 
@@ -110,7 +112,10 @@ func compileRegexps(opts []string) ([]*regexp.Regexp, error) {
 	return regexps, nil
 }
 
-func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
+func buildParam(flags *Flags) (*run.ParamRun, error) {
+	if err := validateFlagCombo(flags); err != nil {
+		return nil, err
+	}
 	includes, err := compileRegexps(flags.Include)
 	if err != nil {
 		return nil, fmt.Errorf("parse include: %w", err)
@@ -127,15 +132,14 @@ func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
 		WorkflowFilePaths: flags.Args,
 		ConfigFilePath:    flags.Config,
 		CWD:               flags.CWD,
-		IsVerify:          flags.Verify,
-		Check:             flags.Check,
+		IsVerify:          flags.VerifyComment,
+		VerifyMinAge:      flags.VerifyMinAge,
 		Update:            flags.Update,
-		Diff:              flags.Diff,
-		Fix:               true,
+		NoAPI:             flags.NoAPI,
+		Fix:               resolveFix(flags),
 		IsGitHubActions:   flags.IsGitHubActions,
 		Stderr:            os.Stderr,
 		Stdout:            os.Stdout,
-		Review:            review,
 		Includes:          includes,
 		Excludes:          excludes,
 		BranchToTags:      branchToTags,
@@ -143,10 +147,84 @@ func buildParam(flags *Flags, review *run.Review) (*run.ParamRun, error) {
 		Now:               time.Now(),
 		Format:            flags.Format,
 	}
-	if flags.FixCount > 0 {
-		param.Fix = flags.Fix
-	} else if param.Check || param.Diff {
-		param.Fix = false
-	}
 	return param, nil
+}
+
+// resolveFix derives the controller-facing Fix value from the user's flags.
+// The default is true. The v3 -check and -diff flags act as silent aliases
+// for -fix=false. -format sarif also implies fix=false. An explicit -fix /
+// -fix=false wins over all of these.
+func resolveFix(flags *Flags) bool {
+	switch {
+	case flags.FixCount > 0:
+		return flags.Fix
+	case flags.Check || flags.Diff:
+		return false
+	case flags.Format == formatSarif:
+		return false
+	}
+	return true
+}
+
+// validateFlagCombo enforces invalid CLI flag combinations defined by the v4 spec.
+//
+// Returned errors are wrapped with exit code 3 (the "unexpected / misuse"
+// class in the v4 exit code spec) so the CLI surfaces it via ecerror.
+func validateFlagCombo(flags *Flags) error {
+	if err := validateUpdateFix(flags); err != nil {
+		return err
+	}
+	if flags.NoAPI {
+		return validateNoAPI(flags)
+	}
+	return nil
+}
+
+// validateUpdateFix rejects -update -fix=false (modification is implied by
+// -update). -format sarif acts as "report without writing", so it is allowed
+// to coexist with -update -fix=false.
+func validateUpdateFix(flags *Flags) error {
+	if flags.Update && flags.FixCount > 0 && !flags.Fix && flags.Format != formatSarif {
+		return ecerror.Wrap(
+			errors.New("-update cannot be combined with -fix=false (use -format sarif to report update candidates without writing files)"),
+			run.ExitCodeAPIError,
+		)
+	}
+	return nil
+}
+
+// validateNoAPI rejects -no-api combinations that cannot be satisfied without
+// a GitHub API call: discovering the latest version (-update), comparing the
+// pinned SHA against its version comment (-verify-comment), and resolving any
+// non-SHA reference to a SHA (the default -fix=true).
+func validateNoAPI(flags *Flags) error {
+	if flags.Update {
+		return ecerror.Wrap(
+			errors.New("-no-api cannot be combined with -update (update needs the GitHub API to discover the latest version)"),
+			run.ExitCodeAPIError,
+		)
+	}
+	if flags.VerifyComment {
+		return ecerror.Wrap(
+			errors.New("-no-api cannot be combined with -verify-comment (verify needs the GitHub API to compare the SHA)"),
+			run.ExitCodeAPIError,
+		)
+	}
+	if flags.VerifyMinAge {
+		return ecerror.Wrap(
+			errors.New("-no-api cannot be combined with -verify-min-age (the min-age audit calls GetCommit)"),
+			run.ExitCodeAPIError,
+		)
+	}
+	// -no-api with the default fix mode would silently skip every action it
+	// cannot resolve via the syntactic check. Require an explicit opt-out via
+	// -fix=false or -format sarif.
+	fixExplicitlyFalse := flags.FixCount > 0 && !flags.Fix
+	if !fixExplicitlyFalse && flags.Format != formatSarif {
+		return ecerror.Wrap(
+			errors.New("-no-api requires -fix=false (or -format sarif)"),
+			run.ExitCodeAPIError,
+		)
+	}
+	return nil
 }

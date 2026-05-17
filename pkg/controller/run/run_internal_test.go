@@ -5,109 +5,29 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 )
-
-func TestReview_Valid(t *testing.T) { //nolint:funlen
-	t.Parallel()
-	tests := []struct {
-		name   string
-		review *Review
-		want   bool
-	}{
-		{
-			name:   "nil review",
-			review: nil,
-			want:   false,
-		},
-		{
-			name:   "empty review",
-			review: &Review{},
-			want:   false,
-		},
-		{
-			name: "missing repo owner",
-			review: &Review{
-				RepoName:    "repo",
-				PullRequest: 1,
-			},
-			want: false,
-		},
-		{
-			name: "missing repo name",
-			review: &Review{
-				RepoOwner:   "owner",
-				PullRequest: 1,
-			},
-			want: false,
-		},
-		{
-			name: "missing pull request",
-			review: &Review{
-				RepoOwner: "owner",
-				RepoName:  "repo",
-			},
-			want: false,
-		},
-		{
-			name: "zero pull request",
-			review: &Review{
-				RepoOwner:   "owner",
-				RepoName:    "repo",
-				PullRequest: 0,
-			},
-			want: false,
-		},
-		{
-			name: "valid review",
-			review: &Review{
-				RepoOwner:   "owner",
-				RepoName:    "repo",
-				PullRequest: 123,
-			},
-			want: true,
-		},
-		{
-			name: "valid review with SHA",
-			review: &Review{
-				RepoOwner:   "owner",
-				RepoName:    "repo",
-				PullRequest: 456,
-				SHA:         "abc123",
-			},
-			want: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			if got := tt.review.Valid(); got != tt.want {
-				t.Errorf("Review.Valid() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestController_processLines(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	tests := []struct {
-		name        string
-		lines       []string
-		param       *ParamRun
-		wantChanged bool
-		wantFailed  bool
+		name         string
+		lines        []string
+		param        *ParamRun
+		wantChanged  bool
+		wantExitCode int
 	}{
 		{
-			name:        "empty lines",
-			lines:       []string{},
-			param:       &ParamRun{Stderr: &bytes.Buffer{}},
-			wantChanged: false,
-			wantFailed:  false,
+			name:         "empty lines",
+			lines:        []string{},
+			param:        &ParamRun{Stderr: &bytes.Buffer{}, Fix: true},
+			wantChanged:  false,
+			wantExitCode: ExitCodeOK,
 		},
 		{
 			name: "no action lines",
@@ -118,18 +38,18 @@ func TestController_processLines(t *testing.T) { //nolint:funlen
 				"  test:",
 				"    runs-on: ubuntu-latest",
 			},
-			param:       &ParamRun{Stderr: &bytes.Buffer{}},
-			wantChanged: false,
-			wantFailed:  false,
+			param:        &ParamRun{Stderr: &bytes.Buffer{}, Fix: true},
+			wantChanged:  false,
+			wantExitCode: ExitCodeOK,
 		},
 		{
 			name: "already pinned action with semver comment",
 			lines: []string{
 				"    - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2",
 			},
-			param:       &ParamRun{Stderr: &bytes.Buffer{}},
-			wantChanged: false,
-			wantFailed:  false,
+			param:        &ParamRun{Stderr: &bytes.Buffer{}, Fix: true},
+			wantChanged:  false,
+			wantExitCode: ExitCodeOK,
 		},
 	}
 
@@ -158,19 +78,54 @@ func TestController_processLines(t *testing.T) { //nolint:funlen
 					},
 				},
 				Commits: map[string]*github.GetCommitSHA1Result{},
-			}, nil, nil, fs, &config.Config{}, tt.param)
+			}, nil, fs, &config.Config{}, tt.param)
 
 			logger := slog.New(slog.DiscardHandler)
 			linesCopy := make([]string, len(tt.lines))
 			copy(linesCopy, tt.lines)
 
-			changed, failed := ctrl.processLines(context.Background(), logger, "test.yml", linesCopy)
+			changed, exitCode := ctrl.processLines(context.Background(), logger, "test.yml", linesCopy)
 
 			if changed != tt.wantChanged {
 				t.Errorf("processLines() changed = %v, want %v", changed, tt.wantChanged)
 			}
-			if failed != tt.wantFailed {
-				t.Errorf("processLines() failed = %v, want %v", failed, tt.wantFailed)
+			if exitCode != tt.wantExitCode {
+				t.Errorf("processLines() exitCode = %d, want %d", exitCode, tt.wantExitCode)
+			}
+		})
+	}
+}
+
+// TestController_outputDiff_alwaysOn verifies that the line diff is emitted to
+// stderr regardless of the Fix value (v4 spec: detail output is always on).
+// -check / -diff are aliases for -fix=false and are translated by buildParam,
+// so the controller only needs to react to Fix.
+func TestController_outputDiff_alwaysOn(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		param *ParamRun
+	}{
+		{name: "fix=true (default)", param: &ParamRun{Fix: true}},
+		{name: "fix=false", param: &ParamRun{Fix: false}},
+	}
+
+	const oldLine = "    - uses: actions/checkout@v3.5.2"
+	const newLine = "    - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2"
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			buf := &bytes.Buffer{}
+			tt.param.Stderr = buf
+			ctrl := &Controller{
+				param:  tt.param,
+				logger: NewLogger(buf),
+			}
+			ctrl.outputDiff(&Line{File: "test.yml", Number: 7, Line: oldLine}, newLine)
+			out := buf.String()
+			if !strings.Contains(out, oldLine) || !strings.Contains(out, newLine) {
+				t.Errorf("outputDiff() output missing old or new line.\nGot: %s", out)
 			}
 		})
 	}

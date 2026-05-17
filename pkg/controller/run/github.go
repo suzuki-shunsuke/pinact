@@ -2,13 +2,12 @@ package run
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/hashicorp/go-version"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
@@ -37,10 +36,12 @@ func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, 
 // explicit isStable flag instead of inferring it from currentVersion. Used by
 // branch-to-tag, which has no semver-shaped currentVersion to infer from.
 func (c *Controller) getLatestVersionWithStable(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool) (string, error) {
-	// Calculate cutoff once for min-age filtering
+	// Calculate cutoff once for min-age filtering. We use the global fallback
+	// (CLI > config > env) rather than effectiveMinAge because rule resolution
+	// has not been threaded down here; see minAgeFallback's TODO.
 	var cutoff time.Time
-	if c.param.MinAge > 0 {
-		cutoff = c.param.Now.AddDate(0, 0, -c.param.MinAge)
+	if mAge := c.minAgeFallback(); mAge > 0 {
+		cutoff = c.param.Now.AddDate(0, 0, -mAge)
 	}
 
 	lv, versions, err := c.getLatestVersionFromReleases(ctx, logger, owner, repo, isStable, cutoff)
@@ -191,36 +192,4 @@ func (c *Controller) getLatestVersionFromTags(ctx context.Context, logger *slog.
 		return latestSemver.Original(), nil
 	}
 	return latestVersion, nil
-}
-
-// review creates a pull request review comment.
-// It constructs a comment with either a suggestion or error message and
-// posts it to the specified pull request using the GitHub API.
-func (c *Controller) review(ctx context.Context, filePath, sha string, line int, suggestion string, err error) (int, error) {
-	cmt := &github.PullRequestComment{
-		Body: new(""),
-		Path: new(filePath),
-		Line: new(line),
-	}
-	if sha != "" {
-		cmt.CommitID = new(sha)
-	}
-	const header = "Reviewed by [pinact](https://github.com/suzuki-shunsuke/pinact)"
-	switch {
-	case suggestion != "":
-		cmt.Body = new(fmt.Sprintf("%s\n```suggestion\n%s\n```", header, suggestion))
-	case err != nil:
-		cmt.Body = new(fmt.Sprintf("%s\n%s", header, err.Error()))
-	default:
-		return 0, errors.New("either suggestion or error must be provided")
-	}
-	_, resp, e := c.pullRequestsService.CreateComment(ctx, c.param.Review.RepoOwner, c.param.Review.RepoName, c.param.Review.PullRequest, cmt)
-	code := 0
-	if resp != nil {
-		code = resp.StatusCode
-	}
-	if e != nil {
-		return code, fmt.Errorf("create a review comment: %w", e)
-	}
-	return code, nil
 }
