@@ -58,16 +58,17 @@ Or pinning version:
 
 pinact supports a global configuration file for user-wide defaults.
 
-Global Configuration File Paths:
+Global Configuration File Paths (highest precedence first):
 
-1. Linux, macOS:
+1. `$PINACT_GLOBAL_CONFIG` if set (any absolute or relative path; no `~` or `$VAR` expansion is performed)
+2. Linux, macOS:
     1. `$XDG_CONFIG_HOME/pinact/pinact.yaml` if `$XDG_CONFIG_HOME` is set
     2. `~/.config/pinact/pinact.yaml`
-2. Windows:
+3. Windows:
     1. `%APPDATA%\pinact\pinact.yaml`
 
 A global configuration file is ignored if a local configuration file is found.
-`pinact init -g` creates a global configuration file if it doesn't exist.
+`pinact init -g` creates a global configuration file if it doesn't exist (and honors `$PINACT_GLOBAL_CONFIG` for the target path).
 
 ```sh
 pinact init -g
