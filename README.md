@@ -99,15 +99,13 @@ pinact run -update
 
 ### Minimum Release Age (Cooldown): `-min-age`, `-verify-min-age`
 
-[#1266](https://github.com/suzuki-shunsuke/pinact/pull/1266) pinact >= v3.5.0
-
 pinact supports two kinds of minimum release age checks:
 
 1. Verify current versions: Verify if current action versions meet the minimum release age requirement
 1. Verify new versions: Exclude versions that don't meet the minimum release age requirement when updating actions (`-update`)
     1. If no release meeting the given minimum age is found, pinact will exit with an error.
 
-This helps redule supply chain security risks.
+This helps reduce supply chain security risks.
 
 By default, no minimum release age is set.
 You can set the minimum release age by some methods:
