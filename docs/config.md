@@ -1,6 +1,6 @@
 # Configuration File
 
-[JSON Schema](json-schema/pinact.json)
+[JSON Schema](../json-schema/pinact.json)
 
 A configuration file is optional.
 pinact supports a configuration file `.pinact.yaml`, `.github/pinact.yaml`, `.pinact.yml` or `.github/pinact.yml`.
@@ -29,7 +29,7 @@ pinact migrate
 
 ### JSON Schema
 
-- [pinact.json](json-schema/pinact.json)
+- [pinact.json](../json-schema/pinact.json)
 - https://raw.githubusercontent.com/suzuki-shunsuke/pinact/refs/heads/main/json-schema/pinact.json
 
 If you look for a CLI tool to validate configuration with JSON Schema, [ajv-cli](https://ajv.js.org/packages/ajv-cli.html) is useful.
@@ -96,13 +96,13 @@ rules:
   - ignore: true
     conditions:
       - expr: |
-          ActionName == "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml" && ActionRef matches "v\\d+\\.\\d+\\.\\d+"
+          ActionName == "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml" && ActionVersion matches "v\\d+\\.\\d+\\.\\d+"
       - expr: |
-          ActionName matches "suzuki-shunsuke/.*" && ActionRef == "main"
+          ActionName matches "suzuki-shunsuke/.*" && ActionVersion == "main"
   - min_age: 0
     conditions:
       - expr: |
-          ActionName matches "suzuki-shunsuke/.*" && ActionRef == "main"
+          ActionName matches "suzuki-shunsuke/.*" && ActionVersion == "main"
 ```
 
 #### `files`
@@ -145,7 +145,7 @@ rules:
   - ignore: true
     conditions:
       - expr: |
-          ActionRepoOwner == "suzuki-shunsuke" && ActionRef == "main"
+          ActionRepoOwner == "suzuki-shunsuke" && ActionVersion == "main"
   # Lower the min-age threshold for trusted actions.
   - min_age: 0
     conditions:
@@ -179,7 +179,7 @@ The following variables are available:
 | `ActionRepoOwner` | Repository owner | `slsa-framework` |
 | `ActionRepoName` | Repository name | `slsa-github-generator` |
 | `ActionRepoFullName` | `<owner>/<repo>` | `slsa-framework/slsa-github-generator` |
-| `ActionRef` | The action's ref (commit SHA, tag, or branch) | `v1.10.0`, `main`, `68bad40...` |
+| `ActionVersion` | The action's ref (commit SHA, tag, or branch) | `v1.10.0`, `main`, `68bad40...` |
 | `VersionComment` | Existing `# <tag>` comment on the line, if any | `v1.10.0` |
 
 Expressions are validated and compiled at startup. Syntax errors, references to undefined variables, and non-boolean expressions are surfaced as configuration errors.

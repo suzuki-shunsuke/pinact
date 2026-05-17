@@ -386,7 +386,7 @@ func TestConfig_ResolveRules(t *testing.T) { //nolint:funlen
 		ActionRepoOwner:    "actions",
 		ActionRepoName:     "checkout",
 		ActionRepoFullName: "actions/checkout",
-		ActionRef:          "v4",
+		ActionVersion:      "v4",
 		VersionComment:     "",
 	}
 
@@ -473,7 +473,7 @@ func TestConfig_ResolveRules(t *testing.T) { //nolint:funlen
 			rules: []*Rule{
 				{
 					MinAge:     new(0),
-					Conditions: []*Condition{{Expr: `ActionRef == "v4"`}},
+					Conditions: []*Condition{{Expr: `ActionVersion == "v4"`}},
 				},
 			},
 			wantIgnore: false,

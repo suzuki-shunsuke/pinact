@@ -167,7 +167,7 @@ type MatchInput struct {
 	ActionRepoOwner    string
 	ActionRepoName     string
 	ActionRepoFullName string
-	ActionRef          string
+	ActionVersion      string
 	VersionComment     string
 }
 

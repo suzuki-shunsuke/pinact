@@ -11,9 +11,9 @@ version: 3
 #   - ignore: true
 #     conditions:
 #       - expr: |
-#           ActionName == "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml" && ActionRef matches "v\\d+\\.\\d+\\.\\d+"
+#           ActionName == "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml" && ActionVersion matches "v\\d+\\.\\d+\\.\\d+"
 #       - expr: |
-#           ActionRepoOwner == "suzuki-shunsuke" && ActionRef == "main"
+#           ActionRepoOwner == "suzuki-shunsuke" && ActionVersion == "main"
 #   - min_age: 0
 #     conditions:
 #       - expr: |

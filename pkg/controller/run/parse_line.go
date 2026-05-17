@@ -155,7 +155,7 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 		ActionRepoOwner:    action.RepoOwner,
 		ActionRepoName:     action.RepoName,
 		ActionRepoFullName: action.RepoOwner + "/" + action.RepoName,
-		ActionRef:          action.Version,
+		ActionVersion:      action.Version,
 		VersionComment:     action.VersionComment,
 	})
 	if err != nil {
