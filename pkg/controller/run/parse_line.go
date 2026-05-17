@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-version"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
@@ -84,14 +85,9 @@ var ErrCantPinned = errors.New("action can't be pinned")
 
 // ignoreAction checks if an action should be ignored based on configuration.
 // It evaluates the action against all ignore rules in the configuration.
-func (c *Controller) ignoreAction(logger *slog.Logger, action *Action) bool {
+func (c *Controller) ignoreAction(action *Action) bool {
 	for _, ignoreAction := range c.cfg.IgnoreActions {
-		f, err := ignoreAction.Match(action.Name, action.Version, c.cfg.Version)
-		if err != nil {
-			slogerr.WithError(logger, err).Warn("match the action")
-			continue
-		}
-		if f {
+		if ignoreAction.Match(action.Name, action.Version) {
 			return true
 		}
 	}
@@ -154,16 +150,47 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 		return "", nil
 	}
 
+	resolved, err := c.cfg.ResolveRules(&config.MatchInput{
+		ActionName:         action.Name,
+		ActionRepoOwner:    action.RepoOwner,
+		ActionRepoName:     action.RepoName,
+		ActionRepoFullName: action.RepoOwner + "/" + action.RepoName,
+		ActionRef:          action.Version,
+		VersionComment:     action.VersionComment,
+	})
+	if err != nil {
+		return "", fmt.Errorf("resolve rules: %w", err)
+	}
+	if resolved.Ignore {
+		logger.Debug("ignore the action by a rule")
+		return "", nil
+	}
+
 	newLine, err := c.processAction(ctx, logger, action, attrs)
 	if err != nil {
 		return newLine, err
 	}
 	if sha := c.finalPinnedSHA(action, newLine); sha != "" {
-		if minAgeErr := c.checkSHAMinAge(ctx, logger, action.RepoOwner, action.RepoName, sha); minAgeErr != nil {
+		minAge := c.effectiveMinAge(resolved)
+		if minAgeErr := c.checkSHAMinAge(ctx, logger, action.RepoOwner, action.RepoName, sha, minAge); minAgeErr != nil {
 			return newLine, minAgeErr
 		}
 	}
 	return newLine, nil
+}
+
+// effectiveMinAge resolves the min-age threshold for a single action using the
+// precedence: CLI flag > rules > top-level config. A CLI value of 0 means the
+// flag was unset, so the config fallback applies. A rule that explicitly sets
+// min_age to 0 disables the check for the matched action.
+func (c *Controller) effectiveMinAge(resolved *config.Resolved) int {
+	if c.param.MinAge > 0 {
+		return c.param.MinAge
+	}
+	if resolved.MinAge != nil {
+		return *resolved.MinAge
+	}
+	return c.cfg.MinAge
 }
 
 // finalPinnedSHA returns the commit SHA that the action will resolve to after
@@ -184,14 +211,15 @@ func (c *Controller) finalPinnedSHA(action *Action, newLine string) string {
 }
 
 // checkSHAMinAge looks up the commit date of sha and returns ErrMinAge if the
-// commit is younger than the -min-age cutoff. Returns nil when -min-age is
-// disabled, the git service is unavailable, -no-api is set, or the commit is
-// old enough.
-func (c *Controller) checkSHAMinAge(ctx context.Context, logger *slog.Logger, owner, repo, sha string) error {
-	if c.param.MinAge <= 0 || c.gitService == nil || c.param.NoAPI {
+// commit is younger than the min-age cutoff. minAge is the effective threshold
+// for this action, already merged across CLI flag, rules, and config defaults.
+// Returns nil when minAge is 0 or negative, the git service is unavailable, or
+// -no-api is set.
+func (c *Controller) checkSHAMinAge(ctx context.Context, logger *slog.Logger, owner, repo, sha string, minAge int) error {
+	if minAge <= 0 || c.gitService == nil || c.param.NoAPI {
 		return nil
 	}
-	cutoff := c.param.Now.AddDate(0, 0, -c.param.MinAge)
+	cutoff := c.param.Now.AddDate(0, 0, -minAge)
 	commit, _, err := c.gitService.GetCommit(ctx, logger, owner, repo, sha)
 	if err != nil {
 		return fmt.Errorf("get commit for min-age check: %w", err)
@@ -216,7 +244,7 @@ func (c *Controller) checkSHAMinAge(ctx context.Context, logger *slog.Logger, ow
 
 // shouldSkipAction checks if an action should be skipped based on filtering rules.
 func (c *Controller) shouldSkipAction(logger *slog.Logger, action *Action) bool {
-	if c.ignoreAction(logger, action) {
+	if c.ignoreAction(action) {
 		logger.Debug("ignore the action")
 		return true
 	}

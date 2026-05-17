@@ -13,6 +13,8 @@ import (
 	"path"
 	"regexp"
 
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"gopkg.in/yaml.v3"
@@ -28,9 +30,11 @@ const (
 type Config struct {
 	Version       int             `json:"version,omitempty" jsonschema:"enum=2,enum=3"`
 	Files         []*File         `json:"files,omitempty" jsonschema:"description=Target files. If files are passed via positional command line arguments, this is ignored"`
-	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores"`
+	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores. For new configurations consider using 'rules' with 'ignore: true' for more flexibility"`
 	GHES          *GHES           `json:"ghes,omitempty" yaml:"ghes" jsonschema:"description=GitHub Enterprise Server configuration"`
 	Separator     string          `json:"separator,omitempty" jsonschema:"description=Separator between version and tag comment. Default is ' # '"`
+	MinAge        int             `json:"min_age,omitempty" yaml:"min_age" jsonschema:"description=Default min-age in days for the min-age check. Overridable by the -min-age CLI flag and rules"`
+	Rules         []*Rule         `json:"rules,omitempty" jsonschema:"description=Per-action setting overrides. Later matching rules override earlier ones at the field level"`
 }
 
 type GHES struct {
@@ -78,19 +82,11 @@ func validateSchemaVersion(v int) error {
 	}
 }
 
-// Init initializes and validates a File configuration.
-// It validates the pattern field and ensures it's a valid glob pattern.
-//
-// Parameters:
-//   - v: configuration schema version
-//
-// Returns an error if validation fails.
-func (f *File) Init(v int) error {
+// Init validates the file pattern. The schema version is validated by
+// Config.Init before this method runs, so it is not re-checked here.
+func (f *File) Init() error {
 	if f.Pattern == "" {
 		return errors.New("pattern is required")
-	}
-	if err := validateSchemaVersion(v); err != nil {
-		return err
 	}
 	_, err := path.Match(f.Pattern, "a")
 	if err != nil {
@@ -106,51 +102,23 @@ type IgnoreAction struct {
 	refRegexp  *regexp.Regexp
 }
 
-// Init initializes and validates an IgnoreAction configuration.
-// It compiles the name and ref patterns as regular expressions.
-//
-// Parameters:
-//   - v: configuration schema version
-//
-// Returns an error if initialization or validation fails.
-func (ia *IgnoreAction) Init(v int) error {
+// Init compiles the name and ref patterns as regular expressions. The schema
+// version is validated by Config.Init before this method runs.
+func (ia *IgnoreAction) Init() error {
 	if err := ia.initName(); err != nil {
 		return err
 	}
-	if err := ia.initRef(v); err != nil {
-		return err
-	}
-	return nil
+	return ia.initRef()
 }
 
-// Match checks if an action matches the ignore criteria.
-// It evaluates both name and ref patterns against the provided values.
-//
-// Parameters:
-//   - name: action name to match against
-//   - ref: action reference to match against
-//   - version: configuration schema version
-//
-// Returns true if the action should be ignored, false otherwise, or an error if matching fails.
-func (ia *IgnoreAction) Match(name, ref string, version int) (bool, error) {
-	f, err := ia.matchName(name, version)
-	if err != nil {
-		return false, fmt.Errorf("match name: %w", err)
+// Match reports whether name and ref match this ignore entry. Both must match.
+func (ia *IgnoreAction) Match(name, ref string) bool {
+	if ia.nameRegexp.FindString(name) != name {
+		return false
 	}
-	if !f {
-		return false, nil
-	}
-	b, err := ia.matchRef(ref, version)
-	if err != nil {
-		return false, fmt.Errorf("match ref: %w", err)
-	}
-	return b, nil
+	return ia.refRegexp.FindString(ref) == ref
 }
 
-// initName compiles the name pattern as a regular expression.
-// It validates that a name pattern is provided and can be compiled.
-//
-// Returns an error if the name is empty or the regex compilation fails.
 func (ia *IgnoreAction) initName() error {
 	if ia.Name == "" {
 		return errors.New("name is required")
@@ -163,17 +131,7 @@ func (ia *IgnoreAction) initName() error {
 	return nil
 }
 
-// initRef compiles the ref pattern as a regular expression.
-// It validates that a ref pattern is provided and can be compiled.
-//
-// Parameters:
-//   - v: configuration schema version
-//
-// Returns an error if the ref is empty or the regex compilation fails.
-func (ia *IgnoreAction) initRef(v int) error {
-	if err := validateSchemaVersion(v); err != nil {
-		return err
-	}
+func (ia *IgnoreAction) initRef() error {
 	if ia.Ref == "" {
 		return errors.New("ref is required")
 	}
@@ -185,34 +143,122 @@ func (ia *IgnoreAction) initRef(v int) error {
 	return nil
 }
 
-// matchName checks if the provided name matches the compiled name pattern.
-// It performs exact string matching using the regular expression.
-//
-// Parameters:
-//   - name: action name to match
-//   - version: configuration schema version
-//
-// Returns true if the name matches exactly, false otherwise, or an error if validation fails.
-func (ia *IgnoreAction) matchName(name string, version int) (bool, error) {
-	if err := validateSchemaVersion(version); err != nil {
-		return false, err
-	}
-	return ia.nameRegexp.FindString(name) == name, nil
+// Rule overrides per-action settings (ignore, min_age) for actions that match
+// any of its conditions. Multiple matching rules are merged at the field level
+// in declaration order: later rules override earlier ones, but only for fields
+// they explicitly set.
+type Rule struct {
+	Ignore     *bool        `json:"ignore,omitempty" jsonschema:"description=If true pinact skips pin/update/error for the matched action"`
+	MinAge     *int         `json:"min_age,omitempty" yaml:"min_age" jsonschema:"description=Override the min-age threshold (in days) for the matched action. 0 disables the check for the action"`
+	Conditions []*Condition `json:"conditions,omitempty" jsonschema:"description=Match conditions. The rule matches if any condition evaluates to true"`
 }
 
-// matchRef checks if the provided ref matches the compiled ref pattern.
-// It performs exact string matching using the regular expression.
-//
-// Parameters:
-//   - ref: action reference to match
-//   - version: configuration schema version
-//
-// Returns true if the ref matches exactly, false otherwise, or an error if validation fails.
-func (ia *IgnoreAction) matchRef(ref string, version int) (bool, error) {
-	if err := validateSchemaVersion(version); err != nil {
-		return false, err
+// Condition is one of the expressions in a rule. The rule matches when at
+// least one of its conditions evaluates to true.
+type Condition struct {
+	Expr    string      `json:"expr" jsonschema:"description=A boolean expression. See https://expr-lang.org/docs/language-definition"`
+	program *vm.Program // cached compiled program, populated by Init
+}
+
+// MatchInput holds the variables exposed to expr expressions when evaluating
+// rule conditions.
+type MatchInput struct {
+	ActionName         string
+	ActionRepoOwner    string
+	ActionRepoName     string
+	ActionRepoFullName string
+	ActionRef          string
+	VersionComment     string
+}
+
+// Resolved is the merged result of all rules that matched a given action.
+// MinAge is a pointer because nil means "no rule overrode min_age", which is
+// distinct from a rule explicitly setting min_age to 0 (which disables the
+// check for that action).
+type Resolved struct {
+	Ignore bool
+	MinAge *int
+}
+
+var (
+	errEmptyConditions = errors.New("rule must have at least one condition")
+	errEmptyExpr       = errors.New("expr is required")
+	errMustBeBoolean   = errors.New("expr must evaluate to a boolean")
+)
+
+// Init validates and compiles a Rule. Conditions are compiled once and cached
+// on the Condition struct so evaluation does not pay the compile cost per
+// action. The schema version is validated by Config.Init before this method
+// runs.
+func (r *Rule) Init() error {
+	if len(r.Conditions) == 0 {
+		return errEmptyConditions
 	}
-	return ia.refRegexp.FindString(ref) == ref, nil
+	for i, c := range r.Conditions {
+		if err := c.Init(); err != nil {
+			return fmt.Errorf("initialize conditions[%d]: %w", i, err)
+		}
+	}
+	return nil
+}
+
+// Init compiles the expression and caches the resulting program. Compile-time
+// errors (syntax errors, references to undefined variables, non-boolean
+// expressions) are surfaced as config errors so they fail fast at startup.
+func (c *Condition) Init() error {
+	if c.Expr == "" {
+		return errEmptyExpr
+	}
+	prog, err := expr.Compile(c.Expr, expr.AsBool(), expr.Env(MatchInput{}))
+	if err != nil {
+		return fmt.Errorf("compile expr: %w", err)
+	}
+	c.program = prog
+	return nil
+}
+
+// Match reports whether any of the rule's conditions evaluates to true for the
+// given input. Errors propagate up so the caller can decide whether to skip the
+// rule or abort.
+func (r *Rule) Match(input *MatchInput) (bool, error) {
+	for i, c := range r.Conditions {
+		out, err := expr.Run(c.program, input)
+		if err != nil {
+			return false, fmt.Errorf("evaluate conditions[%d]: %w", i, err)
+		}
+		b, ok := out.(bool)
+		if !ok {
+			return false, errMustBeBoolean
+		}
+		if b {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// ResolveRules evaluates every rule against input and merges the matching
+// rules. Fields are merged independently: a rule that only sets MinAge leaves
+// a previously matched rule's Ignore untouched. Later matching rules override
+// earlier ones for the fields they set.
+func (cfg *Config) ResolveRules(input *MatchInput) (*Resolved, error) {
+	res := &Resolved{}
+	for i, r := range cfg.Rules {
+		matched, err := r.Match(input)
+		if err != nil {
+			return nil, fmt.Errorf("evaluate rules[%d]: %w", i, err)
+		}
+		if !matched {
+			continue
+		}
+		if r.Ignore != nil {
+			res.Ignore = *r.Ignore
+		}
+		if r.MinAge != nil {
+			res.MinAge = r.MinAge
+		}
+	}
+	return res, nil
 }
 
 // IsEnabled checks if GHES is enabled.
@@ -305,13 +351,18 @@ func (cfg *Config) Init() error {
 		return err
 	}
 	for _, file := range cfg.Files {
-		if err := file.Init(cfg.Version); err != nil {
+		if err := file.Init(); err != nil {
 			return fmt.Errorf("initialize file: %w", err)
 		}
 	}
 	for _, ia := range cfg.IgnoreActions {
-		if err := ia.Init(cfg.Version); err != nil {
+		if err := ia.Init(); err != nil {
 			return fmt.Errorf("initialize ignore_action: %w", err)
+		}
+	}
+	for i, r := range cfg.Rules {
+		if err := r.Init(); err != nil {
+			return fmt.Errorf("initialize rules[%d]: %w", i, err)
 		}
 	}
 	return nil

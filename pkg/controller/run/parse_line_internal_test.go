@@ -965,10 +965,9 @@ func TestController_checkSHAMinAge_boundary(t *testing.T) { //nolint:funlen
 				},
 			}
 			ctrl := New(nil, gs, fs, &config.Config{}, &ParamRun{
-				MinAge: tt.minAge,
-				Now:    now,
+				Now: now,
 			})
-			err := ctrl.checkSHAMinAge(t.Context(), logger, "owner", "repo", "deadbeef")
+			err := ctrl.checkSHAMinAge(t.Context(), logger, "owner", "repo", "deadbeef", tt.minAge)
 			if tt.wantErr {
 				if err == nil {
 					t.Fatalf("expected ErrMinAge, got nil")
@@ -980,6 +979,40 @@ func TestController_checkSHAMinAge_boundary(t *testing.T) { //nolint:funlen
 			}
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+// TestController_effectiveMinAge verifies the CLI > rules > top-level
+// precedence for resolving the per-action min-age threshold.
+func TestController_effectiveMinAge(t *testing.T) {
+	t.Parallel()
+	zero := 0
+	five := 5
+	tests := []struct {
+		name         string
+		cliMinAge    int
+		topLevelMin  int
+		ruleOverride *int
+		want         int
+	}{
+		{name: "CLI flag wins over rules and top-level", cliMinAge: 14, topLevelMin: 7, ruleOverride: &five, want: 14},
+		{name: "rule overrides top-level when CLI unset", cliMinAge: 0, topLevelMin: 7, ruleOverride: &five, want: 5},
+		{name: "rule min_age 0 disables check when CLI unset", cliMinAge: 0, topLevelMin: 7, ruleOverride: &zero, want: 0},
+		{name: "top-level applies when no rule matched", cliMinAge: 0, topLevelMin: 7, ruleOverride: nil, want: 7},
+		{name: "default 0 when nothing is set", cliMinAge: 0, topLevelMin: 0, ruleOverride: nil, want: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := &Controller{
+				cfg:   &config.Config{MinAge: tt.topLevelMin},
+				param: &ParamRun{MinAge: tt.cliMinAge},
+			}
+			got := ctrl.effectiveMinAge(&config.Resolved{MinAge: tt.ruleOverride})
+			if got != tt.want {
+				t.Errorf("got %d, want %d", got, tt.want)
 			}
 		})
 	}

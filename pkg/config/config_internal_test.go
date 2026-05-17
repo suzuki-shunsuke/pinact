@@ -38,18 +38,16 @@ func TestFile_Init(t *testing.T) {
 	data := []struct {
 		name    string
 		file    *File
-		version int
 		wantErr bool
 	}{
-		{name: "valid pattern", file: &File{Pattern: "*.yaml"}, version: 3, wantErr: false},
-		{name: "empty pattern", file: &File{Pattern: ""}, version: 3, wantErr: true},
-		{name: "invalid version", file: &File{Pattern: "*.yaml"}, version: 0, wantErr: true},
-		{name: "invalid glob pattern", file: &File{Pattern: "[invalid"}, version: 3, wantErr: true},
+		{name: "valid pattern", file: &File{Pattern: "*.yaml"}, wantErr: false},
+		{name: "empty pattern", file: &File{Pattern: ""}, wantErr: true},
+		{name: "invalid glob pattern", file: &File{Pattern: "[invalid"}, wantErr: true},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			err := d.file.Init(d.version)
+			err := d.file.Init()
 			if d.wantErr && err == nil {
 				t.Error("expected error, got nil")
 			}
@@ -65,20 +63,18 @@ func TestIgnoreAction_Init(t *testing.T) {
 	data := []struct {
 		name    string
 		ia      *IgnoreAction
-		version int
 		wantErr bool
 	}{
-		{name: "valid", ia: &IgnoreAction{Name: "actions/checkout", Ref: "v4"}, version: 3, wantErr: false},
-		{name: "empty name", ia: &IgnoreAction{Name: "", Ref: "v4"}, version: 3, wantErr: true},
-		{name: "empty ref", ia: &IgnoreAction{Name: "actions/checkout", Ref: ""}, version: 3, wantErr: true},
-		{name: "invalid name regex", ia: &IgnoreAction{Name: "[invalid", Ref: "v4"}, version: 3, wantErr: true},
-		{name: "invalid ref regex", ia: &IgnoreAction{Name: "actions/checkout", Ref: "[invalid"}, version: 3, wantErr: true},
-		{name: "invalid version", ia: &IgnoreAction{Name: "actions/checkout", Ref: "v4"}, version: 0, wantErr: true},
+		{name: "valid", ia: &IgnoreAction{Name: "actions/checkout", Ref: "v4"}, wantErr: false},
+		{name: "empty name", ia: &IgnoreAction{Name: "", Ref: "v4"}, wantErr: true},
+		{name: "empty ref", ia: &IgnoreAction{Name: "actions/checkout", Ref: ""}, wantErr: true},
+		{name: "invalid name regex", ia: &IgnoreAction{Name: "[invalid", Ref: "v4"}, wantErr: true},
+		{name: "invalid ref regex", ia: &IgnoreAction{Name: "actions/checkout", Ref: "[invalid"}, wantErr: true},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			err := d.ia.Init(d.version)
+			err := d.ia.Init()
 			if d.wantErr && err == nil {
 				t.Error("expected error, got nil")
 			}
@@ -316,6 +312,198 @@ func Test_getConfigPath(t *testing.T) {
 			}
 			if got != d.exp {
 				t.Fatalf(`wanted %s, got %s`, d.exp, got)
+			}
+		})
+	}
+}
+
+func boolPtr(b bool) *bool { return &b }
+func intPtr(i int) *int    { return &i }
+
+func TestRule_Init(t *testing.T) {
+	t.Parallel()
+	data := []struct {
+		name    string
+		rule    *Rule
+		wantErr bool
+	}{
+		{
+			name: "valid",
+			rule: &Rule{
+				Conditions: []*Condition{{Expr: `ActionName == "actions/checkout"`}},
+			},
+			wantErr: false,
+		},
+		{
+			name:    "empty conditions rejected",
+			rule:    &Rule{},
+			wantErr: true,
+		},
+		{
+			name: "empty expr rejected",
+			rule: &Rule{
+				Conditions: []*Condition{{Expr: ""}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "syntax error rejected at init",
+			rule: &Rule{
+				Conditions: []*Condition{{Expr: `ActionName ==`}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "non-boolean expr rejected at init",
+			rule: &Rule{
+				Conditions: []*Condition{{Expr: `ActionName`}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "undefined variable rejected at init",
+			rule: &Rule{
+				Conditions: []*Condition{{Expr: `Unknown == "x"`}},
+			},
+			wantErr: true,
+		},
+	}
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			err := d.rule.Init()
+			if d.wantErr && err == nil {
+				t.Error("expected error, got nil")
+			}
+			if !d.wantErr && err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestConfig_ResolveRules(t *testing.T) {
+	t.Parallel()
+	input := &MatchInput{
+		ActionName:         "actions/checkout",
+		ActionRepoOwner:    "actions",
+		ActionRepoName:     "checkout",
+		ActionRepoFullName: "actions/checkout",
+		ActionRef:          "v4",
+		VersionComment:     "",
+	}
+
+	tests := []struct {
+		name       string
+		rules      []*Rule
+		wantIgnore bool
+		wantMinAge *int
+	}{
+		{
+			name:       "no rules",
+			rules:      nil,
+			wantIgnore: false,
+			wantMinAge: nil,
+		},
+		{
+			name: "single matching rule sets ignore",
+			rules: []*Rule{
+				{
+					Ignore:     boolPtr(true),
+					Conditions: []*Condition{{Expr: `ActionName == "actions/checkout"`}},
+				},
+			},
+			wantIgnore: true,
+			wantMinAge: nil,
+		},
+		{
+			name: "non-matching rule has no effect",
+			rules: []*Rule{
+				{
+					Ignore:     boolPtr(true),
+					Conditions: []*Condition{{Expr: `ActionName == "octocat/hello-world"`}},
+				},
+			},
+			wantIgnore: false,
+			wantMinAge: nil,
+		},
+		{
+			name: "OR semantics across conditions",
+			rules: []*Rule{
+				{
+					Ignore: boolPtr(true),
+					Conditions: []*Condition{
+						{Expr: `ActionName == "octocat/hello-world"`},
+						{Expr: `ActionRepoOwner == "actions"`},
+					},
+				},
+			},
+			wantIgnore: true,
+			wantMinAge: nil,
+		},
+		{
+			name: "later rule overrides only the field it sets",
+			rules: []*Rule{
+				{
+					Ignore:     boolPtr(true),
+					Conditions: []*Condition{{Expr: `ActionRepoOwner == "actions"`}},
+				},
+				{
+					MinAge:     intPtr(0),
+					Conditions: []*Condition{{Expr: `ActionName == "actions/checkout"`}},
+				},
+			},
+			wantIgnore: true,
+			wantMinAge: intPtr(0),
+		},
+		{
+			name: "later matching rule overrides ignore",
+			rules: []*Rule{
+				{
+					Ignore:     boolPtr(true),
+					Conditions: []*Condition{{Expr: `ActionRepoOwner == "actions"`}},
+				},
+				{
+					Ignore:     boolPtr(false),
+					Conditions: []*Condition{{Expr: `ActionName == "actions/checkout"`}},
+				},
+			},
+			wantIgnore: false,
+			wantMinAge: nil,
+		},
+		{
+			name: "min_age 0 from rule disables check",
+			rules: []*Rule{
+				{
+					MinAge:     intPtr(0),
+					Conditions: []*Condition{{Expr: `ActionRef == "v4"`}},
+				},
+			},
+			wantIgnore: false,
+			wantMinAge: intPtr(0),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			cfg := &Config{Version: 3, Rules: tt.rules}
+			if err := cfg.Init(); err != nil {
+				t.Fatalf("Init: %v", err)
+			}
+			got, err := cfg.ResolveRules(input)
+			if err != nil {
+				t.Fatalf("ResolveRules: %v", err)
+			}
+			if got.Ignore != tt.wantIgnore {
+				t.Errorf("Ignore: got %v, want %v", got.Ignore, tt.wantIgnore)
+			}
+			switch {
+			case got.MinAge == nil && tt.wantMinAge == nil:
+				// ok
+			case got.MinAge == nil || tt.wantMinAge == nil:
+				t.Errorf("MinAge: got %v, want %v", got.MinAge, tt.wantMinAge)
+			case *got.MinAge != *tt.wantMinAge:
+				t.Errorf("MinAge: got %d, want %d", *got.MinAge, *tt.wantMinAge)
 			}
 		})
 	}

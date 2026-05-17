@@ -9,59 +9,51 @@ import (
 func TestIgnoreAction_Match(t *testing.T) {
 	t.Parallel()
 	data := []struct {
-		name          string
-		ignoreAction  *config.IgnoreAction
-		actionName    string
-		actionRef     string
-		configVersion int
-		expected      bool
+		name         string
+		ignoreAction *config.IgnoreAction
+		actionName   string
+		actionRef    string
+		expected     bool
 	}{
 		{
-			name: "match by name and ref (v3)",
+			name: "match by name and ref",
 			ignoreAction: &config.IgnoreAction{
 				Name: "actions/checkout",
 				Ref:  "main",
 			},
-			actionName:    "actions/checkout",
-			actionRef:     "main",
-			expected:      true,
-			configVersion: 3,
+			actionName: "actions/checkout",
+			actionRef:  "main",
+			expected:   true,
 		},
 		{
-			name: "not match (v3)",
+			name: "not match",
 			ignoreAction: &config.IgnoreAction{
 				Name: "actions/checkout",
 				Ref:  "main",
 			},
-			actionName:    "actions/checkout",
-			actionRef:     "main-malicious",
-			expected:      false,
-			configVersion: 3,
+			actionName: "actions/checkout",
+			actionRef:  "main-malicious",
+			expected:   false,
 		},
 		{
-			name: "not match name (v3)",
+			name: "not match name",
 			ignoreAction: &config.IgnoreAction{
 				Name: "actions/",
 				Ref:  "main",
 			},
-			actionName:    "actions/checkout",
-			actionRef:     "main",
-			expected:      false,
-			configVersion: 3,
+			actionName: "actions/checkout",
+			actionRef:  "main",
+			expected:   false,
 		},
 	}
 
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			if err := d.ignoreAction.Init(d.configVersion); err != nil {
+			if err := d.ignoreAction.Init(); err != nil {
 				t.Fatalf("failed to initialize ignore action: %v", err)
 			}
-			got, err := d.ignoreAction.Match(d.actionName, d.actionRef, d.configVersion)
-			if err != nil {
-				t.Fatalf("failed to match: %v", err)
-			}
-			if got != d.expected {
+			if got := d.ignoreAction.Match(d.actionName, d.actionRef); got != d.expected {
 				t.Fatalf("wanted %v, got %v", d.expected, got)
 			}
 		})
