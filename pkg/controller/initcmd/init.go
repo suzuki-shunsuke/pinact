@@ -1,32 +1,17 @@
 package initcmd
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 
 	"github.com/spf13/afero"
 )
 
-const (
-	templateConfig = `# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/refs/heads/main/json-schema/pinact.json
-# pinact - https://github.com/suzuki-shunsuke/pinact
-version: 3
-# files:
-#   - pattern: action.yaml
-#   - pattern: */action.yaml
+const filePermission os.FileMode = 0o644
 
-# separator: "  # "
-
-ignore_actions:
-# - name: slsa-framework/slsa-github-generator/\.github/workflows/generator_generic_slsa3\.yml
-#   ref: v\d+\.\d+\.\d+
-# - name: actions/.*
-#   ref: main
-# - name: suzuki-shunsuke/.*
-#   ref: release-.*
-`
-	filePermission os.FileMode = 0o644
-)
+//go:embed init.yaml
+var templateConfig []byte
 
 // Init creates a new pinact configuration file if it doesn't exist.
 // It checks if the configuration file already exists and creates it with
@@ -44,7 +29,7 @@ func (c *Controller) Init(configFilePath string) error {
 	if f {
 		return nil
 	}
-	if err := afero.WriteFile(c.fs, configFilePath, []byte(templateConfig), filePermission); err != nil {
+	if err := afero.WriteFile(c.fs, configFilePath, templateConfig, filePermission); err != nil {
 		return fmt.Errorf("create a configuration file: %w", err)
 	}
 	return nil
