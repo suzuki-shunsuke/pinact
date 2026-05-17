@@ -87,6 +87,22 @@ ghes:
 # Separator between version and tag comment (optional, default is " # ")
 # pinact >= v3.9.0
 separator: " # "
+
+# Default min-age in days (optional)
+# pinact >= v4.0.0
+min_age: 7
+
+rules:
+  - ignore: true
+    conditions:
+      - expr: |
+          ActionName == "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml" && ActionRef matches "v\\d+\\.\\d+\\.\\d+"
+      - expr: |
+          ActionName matches "suzuki-shunsuke/.*" && ActionRef == "main"
+  - min_age: 0
+    conditions:
+      - expr: |
+          ActionName matches "suzuki-shunsuke/.*" && ActionRef == "main"
 ```
 
 #### `files`
@@ -111,9 +127,77 @@ files:
   - pattern: README.md
 ```
 
+#### `rules`
+
+pinact >= v4.0.0
+
+This is optional. A list of rules that override per-action settings for actions matching expression conditions.
+
+Each rule has match conditions and one or more override fields (`ignore`, `min_age`). When pinact processes an action, every rule's conditions are evaluated in declaration order. For each rule that matches, its override fields are merged on top of previous matches: later rules override earlier ones, but only for the fields they explicitly set.
+
+For new configurations, prefer `rules` with `ignore: true` over `ignore_actions` for more flexibility (`rules` can match on owner, repo, version comment, etc.).
+
+e.g.
+
+```yaml
+rules:
+  # Skip actions whose ref is a branch name in our own repos.
+  - ignore: true
+    conditions:
+      - expr: |
+          ActionRepoOwner == "suzuki-shunsuke" && ActionRef == "main"
+  # Lower the min-age threshold for trusted actions.
+  - min_age: 0
+    conditions:
+      - expr: |
+          ActionRepoFullName == "actions/checkout"
+```
+
+##### `rules[].ignore`
+
+This is optional. If `true`, pinact skips pin/update/error reporting for the matched action.
+
+##### `rules[].min_age`
+
+This is optional. Overrides the min-age threshold (in days) for the matched action. Setting it to `0` disables the min-age check for the action.
+
+The effective min-age for an action is resolved in this order: CLI flag `-min-age` > matching rules > top-level `min_age`.
+
+##### `rules[].conditions`
+
+This is required. A list of match conditions. The rule matches if **any** of its conditions evaluates to `true` (OR semantics). Each rule must have at least one condition.
+
+##### `rules[].conditions[].expr`
+
+This is required. A boolean expression evaluated against the action being processed. The [expr language](https://expr-lang.org/docs/language-definition) is used.
+
+The following variables are available:
+
+| Variable | Description | Example |
+|---|---|---|
+| `ActionName` | Full action name | `slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml` |
+| `ActionRepoOwner` | Repository owner | `slsa-framework` |
+| `ActionRepoName` | Repository name | `slsa-github-generator` |
+| `ActionRepoFullName` | `<owner>/<repo>` | `slsa-framework/slsa-github-generator` |
+| `ActionRef` | The action's ref (commit SHA, tag, or branch) | `v1.10.0`, `main`, `68bad40...` |
+| `VersionComment` | Existing `# <tag>` comment on the line, if any | `v1.10.0` |
+
+Expressions are validated and compiled at startup. Syntax errors, references to undefined variables, and non-boolean expressions are surfaced as configuration errors.
+
+#### `min_age`
+
+pinact >= v4.0.0
+
+This is optional. The default min-age in days for the min-age check. When set, pinact checks that every action's pinned commit is at least this many days old, and exits with code 2 on violation.
+
+The top-level value can be overridden by the CLI flag `-min-age` (highest precedence) or per-action by `rules[].min_age`.
+
 #### `ignore_actions`
 
 This is optional. A list of ignored actions and reusable workflows.
+
+> [!NOTE]
+> For new configurations, consider using [`rules`](#rules) with `ignore: true` instead. `rules` can match on the repository owner, full name, version comment, and arbitrary expressions, while `ignore_actions` only matches on name and ref regexps.
 
 #### `ignore_actions[].name`
 
