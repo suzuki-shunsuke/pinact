@@ -89,12 +89,16 @@ func validateSeparator(sep string) error {
 func readConfig(fs afero.Fs, configFilePath string) (*config.Config, error) {
 	cfgFinder := config.NewFinder(fs)
 	cfgReader := config.NewReader(fs)
-	configPath, err := cfgFinder.Find(configFilePath)
+	projectPath, err := cfgFinder.Find(configFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("find configuration file: %w", err)
+		return nil, fmt.Errorf("find project configuration file: %w", err)
+	}
+	globalPath, err := cfgFinder.FindGlobal()
+	if err != nil {
+		return nil, fmt.Errorf("find global configuration file: %w", err)
 	}
 	cfg := &config.Config{}
-	if err := cfgReader.Read(cfg, configPath); err != nil {
+	if err := cfgReader.ReadAndMerge(cfg, projectPath, globalPath); err != nil {
 		return nil, fmt.Errorf("read configuration file: %w", err)
 	}
 	return cfg, nil

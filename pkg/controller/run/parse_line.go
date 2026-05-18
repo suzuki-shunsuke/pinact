@@ -209,8 +209,8 @@ func (c *Controller) minAgeFallback() int {
 	if c.param.MinAge > 0 {
 		return c.param.MinAge
 	}
-	if c.cfg.MinAge != nil {
-		return c.cfg.MinAge.Value
+	if c.cfg.MinAge != nil && c.cfg.MinAge.Value != nil {
+		return *c.cfg.MinAge.Value
 	}
 	return 0
 }
@@ -240,7 +240,7 @@ func (c *Controller) finalPinnedSHA(action *Action, newLine string) string {
 // config.min_age.always is true. Returns nil otherwise, or when minAge is 0
 // or negative, the git service is unavailable, or -no-api is set.
 func (c *Controller) checkSHAMinAge(ctx context.Context, logger *slog.Logger, owner, repo, sha string, minAge int) error {
-	always := c.cfg.MinAge != nil && c.cfg.MinAge.Always
+	always := c.cfg.MinAge != nil && c.cfg.MinAge.Always != nil && *c.cfg.MinAge.Always
 	if !c.param.VerifyMinAge && !always {
 		return nil
 	}

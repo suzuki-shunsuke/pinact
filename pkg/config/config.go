@@ -50,9 +50,13 @@ type Config struct {
 // Always opts every `pinact run` into the passive audit even without the
 // -verify-min-age CLI flag. Default false so config.min_age alone does not
 // add a GetCommit call per pinned action on every run.
+//
+// Value and Always are pointers so we can distinguish "unset" from the zero
+// value when merging a project config on top of a global config: a project
+// that omits min_age.always must not clobber a global true with a false.
 type MinAge struct {
-	Value  int  `json:"value,omitempty" jsonschema:"description=Default min-age threshold in days"`
-	Always bool `json:"always,omitempty" jsonschema:"description=When true every run performs the passive min-age audit. Default false"`
+	Value  *int  `json:"value,omitempty" jsonschema:"description=Default min-age threshold in days"`
+	Always *bool `json:"always,omitempty" jsonschema:"description=When true every run performs the passive min-age audit. Default false"`
 }
 
 type GHES struct {
@@ -295,26 +299,27 @@ func (g *GHES) Validate() error {
 	return nil
 }
 
-// getConfigPath searches for a pinact configuration file in standard locations.
-// It checks for .pinact.yaml, .github/pinact.yaml, .pinact.yml, and .github/pinact.yml
-// in order of preference.
-// Returns the path to the first found configuration file, empty string if none found, or an error.
-func getConfigPath(fs afero.Fs) (string, error) {
-	for _, path := range []string{pathPinactYaml, pathGitHubPinactYaml, pathPinactYml, pathGitHubPinactYml} {
-		f, err := afero.Exists(fs, path)
+// findProjectConfigPath searches for a project-level pinact configuration file
+// in standard locations. It checks .pinact.yaml, .github/pinact.yaml,
+// .pinact.yml, and .github/pinact.yml in order of preference. Returns the path
+// to the first match, "" if none found, or an error.
+func findProjectConfigPath(fs afero.Fs) (string, error) {
+	for _, p := range []string{pathPinactYaml, pathGitHubPinactYaml, pathPinactYml, pathGitHubPinactYml} {
+		f, err := afero.Exists(fs, p)
 		if err != nil {
-			return "", fmt.Errorf("check if %s exists: %w", path, err)
+			return "", fmt.Errorf("check if %s exists: %w", p, err)
 		}
 		if f {
-			return path, nil
+			return p, nil
 		}
 	}
-	// No project-level config found - try the user's global config file as a
-	// fallback. This lets users keep machine-wide defaults (e.g. min_age,
-	// rules for trusted owners) outside the repo. When a project config
-	// exists it is used as-is and the global file is ignored; merging across
-	// the two would surprise teammates by making behavior depend on whoever
-	// runs pinact.
+	return "", nil
+}
+
+// findGlobalConfigPath returns the path of the user-wide pinact config file
+// if it exists, or "". The path itself is resolved from PINACT_GLOBAL_CONFIG
+// or the platform-native location; see resolveGlobalConfigPath.
+func findGlobalConfigPath(fs afero.Fs) (string, error) {
 	globalPath := resolveGlobalConfigPath(runtime.GOOS, os.Getenv, getHomeDir())
 	if globalPath == "" {
 		return "", nil
@@ -391,18 +396,28 @@ func NewFinder(fs afero.Fs) *Finder {
 	return &Finder{fs: fs}
 }
 
-// Find locates the configuration file path to use.
-// If a specific path is provided, it returns that path.
-// Otherwise, it searches for configuration files in standard locations.
+// Find locates the project-level configuration file path.
+// If a specific path is provided (e.g. via -c or PINACT_CONFIG), it returns
+// that path verbatim. Otherwise, it searches for configuration files in
+// standard locations. Returns "" if no project config is found; callers that
+// also want to consider a global config should call FindGlobal separately and
+// merge with mergeConfig.
 func (f *Finder) Find(configFilePath string) (string, error) {
 	if configFilePath != "" {
 		return configFilePath, nil
 	}
-	p, err := getConfigPath(f.fs)
+	p, err := findProjectConfigPath(f.fs)
 	if err != nil {
 		return "", err
 	}
 	return p, nil
+}
+
+// FindGlobal returns the user-wide pinact config file path if the file exists,
+// or "". The path itself is resolved from PINACT_GLOBAL_CONFIG when set, or
+// otherwise from the platform-native location (see resolveGlobalConfigPath).
+func (f *Finder) FindGlobal() (string, error) {
+	return findGlobalConfigPath(f.fs)
 }
 
 type Reader struct {
@@ -414,13 +429,57 @@ func NewReader(fs afero.Fs) *Reader {
 	return &Reader{fs: fs}
 }
 
-// Read loads and parses a configuration file.
+// Read loads and parses a single configuration file.
 // It reads the YAML file, validates the schema version, and initializes
 // all configuration components including files and ignore actions.
+// Callers that want global + project merge should use ReadAndMerge instead.
 func (r *Reader) Read(cfg *Config, configFilePath string) error {
 	if configFilePath == "" {
 		return nil
 	}
+	if err := r.decode(cfg, configFilePath); err != nil {
+		return err
+	}
+	return cfg.Init()
+}
+
+// ReadAndMerge loads project and/or global configs and merges them into cfg.
+// Either path may be empty (caller has none of that kind). When both are
+// present, the schema version of each is validated independently with the
+// source path attached to any error, and then mergeConfig combines them
+// (project wins per field, lists are concatenated; see mergeConfig).
+//
+// The resulting cfg is then Init'd so rules / files / ignore_actions are
+// compiled. If neither path is given, cfg is left untouched.
+func (r *Reader) ReadAndMerge(cfg *Config, projectPath, globalPath string) error {
+	var project, global *Config
+	if globalPath != "" {
+		global = &Config{}
+		if err := r.decode(global, globalPath); err != nil {
+			return fmt.Errorf("read global configuration file %s: %w", globalPath, err)
+		}
+		if err := validateSchemaVersion(global.Version); err != nil {
+			return fmt.Errorf("validate global configuration file %s: %w", globalPath, err)
+		}
+	}
+	if projectPath != "" {
+		project = &Config{}
+		if err := r.decode(project, projectPath); err != nil {
+			return fmt.Errorf("read project configuration file %s: %w", projectPath, err)
+		}
+		if err := validateSchemaVersion(project.Version); err != nil {
+			return fmt.Errorf("validate project configuration file %s: %w", projectPath, err)
+		}
+	}
+	merged := mergeConfig(global, project)
+	if merged == nil {
+		return nil
+	}
+	*cfg = *merged
+	return cfg.Init()
+}
+
+func (r *Reader) decode(cfg *Config, configFilePath string) error {
 	f, err := r.fs.Open(configFilePath)
 	if err != nil {
 		return fmt.Errorf("open a configuration file: %w", err)
@@ -429,7 +488,63 @@ func (r *Reader) Read(cfg *Config, configFilePath string) error {
 	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
 		return fmt.Errorf("decode a configuration file as YAML: %w", err)
 	}
-	return cfg.Init()
+	return nil
+}
+
+// mergeConfig combines a global config with a project config so machine-wide
+// defaults survive when a project also ships its own config. Project wins
+// per field for scalars and the MinAge / GHES blocks; rules and ignore_actions
+// are concatenated as [global..., project...] so later (project) entries take
+// effect first under existing rule-resolution semantics.
+//
+// Either argument may be nil; mergeConfig returns the other unchanged.
+func mergeConfig(global, project *Config) *Config {
+	if global == nil {
+		return project
+	}
+	if project == nil {
+		return global
+	}
+	out := *project
+	if out.Version == 0 {
+		out.Version = global.Version
+	}
+	if len(out.Files) == 0 {
+		out.Files = global.Files
+	}
+	if out.Separator == "" {
+		out.Separator = global.Separator
+	}
+	if out.GHES == nil {
+		out.GHES = global.GHES
+	}
+	out.IgnoreActions = append(append([]*IgnoreAction(nil), global.IgnoreActions...), project.IgnoreActions...)
+	out.Rules = append(append([]*Rule(nil), global.Rules...), project.Rules...)
+	out.MinAge = mergeMinAge(global.MinAge, project.MinAge)
+	return &out
+}
+
+// mergeMinAge merges MinAge field-by-field. value and always are merged
+// independently: a project-level value override does not clobber a global
+// always:true (the typical safety scenario for global config).
+func mergeMinAge(global, project *MinAge) *MinAge {
+	if global == nil {
+		return project
+	}
+	if project == nil {
+		return global
+	}
+	out := MinAge{
+		Value:  global.Value,
+		Always: global.Always,
+	}
+	if project.Value != nil {
+		out.Value = project.Value
+	}
+	if project.Always != nil {
+		out.Always = project.Always
+	}
+	return &out
 }
 
 // Init initializes and validates the configuration.
