@@ -174,6 +174,11 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Usage:       "Separator between version and tag comment",
 				Destination: &flags.Separator,
 			},
+			&cli.StringFlag{
+				Name:        "diff-file",
+				Usage:       "Path to a unified diff. Only the `+` lines of the diff are processed (use `-` to read the diff from stdin). Useful in PR CI to limit pinact to lines changed by the PR",
+				Destination: &flags.DiffFile,
+			},
 		},
 		Arguments: []cli.Argument{
 			&cli.StringArgs{

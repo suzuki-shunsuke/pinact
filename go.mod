@@ -9,6 +9,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v86 v86.0.0
 	github.com/hashicorp/go-version v1.9.0
+	github.com/sourcegraph/go-diff v0.8.0
 	github.com/spf13/afero v1.15.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.2
