@@ -36,6 +36,9 @@ type ParamRun struct {
 	Now               time.Time
 	Format            string
 	Findings          []Finding
+	// DiffFilter, when set, restricts processing to the `+` lines of a
+	// unified diff. Files not present in the filter are skipped entirely.
+	DiffFilter *DiffFilter
 }
 
 // Exit code classes for the v4 spec.
@@ -79,7 +82,13 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	exitCode := ExitCodeOK
 	for _, workflowFilePath := range workflowFilePaths {
 		logger := logger.With("workflow_file", workflowFilePath)
-		code, err := c.runWorkflow(ctx, logger, workflowFilePath)
+		var code int
+		var err error
+		if c.param.DiffFilter != nil {
+			code, err = c.runWorkflowFromDiff(ctx, logger, workflowFilePath)
+		} else {
+			code, err = c.runWorkflow(ctx, logger, workflowFilePath)
+		}
 		if code > exitCode {
 			exitCode = code
 		}
@@ -130,13 +139,63 @@ func (c *Controller) runWorkflow(ctx context.Context, logger *slog.Logger, workf
 	return exitCode, nil
 }
 
+// runWorkflowFromDiff is the diff-filtered counterpart of runWorkflow: only
+// the `+` lines extracted from the unified diff are processed.
+//
+// I/O is minimised. In check mode (Fix=false) the workflow file is never
+// opened. In fix mode the file is opened only if at least one line actually
+// changes; otherwise both read and write are skipped.
+func (c *Controller) runWorkflowFromDiff(ctx context.Context, logger *slog.Logger, workflowFilePath string) (int, error) {
+	exitCode, patches := c.collectDiffPatches(ctx, logger, workflowFilePath)
+	if !c.param.Fix || len(patches) == 0 {
+		return exitCode, nil
+	}
+	if err := c.applyPatches(workflowFilePath, patches); err != nil {
+		return ExitCodeAPIError, err
+	}
+	return exitCode, nil
+}
+
+// collectDiffPatches runs processLine on every `+` line of the diff for
+// workflowFilePath and returns the patches that would change the file.
+func (c *Controller) collectDiffPatches(ctx context.Context, logger *slog.Logger, workflowFilePath string) (int, map[int]string) {
+	exitCode := ExitCodeOK
+	patches := make(map[int]string)
+	for _, dl := range c.param.DiffFilter.Lines(workflowFilePath) {
+		newLine, changed, code := c.processLine(ctx, logger, workflowFilePath, dl.Number, dl.Content)
+		if code > exitCode {
+			exitCode = code
+		}
+		if changed {
+			patches[dl.Number] = newLine
+		}
+	}
+	return exitCode, patches
+}
+
+// applyPatches reads workflowFilePath, applies patches (keyed by 1-based
+// line number) to the corresponding lines, and writes the file back.
+func (c *Controller) applyPatches(workflowFilePath string, patches map[int]string) error {
+	lines, format, err := c.readWorkflow(workflowFilePath)
+	if err != nil {
+		return err
+	}
+	for n, content := range patches {
+		if i := n - 1; i >= 0 && i < len(lines) {
+			lines[i] = content
+		}
+	}
+	return c.writeWorkflow(workflowFilePath, lines, format)
+}
+
 // processLines processes each line in the workflow file.
 // It returns whether any lines were changed and the exit code (max of any line's
 // contribution: ExitCodeOK / ExitCodeNotPinned / ExitCodeUnfixable / ExitCodeAPIError).
 func (c *Controller) processLines(ctx context.Context, logger *slog.Logger, workflowFilePath string, lines []string) (changed bool, exitCode int) {
 	for i, lineS := range lines {
-		lineChanged, code := c.processLine(ctx, logger, workflowFilePath, lines, i, lineS)
+		newLine, lineChanged, code := c.processLine(ctx, logger, workflowFilePath, i+1, lineS)
 		if lineChanged {
+			lines[i] = newLine
 			changed = true
 		}
 		if code > exitCode {
@@ -147,24 +206,31 @@ func (c *Controller) processLines(ctx context.Context, logger *slog.Logger, work
 }
 
 // processLine handles a single line of the workflow: parses it, classifies any
-// error into an exit code, and (when applicable) applies the patched line in
-// place.
-func (c *Controller) processLine(ctx context.Context, logger *slog.Logger, workflowFilePath string, lines []string, i int, lineS string) (changed bool, exitCode int) {
+// error into an exit code, and reports a patched line back to the caller.
+//
+// Returns (newLine, changed, exitCode):
+//   - newLine: the patched line content when changed is true; empty otherwise
+//   - changed: true when the line should be replaced with newLine
+//   - exitCode: per-line exit code contribution
+//
+// processLine has no knowledge of the surrounding file: the caller is
+// responsible for applying newLine if it wants to mutate a line buffer.
+func (c *Controller) processLine(ctx context.Context, logger *slog.Logger, workflowFilePath string, lineNumber int, lineS string) (newLine string, changed bool, exitCode int) {
 	line := &Line{
 		File:   workflowFilePath,
-		Number: i + 1,
+		Number: lineNumber,
 		Line:   lineS,
 	}
 	lineLogger := logger.With(
-		"line_number", i+1,
+		"line_number", lineNumber,
 		"line", lineS,
 	)
 	l, err := c.parseLine(ctx, lineLogger, lineS)
 	if err != nil {
-		return c.handleLineError(ctx, lineLogger, line, lines, i, lineS, l, err)
+		return c.handleLineError(ctx, lineLogger, line, lineS, l, err)
 	}
 	if l == "" || lineS == l {
-		return false, ExitCodeOK
+		return "", false, ExitCodeOK
 	}
 	lineLogger = lineLogger.With("new_line", l)
 	// When Fix is disabled, a changed line counts as "needs pinning" since the
@@ -174,23 +240,21 @@ func (c *Controller) processLine(ctx context.Context, logger *slog.Logger, workf
 	if !c.param.Fix {
 		code = ExitCodeNotPinned
 	}
-	lines[i] = l
 	c.handleChangedLine(ctx, lineLogger, line, l)
-	return true, code
+	return l, true, code
 }
 
 // handleLineError dispatches the per-line error: min-age is a soft error
 // (apply the fix anyway, bump exit code), everything else is logged via
 // handleParseLineError.
-func (c *Controller) handleLineError(ctx context.Context, lineLogger *slog.Logger, line *Line, lines []string, i int, lineS, l string, err error) (changed bool, exitCode int) {
+func (c *Controller) handleLineError(ctx context.Context, lineLogger *slog.Logger, line *Line, lineS, l string, err error) (newLine string, changed bool, exitCode int) {
 	code := classifyLineError(err)
 	if errors.Is(err, ErrMinAge) {
 		// Min-age is a soft error: the fix (if any) is still applied,
 		// the warning is already in the logger, and exit code is bumped.
 		if l != "" && lineS != l {
-			lines[i] = l
 			c.handleChangedLine(ctx, lineLogger, line, l)
-			return true, code
+			return l, true, code
 		}
 		// Already-pinned action whose SHA fails -min-age: no diff to emit,
 		// but surface file:line + the line in the human-readable output so
@@ -205,10 +269,10 @@ func (c *Controller) handleLineError(ctx context.Context, lineLogger *slog.Logge
 		if c.param.IsGitHubActions {
 			fmt.Fprintf(c.param.Stderr, "::error file=%s,line=%d,title=pinact min-age violation::%s\n", line.File, line.Number, err)
 		}
-		return false, code
+		return "", false, code
 	}
 	c.handleParseLineError(ctx, lineLogger, line, err)
-	return false, code
+	return "", false, code
 }
 
 // classifyLineError maps a per-line parse/process error to an exit code class.

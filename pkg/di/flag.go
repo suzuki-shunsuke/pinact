@@ -43,6 +43,11 @@ type Flags struct {
 	Exclude     []string
 	BranchToTag []string
 	Args        []string
+
+	// DiffFile is the path to a unified diff. When non-empty, only the
+	// post-image `+` lines of the diff are processed. The literal "-"
+	// reads the diff from stdin.
+	DiffFile string
 }
 
 const defaultGitHubAPIURL = "https://api.github.com"

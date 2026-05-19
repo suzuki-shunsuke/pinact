@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"time"
@@ -55,6 +56,13 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 	if err != nil {
 		return err
 	}
+	if flags.DiffFile != "" {
+		df, err := loadDiffFilter(flags.DiffFile, os.Stdin)
+		if err != nil {
+			return err
+		}
+		param.DiffFilter = df
+	}
 	services, err := setupGHESServices(ctx, gh, cfg, flags, secrets.GHESToken)
 	if err != nil {
 		return err
@@ -62,6 +70,27 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 
 	ctrl := run.New(services.repoService, services.gitService, fs, cfg, param)
 	return ctrl.Run(ctx, logger.Logger) //nolint:wrapcheck
+}
+
+// loadDiffFilter reads a unified diff from path (or stdin when path is "-")
+// and parses it into a DiffFilter.
+func loadDiffFilter(path string, stdin io.Reader) (*run.DiffFilter, error) {
+	var r io.Reader
+	if path == "-" {
+		r = stdin
+	} else {
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, fmt.Errorf("open diff file: %w", err)
+		}
+		defer f.Close()
+		r = f
+	}
+	df, err := run.ParseDiff(r)
+	if err != nil {
+		return nil, fmt.Errorf("parse diff file: %w", err)
+	}
+	return df, nil
 }
 
 func getSeparator(cfg *config.Config, flags *Flags, getEnv func(string) string) string {

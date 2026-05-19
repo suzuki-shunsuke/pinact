@@ -4,7 +4,7 @@ on: workflow_call
 
 jobs:
   integration-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions: {}
     timeout-minutes: 20
     steps:
@@ -76,6 +76,14 @@ jobs:
           GITHUB_TOKEN: ${{github.token}}
       - run: diff .pinact.yaml pinact.yaml.after
         working-directory: testdata/migrate
+
+      # Test --diff-file
+      # 1. actions included in diff are pinned
+      # 1. actions not included in diff aren't pinned
+      - run: pinact run -diff-file testdata/diff-file/diff.txt testdata/diff-file/action.yaml
+        env:
+          GITHUB_TOKEN: ${{github.token}}
+      - run: diff testdata/diff-file/action.yaml testdata/diff-file/action_after.yaml
 
       - run: pinact run -u
         env:
