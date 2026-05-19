@@ -1,0 +1,11 @@
+diff --git a/testdata/diff-file/action.yaml b/testdata/diff-file/action.yaml
+index 0000001..0000002 100644
+--- a/testdata/diff-file/action.yaml
++++ b/testdata/diff-file/action.yaml
+@@ -7,5 +7,5 @@ jobs:
+     permissions: {}
+     steps:
+       - uses: actions/checkout@v3.6.0
+-      - uses: actions/setup-go@v3.5.0
++      - uses: actions/setup-go@v4.0.0
+       - uses: actions/cache@v3.3.1

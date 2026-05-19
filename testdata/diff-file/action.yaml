@@ -1,0 +1,11 @@
+---
+name: test
+on: workflow_call
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - uses: actions/checkout@v3.6.0
+      - uses: actions/setup-go@v4.0.0
+      - uses: actions/cache@v3.3.1
