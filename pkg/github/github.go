@@ -9,6 +9,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -35,8 +36,12 @@ type (
 // New creates a new GitHub API client with authentication.
 // It configures the client with appropriate HTTP client based on available
 // authentication methods (environment token or keyring).
-func New(ctx context.Context, logger *slog.Logger, token string, keyringEnabled, ghtknEnabled bool) *Client {
-	return github.NewClient(getHTTPClientForGitHub(ctx, logger, token, keyringEnabled, ghtknEnabled))
+func New(ctx context.Context, logger *slog.Logger, token string, keyringEnabled, ghtknEnabled bool) (*Client, error) {
+	client, err := github.NewClient(github.WithHTTPClient(getHTTPClientForGitHub(ctx, logger, token, keyringEnabled, ghtknEnabled)))
+	if err != nil {
+		return nil, fmt.Errorf("create a GitHub client: %w", err)
+	}
+	return client, nil
 }
 
 // Ptr returns a pointer to the provided value.
@@ -76,7 +81,11 @@ func getTokenSourceForGitHub(logger *slog.Logger, token string, keyringEnabled, 
 // This is used for GitHub Enterprise Server instances.
 func NewWithBaseURL(ctx context.Context, baseURL, token string) (*Client, error) {
 	httpClient := getHTTPClientForGitHubWithToken(ctx, token)
-	return github.NewClient(httpClient).WithEnterpriseURLs(baseURL, baseURL) //nolint:wrapcheck
+	client, err := github.NewClient(github.WithHTTPClient(httpClient), github.WithEnterpriseURLs(baseURL, baseURL))
+	if err != nil {
+		return nil, fmt.Errorf("create a GitHub client: %w", err)
+	}
+	return client, nil
 }
 
 // getHTTPClientForGitHubWithToken creates an HTTP client with a specific token.
