@@ -192,7 +192,10 @@ func TestDiffFilter_Files(t *testing.T) {
 
 func TestDiffFilter_Has(t *testing.T) {
 	t.Parallel()
-	df := &DiffFilter{files: map[string][]DiffLine{"a.yaml": nil}}
+	df := &DiffFilter{files: map[string][]DiffLine{
+		"a.yaml":                         nil,
+		".github/workflows/wc-test.yaml": nil,
+	}}
 	// nil-valued key still counts as present; but the parser never inserts
 	// empty entries so this is just for coverage of the lookup itself.
 	if !df.Has("a.yaml") {
@@ -201,16 +204,30 @@ func TestDiffFilter_Has(t *testing.T) {
 	if df.Has("c.yaml") {
 		t.Errorf("Has(c.yaml) = true, want false")
 	}
+	// Windows-style backslash paths must match the slash-delimited keys
+	// produced by ParseDiff.
+	if !df.Has(`.github\workflows\wc-test.yaml`) {
+		t.Errorf(`Has(.github\workflows\wc-test.yaml) = false, want true`)
+	}
 }
 
 func TestDiffFilter_Lines(t *testing.T) {
 	t.Parallel()
 	lines := []DiffLine{{Number: 1, Content: "x"}}
-	df := &DiffFilter{files: map[string][]DiffLine{"a.yaml": lines}}
+	wfLines := []DiffLine{{Number: 2, Content: "y"}}
+	df := &DiffFilter{files: map[string][]DiffLine{
+		"a.yaml":                         lines,
+		".github/workflows/wc-test.yaml": wfLines,
+	}}
 	if diff := cmp.Diff(lines, df.Lines("a.yaml")); diff != "" {
 		t.Errorf("Lines() mismatch (-want +got):\n%s", diff)
 	}
 	if got := df.Lines("c.yaml"); got != nil {
 		t.Errorf("Lines(c.yaml) = %v, want nil", got)
+	}
+	// Windows-style backslash paths must match the slash-delimited keys
+	// produced by ParseDiff.
+	if diff := cmp.Diff(wfLines, df.Lines(`.github\workflows\wc-test.yaml`)); diff != "" {
+		t.Errorf("Lines(backslash path) mismatch (-want +got):\n%s", diff)
 	}
 }
