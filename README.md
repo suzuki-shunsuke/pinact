@@ -27,7 +27,7 @@ $ pinact run
 1. Pin GitHub Actions and Reusable Workflows
 1. [Check if actions are pinned without editing files](#just-validation--check--fixfalse)
 1. [Offline check without GitHub API](#offline-check--no-api)
-1. [Update actions](#update-actions--update) with a [minimum release age](#minimum-release-age-cooldown--min-age)
+1. [Update actions](#update-actions--update) with a [minimum release age](#minimum-release-age-cooldown--min-age--verify-min-age)
 1. [Verify version comments](docs/codes/001.md) ([`-verify-comment`](#verify-version-comments--verify-comment--verify--v))
 1. [Verify if actions meet the minimum release age](#minimum-release-age-cooldown--min-age)
 1. [Pin branches](#pin-branches--branch-to-tag)
