@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 
 	"github.com/sourcegraph/go-diff/diff"
@@ -58,30 +59,20 @@ func (f *DiffFilter) Files() []string {
 }
 
 // Lines returns the `+` lines recorded for the given path, or nil if the
-// path is not in the filter. Any `\` in the input is converted to `/` so
-// OS-native paths from filepath.Glob on Windows match the slash-delimited
-// keys produced by ParseDiff. filepath.ToSlash is not used because it is
-// a no-op on non-Windows hosts, which makes the same normalization
-// untestable from a Linux/macOS CI.
+// path is not in the filter. The input path is normalized to forward
+// slashes via filepath.ToSlash before lookup, so OS-native paths returned
+// by filepath.Glob on Windows match the slash-delimited keys produced by
+// ParseDiff.
 func (f *DiffFilter) Lines(path string) []DiffLine {
-	return f.files[normalizeDiffPath(path)]
+	return f.files[filepath.ToSlash(path)]
 }
 
-// Has reports whether the filter contains any `+` lines for path. See
-// Lines for path normalization details.
+// Has reports whether the filter contains any `+` lines for path. The
+// input path is normalized via filepath.ToSlash before lookup; see Lines
+// for details.
 func (f *DiffFilter) Has(path string) bool {
-	_, ok := f.files[normalizeDiffPath(path)]
+	_, ok := f.files[filepath.ToSlash(path)]
 	return ok
-}
-
-// normalizeDiffPath converts `\` to `/` so OS-native paths (e.g. from
-// filepath.Glob on Windows) match the slash-delimited keys stored in
-// DiffFilter. Unified diffs always use `/` as the separator, and the
-// callers (searchFiles, collectDiffPatches) only ever pass paths that
-// were produced by filepath.Glob over GitHub Actions workflow / composite
-// action discovery patterns, which never contain literal `\` characters.
-func normalizeDiffPath(path string) string {
-	return strings.ReplaceAll(path, `\`, `/`)
 }
 
 // newPath returns the post-image path for a FileDiff with `a/` / `b/`

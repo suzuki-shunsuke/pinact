@@ -11,7 +11,7 @@ import (
 //
 // When ParamRun.DiffFilter is set, the result is further intersected with the
 // set of files appearing in the unified diff. DiffFilter normalizes lookup
-// paths to forward slashes internally, so OS-native paths (e.g. Windows
+// paths via filepath.ToSlash internally, so OS-native paths (e.g. Windows
 // backslashes from filepath.Glob) match the slash-delimited diff keys. The
 // comparison still assumes the diff's paths and the discovery results share
 // the same root (typically: pinact is invoked from the repository root).

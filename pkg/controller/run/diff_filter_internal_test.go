@@ -1,6 +1,7 @@
 package run
 
 import (
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -204,10 +205,13 @@ func TestDiffFilter_Has(t *testing.T) {
 	if df.Has("c.yaml") {
 		t.Errorf("Has(c.yaml) = true, want false")
 	}
-	// Windows-style backslash paths must match the slash-delimited keys
-	// produced by ParseDiff.
-	if !df.Has(`.github\workflows\wc-test.yaml`) {
-		t.Errorf(`Has(.github\workflows\wc-test.yaml) = false, want true`)
+	// An OS-native path returned by filepath.Glob must match the slash-
+	// delimited keys produced by ParseDiff. On Windows filepath.FromSlash
+	// yields a backslash path, exercising the filepath.ToSlash conversion
+	// inside Has; on POSIX it is a no-op round trip.
+	native := filepath.FromSlash(".github/workflows/wc-test.yaml")
+	if !df.Has(native) {
+		t.Errorf("Has(%q) = false, want true", native)
 	}
 }
 
@@ -225,9 +229,11 @@ func TestDiffFilter_Lines(t *testing.T) {
 	if got := df.Lines("c.yaml"); got != nil {
 		t.Errorf("Lines(c.yaml) = %v, want nil", got)
 	}
-	// Windows-style backslash paths must match the slash-delimited keys
-	// produced by ParseDiff.
-	if diff := cmp.Diff(wfLines, df.Lines(`.github\workflows\wc-test.yaml`)); diff != "" {
-		t.Errorf("Lines(backslash path) mismatch (-want +got):\n%s", diff)
+	// OS-native lookup: on Windows filepath.FromSlash yields a backslash
+	// path, exercising filepath.ToSlash inside Lines; on POSIX it is a
+	// no-op round trip.
+	native := filepath.FromSlash(".github/workflows/wc-test.yaml")
+	if diff := cmp.Diff(wfLines, df.Lines(native)); diff != "" {
+		t.Errorf("Lines(%q) mismatch (-want +got):\n%s", native, diff)
 	}
 }
