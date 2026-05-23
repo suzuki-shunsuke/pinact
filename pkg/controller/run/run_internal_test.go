@@ -332,7 +332,7 @@ func TestController_writeWorkflow(t *testing.T) { //nolint:funlen
 	}
 }
 
-// TestController_readWriteWorkflow_roundTrip verifies that the read → write
+// TestController_readWriteWorkflow_roundTrip verifies that the read -> write
 // cycle preserves the file's original line endings and trailing-newline state
 // (issue #1492).
 func TestController_readWriteWorkflow_roundTrip(t *testing.T) {
