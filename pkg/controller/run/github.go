@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
@@ -28,19 +29,18 @@ type GitService interface {
 // getLatestVersion determines the latest version of a repository.
 // It first tries to get the latest version from releases, and if that fails
 // or returns empty, it falls back to getting the latest version from tags.
-func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, owner, repo, currentVersion string) (string, error) {
-	return c.getLatestVersionWithStable(ctx, logger, owner, repo, isStableVersion(currentVersion))
+func (c *Controller) getLatestVersion(ctx context.Context, logger *slog.Logger, owner, repo, currentVersion string, resolved *config.Resolved) (string, error) {
+	return c.getLatestVersionWithStable(ctx, logger, owner, repo, isStableVersion(currentVersion), resolved)
 }
 
 // getLatestVersionWithStable is the same as getLatestVersion but takes an
 // explicit isStable flag instead of inferring it from currentVersion. Used by
 // branch-to-tag, which has no semver-shaped currentVersion to infer from.
-func (c *Controller) getLatestVersionWithStable(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool) (string, error) {
-	// Calculate cutoff once for min-age filtering. We use the global fallback
-	// (CLI > config > env) rather than effectiveMinAge because rule resolution
-	// has not been threaded down here; see minAgeFallback's TODO.
+func (c *Controller) getLatestVersionWithStable(ctx context.Context, logger *slog.Logger, owner, repo string, isStable bool, resolved *config.Resolved) (string, error) {
+	// Calculate cutoff once for min-age filtering. Honors per-rule overrides
+	// via effectiveMinAge (CLI > rules > config).
 	var cutoff time.Time
-	if mAge := c.minAgeFallback(); mAge > 0 {
+	if mAge := c.effectiveMinAge(resolved); mAge > 0 {
 		cutoff = c.param.Now.AddDate(0, 0, -mAge)
 	}
 
