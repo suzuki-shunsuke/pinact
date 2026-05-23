@@ -546,9 +546,11 @@ func compareVersion(currentVersion, newVersion string) bool {
 // verifyIfNeeded verifies the commit hash if verification is enabled.
 func (c *Controller) verifyIfNeeded(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
 	if c.param.IsVerify {
-		if err := c.verify(ctx, logger, action); err != nil {
+		correctedLine, err := c.verify(ctx, logger, action)
+		if err != nil {
 			return "", fmt.Errorf("verify the version annotation: %w", err)
 		}
+		return correctedLine, nil
 	}
 	return "", nil
 }
@@ -635,20 +637,48 @@ func (c *Controller) parseActionName(action *Action) bool {
 // verify checks that an action's version SHA matches its version comment.
 // It validates that the commit SHA in the action version matches the
 // commit SHA of the version specified in the comment.
-func (c *Controller) verify(ctx context.Context, logger *slog.Logger, action *Action) error {
+//
+// When Fix is enabled (the v4 default), a mismatch triggers a tag lookup for
+// the action's current SHA; if a matching tag is found, verify returns the
+// patched line with the version comment rewritten. With -fix=false (-check /
+// -diff) the mismatch is reported as an error instead, so CI can flag it.
+func (c *Controller) verify(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
 	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment, "")
 	if err != nil {
-		return fmt.Errorf("get a commit hash: %w", err)
+		return "", fmt.Errorf("get a commit hash: %w", err)
 	}
 	if action.Version == sha {
-		return nil
+		return "", nil
 	}
-	return slogerr.With( //nolint:wrapcheck
+
+	if c.param.Fix {
+		correctVersion, err := c.getLongVersionFromSHA(ctx, logger, &Action{
+			RepoOwner: action.RepoOwner,
+			RepoName:  action.RepoName,
+			Version:   action.Version,
+		}, action.Version)
+		if err != nil {
+			return "", fmt.Errorf("find version for SHA: %w", err)
+		}
+		if correctVersion != "" {
+			logger.Warn("version annotation mismatch detected, correcting comment",
+				"action", action.Name,
+				"action_version", action.Version,
+				"version_annotation", action.VersionComment,
+				"commit_hash_of_version_annotation", sha,
+				"correct_version", correctVersion,
+				"docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md",
+			)
+			return c.patchLine(action, action.Version, correctVersion), nil
+		}
+	}
+
+	return "", slogerr.With( //nolint:wrapcheck
 		errors.New("action_version must be equal to commit_hash_of_version_annotation"),
 		"action", action.Name,
 		"action_version", action.Version,
 		"version_annotation", action.VersionComment,
 		"commit_hash_of_version_annotation", sha,
-		"help_docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md",
+		"docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md",
 	)
 }
