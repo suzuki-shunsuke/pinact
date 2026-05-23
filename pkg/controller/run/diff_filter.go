@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 
 	"github.com/sourcegraph/go-diff/diff"
@@ -58,14 +59,19 @@ func (f *DiffFilter) Files() []string {
 }
 
 // Lines returns the `+` lines recorded for the given path, or nil if the
-// path is not in the filter.
+// path is not in the filter. The input path is normalized to forward
+// slashes via filepath.ToSlash before lookup, so OS-native paths returned
+// by filepath.Glob on Windows match the slash-delimited keys produced by
+// ParseDiff.
 func (f *DiffFilter) Lines(path string) []DiffLine {
-	return f.files[path]
+	return f.files[filepath.ToSlash(path)]
 }
 
-// Has reports whether the filter contains any `+` lines for path.
+// Has reports whether the filter contains any `+` lines for path. The
+// input path is normalized via filepath.ToSlash before lookup; see Lines
+// for details.
 func (f *DiffFilter) Has(path string) bool {
-	_, ok := f.files[path]
+	_, ok := f.files[filepath.ToSlash(path)]
 	return ok
 }
 
