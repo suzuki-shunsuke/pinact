@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/sarif"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/sarif"
 )
 
 const (
@@ -56,7 +56,7 @@ func (c *Controller) buildSARIFResults() []sarif.Result {
 	results := make([]sarif.Result, 0, len(c.param.Findings))
 	for _, f := range c.param.Findings {
 		ruleID := ruleUnpinnedAction
-		level := "error"
+		level := levelError
 		var msg string
 		if f.Message != "" {
 			// Parse error

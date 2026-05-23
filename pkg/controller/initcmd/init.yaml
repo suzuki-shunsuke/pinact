@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/refs/heads/main/json-schema/pinact.json
+# pinact - https://github.com/suzuki-shunsuke/pinact
+version: 3
+# min_age:
+#   value: 7      # threshold in days
+#   always: true  # also run the passive audit on every `pinact run` (extra GitHub API calls)
+# separator: "  # "
+# files:
+#   - pattern: action.yaml
+#   - pattern: */action.yaml
+
+# rules:
+#   - ignore: true
+#     conditions:
+#       - expr: |
+#           ActionName == "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml" && ActionVersion matches "v\\d+\\.\\d+\\.\\d+"
+#       - expr: |
+#           ActionRepoOwner == "suzuki-shunsuke" && ActionVersion == "main"
+#   - min_age: 0
+#     conditions:
+#       - expr: |
+#           ActionName matches "actions/.*"

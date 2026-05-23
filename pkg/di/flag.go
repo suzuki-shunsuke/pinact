@@ -1,20 +1,27 @@
 package di
 
 import (
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/gflag"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
 )
 
 // Flags holds all command-line flags for the run command.
 type Flags struct {
 	*gflag.GlobalFlags
 
-	Verify    bool
+	// v4 flags
+	// -verify and -v are urfave/cli aliases for -verify-comment, so they
+	// share VerifyComment and do not need a separate field.
+	VerifyComment bool
+	VerifyMinAge  bool
+	NoAPI         bool
+
+	// -check and -diff are silent aliases for -fix=false in v4. They keep
+	// their own destinations so buildParam can translate them.
 	Check     bool
-	Update    bool
-	Review    bool
-	Fix       bool
 	Diff      bool
+	Update    bool
+	Fix       bool
 	Format    string
 	Separator string
 
@@ -23,10 +30,6 @@ type Flags struct {
 	KeyringEnabled  bool
 	GHTKNEnabled    bool
 
-	RepoOwner string
-	RepoName  string
-	SHA       string
-
 	GitHubRepository string
 	GitHubAPIURL     string
 	GitHubEventPath  string
@@ -34,12 +37,17 @@ type Flags struct {
 
 	CWD string
 
-	FixCount int
-	PR       int
-	MinAge   int
-	Include  []string
-	Exclude  []string
-	Args     []string
+	FixCount    int
+	MinAge      int
+	Include     []string
+	Exclude     []string
+	BranchToTag []string
+	Args        []string
+
+	// DiffFile is the path to a unified diff. When non-empty, only the
+	// post-image `+` lines of the diff are processed. The literal "-"
+	// reads the diff from stdin.
+	DiffFile string
 }
 
 const defaultGitHubAPIURL = "https://api.github.com"

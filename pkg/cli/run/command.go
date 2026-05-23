@@ -11,14 +11,30 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/cli/gflag"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/di"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/gflag"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/di"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
+
+// warnDeprecatedFlags writes a warning to stderr for v3 flag usages whose v4
+// behavior differs from v3 in a way the user might not expect.
+//
+// -check, -verify (-v), and -diff (true) keep working as silent aliases for
+// their v4 equivalents (see di.buildParam), so no warning is emitted for them.
+//
+// -diff=false is the one exception: in v3 it suppressed diff output, but in
+// v4 detail output is always printed. The flag value is silently ignored and
+// a warning surfaces the difference.
+func warnDeprecatedFlags(cmd *cli.Command, w io.Writer) {
+	if cmd.IsSet("diff") && !cmd.Bool("diff") {
+		fmt.Fprintln(w, "WARN: -diff=false is ignored in v4: detail output is always printed")
+	}
+}
 
 // New creates a new run command for the CLI.
 // It initializes a runner with the provided logger and returns
@@ -49,7 +65,17 @@ e.g.
 
 $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 `,
-		Action: func(ctx context.Context, _ *cli.Command) error {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			warnDeprecatedFlags(cmd, env.Stderr)
+			// Setting -min-age (either explicitly on the CLI or via
+			// PINACT_MIN_AGE, which urfave wires into the same flag through
+			// Sources) is an explicit signal that the user wants the passive
+			// audit to run, so auto-enable -verify-min-age. Machine-wide
+			// defaults that should NOT enable the audit belong in the global
+			// config file's min_age.value.
+			if cmd.IsSet("min-age") {
+				flags.VerifyMinAge = true
+			}
 			pwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("get the current directory: %w", err)
@@ -62,14 +88,24 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:        "verify",
-				Aliases:     []string{"v"},
-				Usage:       "Verify if pairs of commit SHA and version are correct",
-				Destination: &flags.Verify,
+				Name:        "verify-comment",
+				Aliases:     []string{"verify", "v"},
+				Usage:       "Verify that the version comment matches the pinned SHA",
+				Destination: &flags.VerifyComment,
+			},
+			&cli.BoolFlag{
+				Name:        "verify-min-age",
+				Usage:       "Audit every pinned action against the min-age threshold (calls the GitHub API). Auto-enabled when -min-age is set on the CLI",
+				Destination: &flags.VerifyMinAge,
+			},
+			&cli.BoolFlag{
+				Name:        "no-api",
+				Usage:       "Skip GitHub API calls. Only the syntactic pin check (40-character SHA) is performed",
+				Destination: &flags.NoAPI,
 			},
 			&cli.BoolFlag{
 				Name:        "check",
-				Usage:       "Exit with a non-zero status code if actions are not pinned. If this is true, files aren't updated",
+				Usage:       "Alias for -fix=false. For offline check use -fix=false -no-api",
 				Destination: &flags.Check,
 			},
 			&cli.BoolFlag{
@@ -77,11 +113,6 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Aliases:     []string{"u"},
 				Usage:       "Update actions to latest versions",
 				Destination: &flags.Update,
-			},
-			&cli.BoolFlag{
-				Name:        "review",
-				Usage:       "Create reviews",
-				Destination: &flags.Review,
 			},
 			&cli.BoolFlag{
 				Name:        "fix",
@@ -93,7 +124,7 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 			},
 			&cli.BoolFlag{
 				Name:        "diff",
-				Usage:       "Output diff. By default, this is false",
+				Usage:       "Alias for -fix=false. Note: -diff=false is ignored because detail output is always printed in v4",
 				Destination: &flags.Diff,
 			},
 			&cli.StringFlag{
@@ -107,27 +138,6 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 					return nil
 				},
 			},
-			&cli.StringFlag{
-				Name:        "repo-owner",
-				Usage:       "GitHub repository owner",
-				Sources:     cli.EnvVars("GITHUB_REPOSITORY_OWNER"),
-				Destination: &flags.RepoOwner,
-			},
-			&cli.StringFlag{
-				Name:        "repo-name",
-				Usage:       "GitHub repository name",
-				Destination: &flags.RepoName,
-			},
-			&cli.StringFlag{
-				Name:        "sha",
-				Usage:       "Commit SHA to be reviewed",
-				Destination: &flags.SHA,
-			},
-			&cli.IntFlag{
-				Name:        "pr",
-				Usage:       "GitHub pull request number",
-				Destination: &flags.PR,
-			},
 			&cli.StringSliceFlag{
 				Name:        "include",
 				Aliases:     []string{"i"},
@@ -140,10 +150,15 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Usage:       "A regular expression to exclude actions",
 				Destination: &flags.Exclude,
 			},
+			&cli.StringSliceFlag{
+				Name:        "branch-to-tag",
+				Usage:       "A regular expression to convert non-semver versions (e.g. branch names) to the latest stable tag. Anchor with ^$ for exact match",
+				Destination: &flags.BranchToTag,
+			},
 			&cli.IntFlag{
 				Name:        "min-age",
 				Aliases:     []string{"m"},
-				Usage:       "Skip versions released within the specified number of days (requires -u)",
+				Usage:       "Minimum release age threshold in days. Setting this (either via CLI or PINACT_MIN_AGE) implicitly enables -verify-min-age",
 				Destination: &flags.MinAge,
 				Sources:     cli.EnvVars("PINACT_MIN_AGE"),
 				Validator: func(i int) error {
@@ -158,6 +173,11 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Aliases:     []string{"sep"},
 				Usage:       "Separator between version and tag comment",
 				Destination: &flags.Separator,
+			},
+			&cli.StringFlag{
+				Name:        "diff-file",
+				Usage:       "Path to a unified diff. Only the `+` lines of the diff are processed (use `-` to read the diff from stdin). Useful in PR CI to limit pinact to lines changed by the PR",
+				Destination: &flags.DiffFile,
 			},
 		},
 		Arguments: []cli.Argument{

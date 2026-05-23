@@ -1,0 +1,5 @@
+# Files / directories the link checker should not scan.
+# json-schema/ contains JSON Schema documents whose $id field is a stable
+# identifier derived from the Go module path. JSON Schema $id is not required
+# to be a resolvable URL, so lychee's link check is not meaningful here.
+exclude_path = ["json-schema"]
