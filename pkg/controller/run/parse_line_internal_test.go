@@ -1,14 +1,17 @@
 package run
 
 import (
+	"context"
+	"errors"
 	"log/slog"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/config"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 )
 
 func Test_parseAction(t *testing.T) { //nolint:funlen
@@ -100,6 +103,17 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 				Quote:                   "",
 			},
 		},
+		{
+			name: "multi-space after dash",
+			line: "    -   uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3",
+			exp: &Action{
+				Uses:                    "    -   uses: ",
+				Name:                    "actions/checkout",
+				Version:                 "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+				VersionCommentSeparator: " # ",
+				VersionComment:          "v3",
+			},
+		},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
@@ -163,6 +177,11 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			name: "pinned SHA without comment - no matching tag",
 			line: "  - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		},
+		{
+			name: "multi-space after dash",
+			line: "      -   uses: actions/checkout@v3",
+			exp:  "      -   uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2",
+		},
 	}
 	logger := slog.New(slog.DiscardHandler)
 	for _, d := range data {
@@ -215,7 +234,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
 					},
 				},
-			}, nil, nil, fs, &config.Config{
+			}, nil, fs, &config.Config{
 				Separator: " # ",
 			}, &ParamRun{})
 			line, err := ctrl.parseLine(t.Context(), logger, d.line)
@@ -232,7 +251,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 	}
 }
 
-func TestController_parseLine_addMissingComment(t *testing.T) {
+func TestController_parseLine_addMissingComment(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	sha := "8e5e7e5ab8b370d6c329ec480221332ada57f0ab"
 	data := []struct {
@@ -365,7 +384,7 @@ func TestController_parseLine_addMissingComment(t *testing.T) {
 					},
 				},
 				Commits: commits,
-			}, nil, nil, fs, &config.Config{
+			}, nil, fs, &config.Config{
 				Separator: " # ",
 			}, &ParamRun{})
 			line, err := ctrl.parseLine(t.Context(), logger, d.line)
@@ -420,7 +439,7 @@ func Test_patchLine(t *testing.T) {
 			cfg := &config.Config{
 				Separator: " # ",
 			}
-			ctrl := New(nil, nil, nil, fs, cfg, &ParamRun{})
+			ctrl := New(nil, nil, fs, cfg, &ParamRun{})
 			line := ctrl.patchLine(d.action, d.version, d.tag)
 			if line != d.exp {
 				t.Fatalf(`wanted %s, got %s`, d.exp, line)
@@ -470,7 +489,7 @@ func Test_patchLine_customSeparator(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
 			cfg := &config.Config{Separator: d.separator}
-			ctrl := New(nil, nil, nil, fs, cfg, &ParamRun{})
+			ctrl := New(nil, nil, fs, cfg, &ParamRun{})
 			line := ctrl.patchLine(d.action, d.version, d.tag)
 			if line != d.exp {
 				t.Fatalf(`wanted %s, got %s`, d.exp, line)
@@ -710,7 +729,7 @@ func TestController_shouldSkipAction(t *testing.T) { //nolint:funlen
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, nil, fs, tt.cfg, tt.param)
+			ctrl := New(nil, nil, fs, tt.cfg, tt.param)
 			logger := slog.New(slog.DiscardHandler)
 
 			if got := ctrl.shouldSkipAction(logger, tt.action); got != tt.want {
@@ -760,7 +779,7 @@ func TestController_parseActionName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, nil, fs, &config.Config{}, &ParamRun{})
+			ctrl := New(nil, nil, fs, &config.Config{}, &ParamRun{})
 
 			got := ctrl.parseActionName(tt.action)
 
@@ -826,7 +845,7 @@ func TestController_excludeAction(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, nil, fs, &config.Config{}, &ParamRun{Excludes: tt.excludes})
+			ctrl := New(nil, nil, fs, &config.Config{}, &ParamRun{Excludes: tt.excludes})
 
 			if got := ctrl.excludeAction(tt.actionName); got != tt.want {
 				t.Errorf("excludeAction() = %v, want %v", got, tt.want)
@@ -891,10 +910,404 @@ func TestController_excludeByIncludes(t *testing.T) { //nolint:funlen
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, nil, fs, &config.Config{}, &ParamRun{Includes: tt.includes})
+			ctrl := New(nil, nil, fs, &config.Config{}, &ParamRun{Includes: tt.includes})
 
 			if got := ctrl.excludeByIncludes(tt.actionName); got != tt.want {
 				t.Errorf("excludeByIncludes() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	// Tag/release setup used by all sub-tests: actions/checkout has a stable
+	// v3.5.2 release plus a v4.0.0-rc.1 pre-release. actions/no-stable has only
+	// a pre-release. actions/no-tag has neither.
+	tagsCheckout := &github.ListTagsResult{
+		Tags: []*github.RepositoryTag{
+			{Name: new("v3.5.2"), Commit: &github.Commit{SHA: new("8e5e7e5ab8b370d6c329ec480221332ada57f0ab")}},
+			{Name: new("v4.0.0-rc.1"), Commit: &github.Commit{SHA: new("rcrcrcrcrcrcrcrcrcrcrcrcrcrcrcrcrcrcrcrc")}},
+		},
+		Response: &github.Response{},
+	}
+	releasesCheckout := &github.ListReleasesResult{
+		Releases: []*github.RepositoryRelease{
+			{TagName: new("v3.5.2")},
+			{TagName: new("v4.0.0-rc.1"), Prerelease: new(true)},
+		},
+		Response: &github.Response{},
+	}
+	tagsNoStable := &github.ListTagsResult{
+		Tags: []*github.RepositoryTag{
+			{Name: new("v1.0.0-beta"), Commit: &github.Commit{SHA: new("bebebebebebebebebebebebebebebebebebebebe")}},
+		},
+		Response: &github.Response{},
+	}
+	releasesNoStable := &github.ListReleasesResult{
+		Releases: []*github.RepositoryRelease{
+			{TagName: new("v1.0.0-beta"), Prerelease: new(true)},
+		},
+		Response: &github.Response{},
+	}
+	tagsNoTag := &github.ListTagsResult{Tags: []*github.RepositoryTag{}, Response: &github.Response{}}
+	releasesNoTag := &github.ListReleasesResult{Releases: []*github.RepositoryRelease{}, Response: &github.Response{}}
+
+	// actions/min-age has v2.0.0 (recent, 1 day ago) and v1.0.0 (older, 30 days ago).
+	// With --min-age 7, v2.0.0 must be skipped and v1.0.0 chosen.
+	now := time.Date(2026, 5, 13, 0, 0, 0, 0, time.UTC)
+	tagsMinAge := &github.ListTagsResult{
+		Tags: []*github.RepositoryTag{
+			{Name: new("v2.0.0"), Commit: &github.Commit{SHA: new("2222222222222222222222222222222222222222")}},
+			{Name: new("v1.0.0"), Commit: &github.Commit{SHA: new("1111111111111111111111111111111111111111")}},
+		},
+		Response: &github.Response{},
+	}
+	releasesMinAge := &github.ListReleasesResult{
+		Releases: []*github.RepositoryRelease{
+			{TagName: new("v2.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -1)}},
+			{TagName: new("v1.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -30)}},
+		},
+		Response: &github.Response{},
+	}
+
+	commits := map[string]*github.GetCommitSHA1Result{
+		"actions/checkout/v3.5.2":       {SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab"},
+		"actions/no-stable/v1.0.0-beta": {SHA: "bebebebebebebebebebebebebebebebebebebebe"},
+		"actions/min-age/v1.0.0":        {SHA: "1111111111111111111111111111111111111111"},
+	}
+
+	data := []struct {
+		name        string
+		line        string
+		branchToTag []*regexp.Regexp
+		minAge      int
+		exp         string
+		isErr       bool
+	}{
+		{
+			name:        "main matches and is converted to latest stable tag",
+			line:        "  - uses: actions/checkout@main",
+			branchToTag: []*regexp.Regexp{regexp.MustCompile(`^main$`)},
+			exp:         "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2",
+		},
+		{
+			name:        "regex unmatched still errors",
+			line:        "  - uses: actions/checkout@main",
+			branchToTag: []*regexp.Regexp{regexp.MustCompile(`^master$`)},
+			isErr:       true,
+		},
+		{
+			name:        "no branch-to-tag configured still errors",
+			line:        "  - uses: actions/checkout@main",
+			branchToTag: nil,
+			isErr:       true,
+		},
+		{
+			name:        "falls back to pre-release when no stable tag exists",
+			line:        "  - uses: actions/no-stable@develop",
+			branchToTag: []*regexp.Regexp{regexp.MustCompile(`^develop$`)},
+			exp:         "  - uses: actions/no-stable@bebebebebebebebebebebebebebebebebebebebe # v1.0.0-beta",
+		},
+		{
+			name:        "errors when action has no tag at all",
+			line:        "  - uses: actions/no-tag@main",
+			branchToTag: []*regexp.Regexp{regexp.MustCompile(`^main$`)},
+			isErr:       true,
+		},
+		{
+			name:        "semver line is unaffected by branch-to-tag",
+			line:        "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3",
+			branchToTag: []*regexp.Regexp{regexp.MustCompile(`.*`)},
+			exp:         "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2",
+		},
+		{
+			name:        "min-age skips recent stable tag",
+			line:        "  - uses: actions/min-age@main",
+			branchToTag: []*regexp.Regexp{regexp.MustCompile(`^main$`)},
+			minAge:      7,
+			exp:         "  - uses: actions/min-age@1111111111111111111111111111111111111111 # v1.0.0",
+		},
+	}
+	logger := slog.New(slog.DiscardHandler)
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			ctrl := New(&github.RepositoriesServiceImpl{
+				Tags: map[string]*github.ListTagsResult{
+					"actions/checkout/0":  tagsCheckout,
+					"actions/no-stable/0": tagsNoStable,
+					"actions/no-tag/0":    tagsNoTag,
+					"actions/min-age/0":   tagsMinAge,
+				},
+				Releases: map[string]*github.ListReleasesResult{
+					"actions/checkout/0":  releasesCheckout,
+					"actions/no-stable/0": releasesNoStable,
+					"actions/no-tag/0":    releasesNoTag,
+					"actions/min-age/0":   releasesMinAge,
+				},
+				Commits: commits,
+			}, nil, fs, &config.Config{Separator: " # "}, &ParamRun{
+				BranchToTags: d.branchToTag,
+				MinAge:       d.minAge,
+				Now:          now,
+			})
+			line, err := ctrl.parseLine(t.Context(), logger, d.line)
+			if err != nil {
+				if d.isErr {
+					return
+				}
+				t.Fatal(err)
+			}
+			if d.isErr {
+				t.Fatalf("expected error, got line %q", line)
+			}
+			if line != d.exp {
+				t.Fatalf("wanted %s, got %s", d.exp, line)
+			}
+		})
+	}
+}
+
+// TestController_parseLine_update_ruleMinAge verifies that rules[].min_age
+// overrides the global min_age.value when selecting the update target during
+// `pinact run -u`. With the global cutoff (3 days) v2.0.0 would be filtered out,
+// but the rule sets min_age to 0 so the recent release must be picked.
+func TestController_parseLine_update_ruleMinAge(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 5, 13, 0, 0, 0, 0, time.UTC)
+	tags := &github.ListTagsResult{
+		Tags: []*github.RepositoryTag{
+			{Name: new("v2.0.0"), Commit: &github.Commit{SHA: new("2222222222222222222222222222222222222222")}},
+			{Name: new("v1.0.0"), Commit: &github.Commit{SHA: new("1111111111111111111111111111111111111111")}},
+		},
+		Response: &github.Response{},
+	}
+	releases := &github.ListReleasesResult{
+		Releases: []*github.RepositoryRelease{
+			{TagName: new("v2.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -1)}},
+			{TagName: new("v1.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -30)}},
+		},
+		Response: &github.Response{},
+	}
+	commits := map[string]*github.GetCommitSHA1Result{
+		"aquaproj/example/v2.0.0": {SHA: "2222222222222222222222222222222222222222"},
+	}
+
+	three := 3
+	zero := 0
+	cfg := &config.Config{
+		Separator: " # ",
+		MinAge:    &config.MinAge{Value: &three},
+		Rules: []*config.Rule{
+			{
+				MinAge: &zero,
+				Conditions: []*config.Condition{
+					{Expr: `ActionRepoOwner == "aquaproj"`},
+				},
+			},
+		},
+	}
+	for i, r := range cfg.Rules {
+		if err := r.Init(); err != nil {
+			t.Fatalf("init rules[%d]: %v", i, err)
+		}
+	}
+
+	fs := afero.NewMemMapFs()
+	ctrl := New(&github.RepositoriesServiceImpl{
+		Tags:     map[string]*github.ListTagsResult{"aquaproj/example/0": tags},
+		Releases: map[string]*github.ListReleasesResult{"aquaproj/example/0": releases},
+		Commits:  commits,
+	}, nil, fs, cfg, &ParamRun{
+		Update: true,
+		Now:    now,
+	})
+	logger := slog.New(slog.DiscardHandler)
+
+	line := "  - uses: aquaproj/example@1111111111111111111111111111111111111111 # v1.0.0"
+	got, err := ctrl.parseLine(t.Context(), logger, line)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "  - uses: aquaproj/example@2222222222222222222222222222222222222222 # v2.0.0"
+	if got != want {
+		t.Fatalf("rules[].min_age=0 should override cooldown:\n  want %s\n  got  %s", want, got)
+	}
+}
+
+// TestController_checkSHAMinAge_boundary verifies that the passive -min-age
+// check returns ErrMinAge when the commit is younger than the cutoff and
+// returns nil when it is older. The mock GitService is reused from
+// github_internal_test.go.
+func TestController_checkSHAMinAge_boundary(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	now := time.Date(2026, 5, 16, 0, 0, 0, 0, time.UTC)
+	cutoff := now.AddDate(0, 0, -7) // 2026-05-09
+
+	tests := []struct {
+		name        string
+		committedAt time.Time
+		minAge      int
+		wantErr     bool
+	}{
+		{
+			name:        "committed 1 day before cutoff -> ok",
+			committedAt: cutoff.AddDate(0, 0, -1),
+			minAge:      7,
+			wantErr:     false,
+		},
+		{
+			name:        "committed exactly at cutoff -> ok",
+			committedAt: cutoff,
+			minAge:      7,
+			wantErr:     false,
+		},
+		{
+			name:        "committed 1 day after cutoff -> violation",
+			committedAt: cutoff.AddDate(0, 0, 1),
+			minAge:      7,
+			wantErr:     true,
+		},
+		{
+			name:        "minAge=0 disables the check",
+			committedAt: now,
+			minAge:      0,
+			wantErr:     false,
+		},
+	}
+	logger := slog.New(slog.DiscardHandler)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			committedAt := tt.committedAt
+			gs := &mockGitService{
+				getCommitFunc: func(_ context.Context, _, _, _ string) (*github.Commit, *github.Response, error) {
+					return &github.Commit{
+						Committer: &github.CommitAuthor{
+							Date: &github.Timestamp{Time: committedAt},
+						},
+					}, &github.Response{}, nil
+				},
+			}
+			ctrl := New(nil, gs, fs, &config.Config{}, &ParamRun{
+				Now:          now,
+				VerifyMinAge: true, // enable the passive check for this test
+			})
+			err := ctrl.checkSHAMinAge(t.Context(), logger, "owner", "repo", "deadbeef", tt.minAge)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected ErrMinAge, got nil")
+				}
+				if !errors.Is(err, ErrMinAge) {
+					t.Fatalf("expected ErrMinAge, got %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+// TestController_checkSHAMinAge_disabledByDefault verifies that the passive
+// audit is skipped when neither ParamRun.VerifyMinAge nor cfg.VerifyMinAge is
+// set, even if the commit would otherwise violate the cutoff.
+func TestController_checkSHAMinAge_disabledByDefault(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 5, 16, 0, 0, 0, 0, time.UTC)
+	logger := slog.New(slog.DiscardHandler)
+	called := false
+	gs := &mockGitService{
+		getCommitFunc: func(_ context.Context, _, _, _ string) (*github.Commit, *github.Response, error) {
+			called = true
+			// Return a commit far younger than the cutoff so any check that
+			// runs would surface ErrMinAge.
+			return &github.Commit{
+				Committer: &github.CommitAuthor{
+					Date: &github.Timestamp{Time: now},
+				},
+			}, &github.Response{}, nil
+		},
+	}
+	ctrl := New(nil, gs, afero.NewMemMapFs(), &config.Config{}, &ParamRun{
+		Now: now,
+		// VerifyMinAge intentionally left false
+	})
+	if err := ctrl.checkSHAMinAge(t.Context(), logger, "owner", "repo", "deadbeef", 7); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if called {
+		t.Fatal("checkSHAMinAge called GetCommit even though VerifyMinAge is false")
+	}
+}
+
+// TestController_effectiveMinAge verifies the CLI/env > rules > config
+// precedence for resolving the per-action min-age threshold. PINACT_MIN_AGE
+// is wired into param.MinAge via urfave Sources, so it shares the slot with
+// the CLI -min-age flag and the "cliMinAge" column models either source.
+func TestController_effectiveMinAge(t *testing.T) {
+	t.Parallel()
+	zero := 0
+	five := 5
+	seven := 7
+	tests := []struct {
+		name         string
+		cliMinAge    int
+		topLevelMin  *int
+		ruleOverride *int
+		want         int
+	}{
+		{name: "CLI / env flag wins over rules / top-level", cliMinAge: 14, topLevelMin: &seven, ruleOverride: &five, want: 14},
+		{name: "rule overrides top-level when CLI unset", cliMinAge: 0, topLevelMin: &seven, ruleOverride: &five, want: 5},
+		{name: "rule min_age 0 disables check when CLI unset", cliMinAge: 0, topLevelMin: &seven, ruleOverride: &zero, want: 0},
+		{name: "top-level applies when no rule matched", cliMinAge: 0, topLevelMin: &seven, ruleOverride: nil, want: 7},
+		{name: "default 0 when nothing is set", cliMinAge: 0, topLevelMin: nil, ruleOverride: nil, want: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := &Controller{
+				cfg:   &config.Config{MinAge: &config.MinAge{Value: tt.topLevelMin}},
+				param: &ParamRun{MinAge: tt.cliMinAge},
+			}
+			got := ctrl.effectiveMinAge(&config.Resolved{MinAge: tt.ruleOverride})
+			if got != tt.want {
+				t.Errorf("got %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestController_minAgeFallback verifies the CLI/env > config.min_age.value
+// precedence used by contexts without rule resolution (the -update cooldown
+// filter inside getLatestVersionWithStable).
+func TestController_minAgeFallback(t *testing.T) {
+	t.Parallel()
+	seven := 7
+	sixty := 60
+	tests := []struct {
+		name        string
+		cliMinAge   int
+		topLevelMin *int
+		want        int
+	}{
+		{name: "CLI / env wins", cliMinAge: 14, topLevelMin: &seven, want: 14},
+		{name: "config applies when CLI / env unset", cliMinAge: 0, topLevelMin: &sixty, want: 60},
+		{name: "default 0 when nothing is set", cliMinAge: 0, topLevelMin: nil, want: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := &Controller{
+				cfg:   &config.Config{MinAge: &config.MinAge{Value: tt.topLevelMin}},
+				param: &ParamRun{MinAge: tt.cliMinAge},
+			}
+			if got := ctrl.minAgeFallback(); got != tt.want {
+				t.Errorf("got %d, want %d", got, tt.want)
 			}
 		})
 	}

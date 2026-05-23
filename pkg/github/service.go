@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-
-	"github.com/google/go-github/v83/github"
 )
 
 // RepositoriesService defines the interface for GitHub Repositories API operations.
@@ -15,11 +13,6 @@ type RepositoriesService interface {
 	GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *Response, error)
 	ListReleases(ctx context.Context, owner, repo string, opts *ListOptions) ([]*RepositoryRelease, *Response, error)
 	Get(ctx context.Context, owner, repo string) (*Repository, *Response, error)
-}
-
-// PullRequestsService defines the interface for GitHub Pull Requests API operations.
-type PullRequestsService interface {
-	CreateComment(ctx context.Context, owner, repo string, number int, comment *PullRequestComment) (*PullRequestComment, *Response, error)
 }
 
 // GitService defines the interface for GitHub Git API operations.
@@ -311,25 +304,4 @@ func filterDraftReleases(releases []*RepositoryRelease) []*RepositoryRelease {
 		arr = append(arr, release)
 	}
 	return arr
-}
-
-// PullRequestsServiceImpl wraps PullRequestsService with GHES support.
-type PullRequestsServiceImpl struct {
-	defaultPRService PullRequestsService
-	ghesPRService    PullRequestsService
-}
-
-// SetServices sets the default and GHES PullRequestsService.
-func (p *PullRequestsServiceImpl) SetServices(defaultService, ghesService PullRequestsService) {
-	p.defaultPRService = defaultService
-	p.ghesPRService = ghesService
-}
-
-// CreateComment creates a pull request comment.
-// If GHES is enabled, it always uses GHES (no fallback).
-func (p *PullRequestsServiceImpl) CreateComment(ctx context.Context, owner, repo string, number int, comment *github.PullRequestComment) (*github.PullRequestComment, *github.Response, error) {
-	if p.ghesPRService != nil {
-		return p.ghesPRService.CreateComment(ctx, owner, repo, number, comment) //nolint:wrapcheck
-	}
-	return p.defaultPRService.CreateComment(ctx, owner, repo, number, comment) //nolint:wrapcheck
 }

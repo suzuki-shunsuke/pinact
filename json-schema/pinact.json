@@ -1,8 +1,21 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/suzuki-shunsuke/pinact/v3/pkg/config/config",
+  "$id": "https://github.com/suzuki-shunsuke/pinact/v4/pkg/config/config",
   "$ref": "#/$defs/Config",
   "$defs": {
+    "Condition": {
+      "properties": {
+        "expr": {
+          "type": "string",
+          "description": "A boolean expression. See https://expr-lang.org/docs/language-definition"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "expr"
+      ]
+    },
     "Config": {
       "properties": {
         "version": {
@@ -24,7 +37,7 @@
             "$ref": "#/$defs/IgnoreAction"
           },
           "type": "array",
-          "description": "Actions and reusable workflows that pinact ignores"
+          "description": "Actions and reusable workflows that pinact ignores. For new configurations consider using 'rules' with 'ignore: true' for more flexibility"
         },
         "ghes": {
           "$ref": "#/$defs/GHES",
@@ -33,10 +46,24 @@
         "separator": {
           "type": "string",
           "description": "Separator between version and tag comment. Default is ' # '"
+        },
+        "min_age": {
+          "$ref": "#/$defs/MinAge",
+          "description": "Default min-age settings. value is the threshold in days; always opts every run into the passive audit. rules can override value per action"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/Rule"
+          },
+          "type": "array",
+          "description": "Per-action setting overrides. Later matching rules override earlier ones at the field level"
         }
       },
       "additionalProperties": false,
-      "type": "object"
+      "type": "object",
+      "required": [
+        "min_age"
+      ]
     },
     "File": {
       "properties": {
@@ -78,6 +105,41 @@
       "required": [
         "name"
       ]
+    },
+    "MinAge": {
+      "properties": {
+        "value": {
+          "type": "integer",
+          "description": "Default min-age threshold in days"
+        },
+        "always": {
+          "type": "boolean",
+          "description": "When true every run performs the passive min-age audit. Default false"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Rule": {
+      "properties": {
+        "ignore": {
+          "type": "boolean",
+          "description": "If true pinact skips pin/update/error for the matched action"
+        },
+        "min_age": {
+          "type": "integer",
+          "description": "Override the min-age threshold (in days) for the matched action. 0 disables the check for the action"
+        },
+        "conditions": {
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "type": "array",
+          "description": "Match conditions. The rule matches if any condition evaluates to true"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
     }
   }
 }

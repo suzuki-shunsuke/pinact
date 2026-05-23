@@ -9,12 +9,13 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-version"
-	"github.com/suzuki-shunsuke/pinact/v3/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
 var (
-	usesPattern          = regexp.MustCompile(`^( *(?:- )?['"]?uses['"]? *: +)(['"]?)(.*?)@([^ '"]+)['"]?(?:( +# +(?:tag=)?)(v?\d+[^ ]*)(.*))?`)
+	usesPattern          = regexp.MustCompile(`^( *(?:- +)?['"]?uses['"]? *: +)(['"]?)(.*?)@([^ '"]+)['"]?(?:( +# +(?:tag=)?)(v?\d+[^ ]*)(.*))?`)
 	fullCommitSHAPattern = regexp.MustCompile(`\b[0-9a-f]{40}\b`)
 	semverPattern        = regexp.MustCompile(`^v?\d+\.\d+\.\d+[^ ]*$`)
 	shortTagPattern      = regexp.MustCompile(`^v?\d+(\.\d+)?$`)
@@ -84,14 +85,9 @@ var ErrCantPinned = errors.New("action can't be pinned")
 
 // ignoreAction checks if an action should be ignored based on configuration.
 // It evaluates the action against all ignore rules in the configuration.
-func (c *Controller) ignoreAction(logger *slog.Logger, action *Action) bool {
+func (c *Controller) ignoreAction(action *Action) bool {
 	for _, ignoreAction := range c.cfg.IgnoreActions {
-		f, err := ignoreAction.Match(action.Name, action.Version, c.cfg.Version)
-		if err != nil {
-			slogerr.WithError(logger, err).Warn("match the action")
-			continue
-		}
-		if f {
+		if ignoreAction.Match(action.Name, action.Version) {
 			return true
 		}
 	}
@@ -127,6 +123,11 @@ func (c *Controller) excludeByIncludes(actionName string) bool {
 // parseLine processes a single line from a workflow file.
 // It parses the line for action usage, applies filtering rules, and determines
 // what modifications (if any) should be made based on the operation mode.
+//
+// As of v4, parseLine also runs the passive -min-age check on the final pinned
+// SHA. The check is skipped when -min-age is not set or no git service is
+// available. On violation it returns the patched line together with ErrMinAge
+// so the caller can apply the fix and bump the exit code to ExitCodeUnfixable.
 func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line string) (s string, e error) {
 	attrs := slogerr.NewAttrs(2) //nolint:mnd
 	defer func() {
@@ -149,12 +150,124 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 		return "", nil
 	}
 
-	return c.processVersionComment(ctx, logger, action, attrs)
+	resolved, err := c.cfg.ResolveRules(&config.MatchInput{
+		ActionName:         action.Name,
+		ActionRepoOwner:    action.RepoOwner,
+		ActionRepoName:     action.RepoName,
+		ActionRepoFullName: action.RepoOwner + "/" + action.RepoName,
+		ActionVersion:      action.Version,
+		VersionComment:     action.VersionComment,
+	})
+	if err != nil {
+		return "", fmt.Errorf("resolve rules: %w", err)
+	}
+	if resolved.Ignore {
+		logger.Debug("ignore the action by a rule")
+		return "", nil
+	}
+
+	newLine, err := c.processAction(ctx, logger, action, attrs, resolved)
+	if err != nil {
+		return newLine, err
+	}
+	if sha := c.finalPinnedSHA(action, newLine); sha != "" {
+		minAge := c.effectiveMinAge(resolved)
+		if minAgeErr := c.checkSHAMinAge(ctx, logger, action.RepoOwner, action.RepoName, sha, minAge); minAgeErr != nil {
+			return newLine, minAgeErr
+		}
+	}
+	return newLine, nil
+}
+
+// effectiveMinAge resolves the min-age threshold for a single action using the
+// precedence: CLI flag / PINACT_MIN_AGE env var > rules > config.min_age.value.
+//
+// PINACT_MIN_AGE is wired into the same flag via urfave Sources, so the env
+// var and CLI flag share the param.MinAge slot.
+//
+// A CLI / env value of 0 means the source was unset, so the rules / config
+// fallback applies. A rule that explicitly sets min_age to 0 disables the
+// check for the matched action.
+func (c *Controller) effectiveMinAge(resolved *config.Resolved) int {
+	if c.param.MinAge > 0 {
+		return c.param.MinAge
+	}
+	if resolved != nil && resolved.MinAge != nil {
+		return *resolved.MinAge
+	}
+	return c.minAgeFallback()
+}
+
+// minAgeFallback returns the threshold for contexts where no resolved rule is
+// available. Precedence is CLI / env > config.min_age.value.
+func (c *Controller) minAgeFallback() int {
+	if c.param.MinAge > 0 {
+		return c.param.MinAge
+	}
+	if c.cfg.MinAge != nil && c.cfg.MinAge.Value != nil {
+		return *c.cfg.MinAge.Value
+	}
+	return 0
+}
+
+// finalPinnedSHA returns the commit SHA that the action will resolve to after
+// pinact runs, or "" if no SHA is involved (e.g., an unpinnable branch that
+// will surface as ErrCantPinned elsewhere). If parseLine produced a patched
+// line, the SHA is extracted from the new line; otherwise it falls back to
+// action.Version when that is itself a full commit SHA.
+func (c *Controller) finalPinnedSHA(action *Action, newLine string) string {
+	if newLine != "" {
+		if m := fullCommitSHAPattern.FindString(newLine); m != "" {
+			return m
+		}
+	}
+	if getVersionType(action.Version) == FullCommitSHA {
+		return action.Version
+	}
+	return ""
+}
+
+// checkSHAMinAge looks up the commit date of sha and returns ErrMinAge if the
+// commit is younger than the min-age cutoff. minAge is the effective threshold
+// for this action, already merged across CLI flag, rules, and config defaults.
+//
+// The audit is opt-in: it runs only when -verify-min-age is set on the CLI or
+// config.min_age.always is true. Returns nil otherwise, or when minAge is 0
+// or negative, the git service is unavailable, or -no-api is set.
+func (c *Controller) checkSHAMinAge(ctx context.Context, logger *slog.Logger, owner, repo, sha string, minAge int) error {
+	always := c.cfg.MinAge != nil && c.cfg.MinAge.Always != nil && *c.cfg.MinAge.Always
+	if !c.param.VerifyMinAge && !always {
+		return nil
+	}
+	if minAge <= 0 || c.gitService == nil || c.param.NoAPI {
+		return nil
+	}
+	cutoff := c.param.Now.AddDate(0, 0, -minAge)
+	commit, _, err := c.gitService.GetCommit(ctx, logger, owner, repo, sha)
+	if err != nil {
+		return fmt.Errorf("get commit for min-age check: %w", err)
+	}
+	committedAt := commit.GetCommitter().GetDate().Time
+	if committedAt.After(cutoff) {
+		logger.Warn(
+			"min-age violation",
+			"sha", sha,
+			"committed_at", committedAt,
+			"cutoff", cutoff,
+		)
+		return fmt.Errorf(
+			"%w: %s/%s@%s committed at %s (cutoff %s)",
+			ErrMinAge, owner, repo, sha,
+			committedAt.Format("2006-01-02"),
+			cutoff.Format("2006-01-02"),
+		)
+	}
+	return nil
 }
 
 // shouldSkipAction checks if an action should be skipped based on filtering rules.
 func (c *Controller) shouldSkipAction(logger *slog.Logger, action *Action) bool {
-	if c.ignoreAction(logger, action) {
+	if c.ignoreAction(action) {
 		logger.Debug("ignore the action")
 		return true
 	}
@@ -169,48 +282,204 @@ func (c *Controller) shouldSkipAction(logger *slog.Logger, action *Action) bool 
 	return false
 }
 
-// processVersionComment processes the action based on its version comment type.
-func (c *Controller) processVersionComment(ctx context.Context, logger *slog.Logger, action *Action, attrs *slogerr.Attrs) (string, error) {
-	switch getVersionType(action.VersionComment) {
-	case Empty:
-		// @xxx
-		// Note that comments like "hoge" are treated as Empty
-		return c.parseNoTagLine(ctx, logger, action)
-	case Semver:
-		// @xxx # v1.0.0
-		return c.parseSemverTagLine(ctx, logger, action)
-	case Shortsemver:
-		// @xxx # v1
-		logger = attrs.Add(logger, "version_annotation", action.VersionComment)
-		return c.parseShortSemverTagLine(ctx, logger, action)
-	default:
-		// @xxx # hoge
+// processAction dispatches based on the action's version form. The version
+// is the primary determinant (already-pinned SHA vs. semver tag vs. branch);
+// the comment refines the behavior inside each branch.
+//
+// When -no-api is set, processAction short-circuits any GitHub API call:
+// already-pinned SHAs are accepted as-is and everything else is reported as
+// unfixable (ExitCodeUnfixable).
+func (c *Controller) processAction(ctx context.Context, logger *slog.Logger, action *Action, attrs *slogerr.Attrs, resolved *config.Resolved) (string, error) {
+	if c.param.NoAPI {
 		if getVersionType(action.Version) == FullCommitSHA {
-			// @<full commit sha> # hoge
 			return "", nil
 		}
-		// @<not full commit sha> # hoge
+		return "", ErrCantPinned
+	}
+	switch getVersionType(action.Version) {
+	case FullCommitSHA:
+		return c.processPinnedVersion(ctx, logger, action, attrs, resolved)
+	case Semver, Shortsemver:
+		return c.processTaggedVersion(ctx, logger, action, resolved)
+	default:
+		return c.processUnpinnedVersion(ctx, logger, action, resolved)
+	}
+}
+
+// processPinnedVersion handles actions whose Version is already a full commit
+// SHA. The comment determines whether to verify, expand a short tag, or
+// update to a newer release.
+func (c *Controller) processPinnedVersion(ctx context.Context, logger *slog.Logger, action *Action, attrs *slogerr.Attrs, resolved *config.Resolved) (string, error) {
+	switch getVersionType(action.VersionComment) {
+	case Semver:
+		// @<sha> # v1.0.0
+		return c.processPinnedSemverComment(ctx, logger, action, resolved)
+	case Shortsemver:
+		// @<sha> # v1
+		logger = attrs.Add(logger, "version_annotation", action.VersionComment)
+		return c.processPinnedShortsemverComment(ctx, logger, action, resolved)
+	case Empty:
+		// @<sha>: add a missing version comment by looking up the tag.
+		return c.addMissingComment(ctx, logger, action)
+	default:
+		// Other (@<sha> # hoge): already pinned, leave alone.
+		return "", nil
+	}
+}
+
+// processPinnedSemverComment handles @<sha> # v1.0.0.
+func (c *Controller) processPinnedSemverComment(ctx context.Context, logger *slog.Logger, action *Action, resolved *config.Resolved) (string, error) {
+	if !c.param.Update {
+		return c.verifyIfNeeded(ctx, logger, action)
+	}
+	lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment, resolved)
+	if err != nil {
+		return "", fmt.Errorf("get the latest version: %w", err)
+	}
+	if action.VersionComment == lv {
+		return c.verifyIfNeeded(ctx, logger, action)
+	}
+	if !compareVersion(action.VersionComment, lv) {
+		warnSkipOlderVersion(logger, action.VersionComment, lv)
+		return "", nil
+	}
+	return c.patchToLatestVersion(ctx, logger, action, lv)
+}
+
+// processPinnedShortsemverComment handles @<sha> # v1.
+func (c *Controller) processPinnedShortsemverComment(ctx context.Context, logger *slog.Logger, action *Action, resolved *config.Resolved) (string, error) {
+	if c.param.Update {
+		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment, resolved)
+		if err != nil {
+			return "", fmt.Errorf("get the latest version: %w", err)
+		}
+		return c.patchToLatestVersion(ctx, logger, action, lv)
+	}
+	// replace Shortsemver to Semver
+	longVersion, err := c.getLongVersionFromSHA(ctx, logger, action, action.Version)
+	if err != nil {
+		return "", err
+	}
+	if longVersion == "" {
+		logger.Debug("a long tag whose SHA is same as SHA of the version annotation isn't found")
+		return "", nil
+	}
+	return c.patchLine(action, action.Version, longVersion), nil
+}
+
+// processTaggedVersion handles actions whose Version is a semver or short
+// semver tag. These are unpinned and must be pinned to a commit SHA, or
+// updated to the latest version when --update is set.
+func (c *Controller) processTaggedVersion(ctx context.Context, logger *slog.Logger, action *Action, resolved *config.Resolved) (string, error) {
+	typ := getVersionType(action.Version)
+	switch getVersionType(action.VersionComment) {
+	case Empty:
+		// @v1 or @v1.0.0
+		if c.param.Update {
+			return c.updateToLatestVersion(ctx, logger, action, resolved)
+		}
+		return c.pinCurrentVersion(ctx, logger, action, typ)
+	case Semver:
+		// @v1 # v1.0.0 or @v1.0.0 # v1.0.0
+		if !c.param.Update {
+			return c.pinCurrentVersion(ctx, logger, action, typ)
+		}
+		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment, resolved)
+		if err != nil {
+			return "", fmt.Errorf("get the latest version: %w", err)
+		}
+		if action.VersionComment != lv && !compareVersion(action.VersionComment, lv) {
+			warnSkipOlderVersion(logger, action.VersionComment, lv)
+			return "", nil
+		}
+		return c.patchToLatestVersion(ctx, logger, action, lv)
+	default:
+		// Shortsemver or Other comment on an unpinned tag: invalid combination.
 		return "", ErrCantPinned
 	}
 }
 
-// parseNoTagLine processes actions without version comments.
-// It handles pinning actions that don't have version annotations,
-// either by updating to latest version or converting tags to commit SHAs.
-func (c *Controller) parseNoTagLine(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
-	typ := getVersionType(action.Version)
-	switch typ {
-	case Shortsemver, Semver:
-	case FullCommitSHA:
-		return c.addMissingComment(ctx, logger, action)
+// processUnpinnedVersion handles actions whose Version is neither a SHA nor
+// a semver tag (typically a branch name like main).
+func (c *Controller) processUnpinnedVersion(ctx context.Context, logger *slog.Logger, action *Action, resolved *config.Resolved) (string, error) {
+	switch getVersionType(action.VersionComment) {
+	case Empty:
+		if c.matchBranchToTag(action.Version) {
+			return c.convertBranchToLatestTag(ctx, logger, action, resolved)
+		}
+		return "", ErrCantPinned
+	case Semver:
+		if !c.param.Update {
+			return "", ErrCantPinned
+		}
+		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment, resolved)
+		if err != nil {
+			return "", fmt.Errorf("get the latest version: %w", err)
+		}
+		if action.VersionComment == lv {
+			return "", ErrCantPinned
+		}
+		if !compareVersion(action.VersionComment, lv) {
+			warnSkipOlderVersion(logger, action.VersionComment, lv)
+			return "", nil
+		}
+		return c.patchToLatestVersion(ctx, logger, action, lv)
 	default:
 		return "", ErrCantPinned
 	}
-	// @v1, @v1.0.0
-	if c.param.Update {
-		return c.updateToLatestVersion(ctx, logger, action)
+}
+
+// patchToLatestVersion fetches the commit SHA of the latest version and
+// rewrites the action line to pin against it.
+func (c *Controller) patchToLatestVersion(ctx context.Context, logger *slog.Logger, action *Action, lv string) (string, error) {
+	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
+	if err != nil {
+		return "", fmt.Errorf("get the latest version: %w", err)
 	}
-	return c.pinCurrentVersion(ctx, logger, action, typ)
+	return c.patchLine(action, sha, lv), nil
+}
+
+func warnSkipOlderVersion(logger *slog.Logger, currentVersion, newVersion string) {
+	logger.Warn(
+		"skip updating because the current version is newer than the new version",
+		"current_version", currentVersion,
+		"new_version", newVersion,
+	)
+}
+
+// matchBranchToTag reports whether v matches any of the --branch-to-tag regexps.
+func (c *Controller) matchBranchToTag(v string) bool {
+	for _, re := range c.param.BranchToTags {
+		if re.MatchString(v) {
+			return true
+		}
+	}
+	return false
+}
+
+// convertBranchToLatestTag resolves an action's non-semver version (e.g. a
+// branch name) to the latest stable tag of the action's repository and pins
+// the line to its commit SHA. Falls back to including pre-releases only when
+// no stable tag exists.
+func (c *Controller) convertBranchToLatestTag(ctx context.Context, logger *slog.Logger, action *Action, resolved *config.Resolved) (string, error) {
+	lv, err := c.getLatestVersionWithStable(ctx, logger, action.RepoOwner, action.RepoName, true, resolved)
+	if err != nil {
+		return "", fmt.Errorf("get the latest stable version: %w", err)
+	}
+	if lv == "" {
+		lv, err = c.getLatestVersionWithStable(ctx, logger, action.RepoOwner, action.RepoName, false, resolved)
+		if err != nil {
+			return "", fmt.Errorf("get the latest version: %w", err)
+		}
+		if lv == "" {
+			return "", ErrCantPinned
+		}
+	}
+	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
+	if err != nil {
+		return "", fmt.Errorf("get a reference: %w", err)
+	}
+	return c.patchLine(action, sha, lv), nil
 }
 
 // addMissingComment looks up the tag for a pinned commit SHA and adds the version comment.
@@ -226,8 +495,8 @@ func (c *Controller) addMissingComment(ctx context.Context, logger *slog.Logger,
 }
 
 // updateToLatestVersion updates an action to its latest version.
-func (c *Controller) updateToLatestVersion(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
-	lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.Version)
+func (c *Controller) updateToLatestVersion(ctx context.Context, logger *slog.Logger, action *Action, resolved *config.Resolved) (string, error) {
+	lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.Version, resolved)
 	if err != nil {
 		return "", fmt.Errorf("get the latest version: %w", err)
 	}
@@ -274,71 +543,6 @@ func compareVersion(currentVersion, newVersion string) bool {
 	return nv.GreaterThan(cv)
 }
 
-// parseSemverTagLine processes actions with semantic version comments.
-// It handles updating semantic versions to latest and verifying that
-// commit SHAs match their corresponding version tags.
-func (c *Controller) parseSemverTagLine(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
-	// @xxx # v3.0.0
-	if c.param.Update {
-		return c.parseSemverTagLineUpdate(ctx, logger, action)
-	}
-	return c.parseSemverTagLinePin(ctx, logger, action)
-}
-
-// parseSemverTagLineUpdate handles the update case for semver tag lines.
-func (c *Controller) parseSemverTagLineUpdate(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
-	lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment)
-	if err != nil {
-		return "", fmt.Errorf("get the latest version: %w", err)
-	}
-	if action.VersionComment == lv {
-		return c.handleCurrentVersionIsLatest(ctx, logger, action, lv)
-	}
-	return c.handleUpdateToNewerVersion(ctx, logger, action, lv)
-}
-
-// handleCurrentVersionIsLatest handles when the current version comment matches the latest version.
-func (c *Controller) handleCurrentVersionIsLatest(ctx context.Context, logger *slog.Logger, action *Action, lv string) (string, error) {
-	switch getVersionType(action.Version) {
-	case Semver, Shortsemver:
-		sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
-		if err != nil {
-			return "", fmt.Errorf("get the latest version: %w", err)
-		}
-		return c.patchLine(action, sha, lv), nil
-	case FullCommitSHA:
-		return c.verifyIfNeeded(ctx, logger, action)
-	}
-	return "", ErrCantPinned
-}
-
-// handleUpdateToNewerVersion handles updating to a newer version when available.
-func (c *Controller) handleUpdateToNewerVersion(ctx context.Context, logger *slog.Logger, action *Action, lv string) (string, error) {
-	if !compareVersion(action.VersionComment, lv) {
-		logger.Warn("skip updating because the current version is newer than the new version",
-			"current_version", action.VersionComment,
-			"new_version", lv,
-		)
-		return "", nil
-	}
-	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
-	if err != nil {
-		return "", fmt.Errorf("get the latest version: %w", err)
-	}
-	return c.patchLine(action, sha, lv), nil
-}
-
-// parseSemverTagLinePin handles the pin case for semver tag lines.
-func (c *Controller) parseSemverTagLinePin(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
-	switch typ := getVersionType(action.Version); typ {
-	case Semver, Shortsemver:
-		return c.pinCurrentVersion(ctx, logger, action, typ)
-	case FullCommitSHA:
-		return c.verifyIfNeeded(ctx, logger, action)
-	}
-	return "", ErrCantPinned
-}
-
 // verifyIfNeeded verifies the commit hash if verification is enabled.
 func (c *Controller) verifyIfNeeded(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
 	if c.param.IsVerify {
@@ -347,38 +551,6 @@ func (c *Controller) verifyIfNeeded(ctx context.Context, logger *slog.Logger, ac
 		}
 	}
 	return "", nil
-}
-
-// parseShortSemverTagLine processes actions with short semantic version comments.
-// It handles expanding short versions (like v3) to full versions (like v3.1.0)
-// and updating to latest versions when requested.
-func (c *Controller) parseShortSemverTagLine(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
-	// @xxx # v3
-	// @<full commit hash> # v3
-	if FullCommitSHA != getVersionType(action.Version) {
-		return "", ErrCantPinned
-	}
-	if c.param.Update {
-		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment)
-		if err != nil {
-			return "", fmt.Errorf("get the latest version: %w", err)
-		}
-		sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
-		if err != nil {
-			return "", fmt.Errorf("get the latest version: %w", err)
-		}
-		return c.patchLine(action, sha, lv), nil
-	}
-	// replace Shortsemer to Semver
-	longVersion, err := c.getLongVersionFromSHA(ctx, logger, action, action.Version)
-	if err != nil {
-		return "", err
-	}
-	if longVersion == "" {
-		logger.Debug("a long tag whose SHA is same as SHA of the version annotation isn't found")
-		return "", nil
-	}
-	return c.patchLine(action, action.Version, longVersion), nil
 }
 
 // patchLine reconstructs a workflow line with updated version and tag.
@@ -396,7 +568,7 @@ func (c *Controller) patchLine(action *Action, version, tag string) string {
 // It searches through repository tags to find a tag that points to the given
 // commit and matches the version comment prefix.
 // When multiple tags match, it prefers semver tags over short semver or non-version tags.
-func (c *Controller) getLongVersionFromSHA(ctx context.Context, logger *slog.Logger, action *Action, sha string) (string, error) {
+func (c *Controller) getLongVersionFromSHA(ctx context.Context, logger *slog.Logger, action *Action, sha string) (string, error) { //nolint:gocognit,cyclop
 	opts := &github.ListOptions{
 		PerPage: 100, //nolint:mnd
 	}
@@ -471,7 +643,8 @@ func (c *Controller) verify(ctx context.Context, logger *slog.Logger, action *Ac
 	if action.Version == sha {
 		return nil
 	}
-	return slogerr.With(errors.New("action_version must be equal to commit_hash_of_version_annotation"), //nolint:wrapcheck
+	return slogerr.With( //nolint:wrapcheck
+		errors.New("action_version must be equal to commit_hash_of_version_annotation"),
 		"action", action.Name,
 		"action_version", action.Version,
 		"version_annotation", action.VersionComment,
