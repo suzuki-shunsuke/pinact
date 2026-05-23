@@ -35,12 +35,22 @@ func (c *Controller) searchFiles() ([]string, error) {
 }
 
 // searchFilesRaw performs the unfiltered discovery step shared by all modes.
+//
+// When the user has not provided explicit args or configured file patterns
+// and a -diff-file is set, the diff's file list becomes the source. This
+// makes `pinact run --fix=false --diff-file ...` work even when the
+// workflow files are not present on disk (e.g. a CI job that validates a
+// PR diff without running actions/checkout): runWorkflowFromDiff reads
+// only from the diff content in check mode, so the disk is never touched.
 func (c *Controller) searchFilesRaw() ([]string, error) {
 	if len(c.param.WorkflowFilePaths) != 0 {
 		return c.param.WorkflowFilePaths, nil
 	}
 	if c.cfg != nil && len(c.cfg.Files) > 0 {
 		return c.searchFilesByGlob()
+	}
+	if c.param.DiffFilter != nil {
+		return c.param.DiffFilter.Files(), nil
 	}
 	return listWorkflows()
 }

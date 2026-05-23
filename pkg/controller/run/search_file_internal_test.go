@@ -1,8 +1,10 @@
 package run
 
 import (
+	"sort"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
 )
@@ -102,6 +104,58 @@ func TestController_searchFiles_withWorkflowPaths(t *testing.T) {
 
 	if len(got) != 3 {
 		t.Errorf("searchFiles() got %d files, want 3", len(got))
+	}
+}
+
+// When no args/config files are set, a -diff-file becomes the source of
+// file paths. This lets `pinact run --fix=false --diff-file ...` work
+// without requiring the workflow files to be present on disk.
+func TestController_searchFiles_diffFileAsSource(t *testing.T) {
+	t.Parallel()
+	df := &DiffFilter{files: map[string][]DiffLine{
+		".github/workflows/test.yaml": {{Number: 1, Content: "x"}},
+		"composite/foo/bar/baz/qux/action.yml": {
+			{Number: 2, Content: "y"},
+		},
+	}}
+	ctrl := New(nil, nil, afero.NewMemMapFs(), nil, &ParamRun{DiffFilter: df})
+
+	got, err := ctrl.searchFiles()
+	if err != nil {
+		t.Fatalf("searchFiles() error = %v", err)
+	}
+	sort.Strings(got)
+	want := []string{
+		".github/workflows/test.yaml",
+		"composite/foo/bar/baz/qux/action.yml",
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("searchFiles() mismatch (-want +got):\n%s", diff)
+	}
+}
+
+// Explicit args still win over a -diff-file: the args define the candidate
+// set and the diff filter intersects it.
+func TestController_searchFiles_argsWithDiffFile(t *testing.T) {
+	t.Parallel()
+	df := &DiffFilter{files: map[string][]DiffLine{
+		"a.yaml": {{Number: 1, Content: "x"}},
+		"c.yaml": {{Number: 2, Content: "y"}},
+	}}
+	ctrl := New(nil, nil, afero.NewMemMapFs(), &config.Config{}, &ParamRun{
+		WorkflowFilePaths: []string{"a.yaml", "b.yaml"},
+		DiffFilter:        df,
+	})
+
+	got, err := ctrl.searchFiles()
+	if err != nil {
+		t.Fatalf("searchFiles() error = %v", err)
+	}
+	// "b.yaml" is in args but not in the diff -> filtered out.
+	// "c.yaml" is in the diff but not in args -> not in source.
+	want := []string{"a.yaml"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("searchFiles() mismatch (-want +got):\n%s", diff)
 	}
 }
 
