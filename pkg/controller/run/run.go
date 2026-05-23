@@ -276,10 +276,11 @@ func (c *Controller) handleLineError(ctx context.Context, lineLogger *slog.Logge
 }
 
 // classifyLineError maps a per-line parse/process error to an exit code class.
-//   - ErrCantPinned / ErrUnfixable / ErrMinAge / verify mismatch -> ExitCodeUnfixable (2)
-//   - ErrAPI / anything else                                     -> ExitCodeAPIError  (3)
+//   - ErrCantPinned / ErrUnfixable / ErrMinAge / ErrMissingVersionComment /
+//     verify mismatch -> ExitCodeUnfixable (2)
+//   - ErrAPI / anything else -> ExitCodeAPIError (3)
 func classifyLineError(err error) int {
-	if errors.Is(err, ErrCantPinned) || errors.Is(err, ErrUnfixable) || errors.Is(err, ErrMinAge) {
+	if errors.Is(err, ErrCantPinned) || errors.Is(err, ErrUnfixable) || errors.Is(err, ErrMinAge) || errors.Is(err, ErrMissingVersionComment) {
 		return ExitCodeUnfixable
 	}
 	return ExitCodeAPIError

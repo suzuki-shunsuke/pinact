@@ -81,7 +81,10 @@ func parseAction(line string) *Action {
 	}
 }
 
-var ErrCantPinned = errors.New("action can't be pinned")
+var (
+	ErrCantPinned            = errors.New("action can't be pinned")
+	ErrMissingVersionComment = errors.New("SHA-pinned action requires a version comment for verifiability")
+)
 
 // ignoreAction checks if an action should be ignored based on configuration.
 // It evaluates the action against all ignore rules in the configuration.
@@ -287,11 +290,19 @@ func (c *Controller) shouldSkipAction(logger *slog.Logger, action *Action) bool 
 // the comment refines the behavior inside each branch.
 //
 // When -no-api is set, processAction short-circuits any GitHub API call:
-// already-pinned SHAs are accepted as-is and everything else is reported as
-// unfixable (ExitCodeUnfixable).
+// already-pinned SHAs with a version comment are accepted as-is; SHAs without
+// a comment cannot be cross-verified against any upstream tag (no API to look
+// it up), so they are rejected as ErrMissingVersionComment. Everything else
+// is reported as unfixable (ExitCodeUnfixable).
 func (c *Controller) processAction(ctx context.Context, logger *slog.Logger, action *Action, attrs *slogerr.Attrs, resolved *config.Resolved) (string, error) {
 	if c.param.NoAPI {
 		if getVersionType(action.Version) == FullCommitSHA {
+			if getVersionType(action.VersionComment) == Empty {
+				return "", slogerr.With( //nolint:wrapcheck
+					ErrMissingVersionComment,
+					"docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/005.md",
+				)
+			}
 			return "", nil
 		}
 		return "", ErrCantPinned
@@ -483,13 +494,19 @@ func (c *Controller) convertBranchToLatestTag(ctx context.Context, logger *slog.
 }
 
 // addMissingComment looks up the tag for a pinned commit SHA and adds the version comment.
+// If no upstream tag points at the SHA, returns ErrMissingVersionComment: the SHA cannot
+// be cross-verified against an upstream tag, which is the safety guarantee version
+// comments are meant to provide.
 func (c *Controller) addMissingComment(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
 	v, err := c.getLongVersionFromSHA(ctx, logger, action, action.Version)
 	if err != nil {
 		return "", err
 	}
 	if v == "" {
-		return "", nil
+		return "", slogerr.With( //nolint:wrapcheck
+			ErrMissingVersionComment,
+			"docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/005.md",
+		)
 	}
 	return c.patchLine(action, action.Version, v), nil
 }
@@ -661,7 +678,8 @@ func (c *Controller) verify(ctx context.Context, logger *slog.Logger, action *Ac
 			return "", fmt.Errorf("find version for SHA: %w", err)
 		}
 		if correctVersion != "" {
-			logger.Warn("version annotation mismatch detected, correcting comment",
+			logger.Warn(
+				"version annotation mismatch detected, correcting comment",
 				"action", action.Name,
 				"action_version", action.Version,
 				"version_annotation", action.VersionComment,
