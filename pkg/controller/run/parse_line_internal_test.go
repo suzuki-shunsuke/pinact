@@ -174,8 +174,9 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			exp:  `  - 'uses': "actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab" # v3.5.2`,
 		},
 		{
-			name: "pinned SHA without comment - no matching tag",
-			line: "  - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			name:  "pinned SHA without comment - no matching tag",
+			line:  "  - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			isErr: true,
 		},
 		{
 			name: "multi-space after dash",
@@ -260,6 +261,7 @@ func TestController_parseLine_addMissingComment(t *testing.T) { //nolint:funlen
 		commits map[string]*github.GetCommitSHA1Result
 		line    string
 		exp     string
+		wantErr error
 	}{
 		{
 			name: "semver tag found directly",
@@ -347,7 +349,7 @@ func TestController_parseLine_addMissingComment(t *testing.T) { //nolint:funlen
 			exp:  "  - uses: actions/checkout@" + sha + " # 2.11.5",
 		},
 		{
-			name: "only non-version tags - pinned SHA unchanged",
+			name: "only non-version tags - error because SHA can't be cross-verified",
 			tags: []*github.RepositoryTag{
 				{
 					Name:   new("latest"),
@@ -358,7 +360,25 @@ func TestController_parseLine_addMissingComment(t *testing.T) { //nolint:funlen
 					Commit: &github.Commit{SHA: new(sha)},
 				},
 			},
-			line: "  - uses: actions/checkout@" + sha,
+			line:    "  - uses: actions/checkout@" + sha,
+			wantErr: ErrMissingVersionComment,
+		},
+		{
+			name:    "no tags at all - error because SHA can't be cross-verified",
+			tags:    []*github.RepositoryTag{},
+			line:    "  - uses: actions/checkout@" + sha,
+			wantErr: ErrMissingVersionComment,
+		},
+		{
+			name: "tag exists but for a different SHA - error",
+			tags: []*github.RepositoryTag{
+				{
+					Name:   new("v1.0.0"),
+					Commit: &github.Commit{SHA: new("0000000000000000000000000000000000000000")},
+				},
+			},
+			line:    "  - uses: actions/checkout@" + sha,
+			wantErr: ErrMissingVersionComment,
 		},
 	}
 	logger := slog.New(slog.DiscardHandler)
@@ -388,11 +408,62 @@ func TestController_parseLine_addMissingComment(t *testing.T) { //nolint:funlen
 				Separator: " # ",
 			}, &ParamRun{})
 			line, err := ctrl.parseLine(t.Context(), logger, d.line)
+			if d.wantErr != nil {
+				if !errors.Is(err, d.wantErr) {
+					t.Fatalf("wanted error %v, got %v", d.wantErr, err)
+				}
+				return
+			}
 			if err != nil {
 				t.Fatal(err)
 			}
 			if line != d.exp {
 				t.Fatalf("wanted %s, got %s", d.exp, line)
+			}
+		})
+	}
+}
+
+func TestController_parseLine_noAPI(t *testing.T) {
+	t.Parallel()
+	sha := "8e5e7e5ab8b370d6c329ec480221332ada57f0ab"
+	data := []struct {
+		name    string
+		line    string
+		wantErr error
+	}{
+		{
+			name: "pinned SHA with version comment is accepted",
+			line: "  - uses: actions/checkout@" + sha + " # v3.5.2",
+		},
+		{
+			name:    "pinned SHA without version comment is rejected",
+			line:    "  - uses: actions/checkout@" + sha,
+			wantErr: ErrMissingVersionComment,
+		},
+		{
+			name:    "tag reference is rejected (can't pin without API)",
+			line:    "  - uses: actions/checkout@v3",
+			wantErr: ErrCantPinned,
+		},
+	}
+	logger := slog.New(slog.DiscardHandler)
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			ctrl := New(nil, nil, fs, &config.Config{
+				Separator: " # ",
+			}, &ParamRun{NoAPI: true})
+			_, err := ctrl.parseLine(t.Context(), logger, d.line)
+			if d.wantErr != nil {
+				if !errors.Is(err, d.wantErr) {
+					t.Fatalf("wanted error %v, got %v", d.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
 			}
 		})
 	}

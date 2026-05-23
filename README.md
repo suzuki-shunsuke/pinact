@@ -29,6 +29,7 @@ $ pinact run
 1. [Offline check without GitHub API](#offline-check--no-api)
 1. [Update actions](#update-actions--update) with a [minimum release age](#minimum-release-age-cooldown--min-age--verify-min-age)
 1. [Verify version comments](docs/codes/001.md) ([`-verify-comment`](#verify-version-comments--verify-comment--verify--v))
+1. [Require a version comment on SHA-pinned actions](docs/codes/005.md)
 1. [Verify if actions meet the minimum release age](#minimum-release-age-cooldown--min-age)
 1. [Pin branches](#pin-branches--branch-to-tag)
 1. [Include and exclude specific actions](#include-and-exclude-specific-actions)
@@ -368,7 +369,7 @@ For more details, see [Configuration File](docs/config.md).
 | --- | --- |
 | 0 | Everything is pinned, or pinact fixed it |
 | 1 | `-fix=false` was set and something needs pinning |
-| 2 | An action cannot be auto-fixed (branch reference, `-verify-comment` mismatch, or `-min-age` violation) |
+| 2 | An action cannot be auto-fixed (branch reference, [missing version comment on a SHA pin](docs/codes/005.md), `-verify-comment` mismatch, or `-min-age` violation) |
 | 3 | GitHub API error, invalid CLI flag combination, or other unexpected error |
 
 ## GitHub Actions
