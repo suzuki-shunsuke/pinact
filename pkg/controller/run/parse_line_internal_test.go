@@ -909,6 +909,73 @@ func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
 	}
 }
 
+// TestController_parseLine_update_ruleMinAge verifies that rules[].min_age
+// overrides the global min_age.value when selecting the update target during
+// `pinact run -u`. With the global cutoff (3 days) v2.0.0 would be filtered out,
+// but the rule sets min_age to 0 so the recent release must be picked.
+func TestController_parseLine_update_ruleMinAge(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 5, 13, 0, 0, 0, 0, time.UTC)
+	tags := &github.ListTagsResult{
+		Tags: []*github.RepositoryTag{
+			{Name: new("v2.0.0"), Commit: &github.Commit{SHA: new("2222222222222222222222222222222222222222")}},
+			{Name: new("v1.0.0"), Commit: &github.Commit{SHA: new("1111111111111111111111111111111111111111")}},
+		},
+		Response: &github.Response{},
+	}
+	releases := &github.ListReleasesResult{
+		Releases: []*github.RepositoryRelease{
+			{TagName: new("v2.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -1)}},
+			{TagName: new("v1.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -30)}},
+		},
+		Response: &github.Response{},
+	}
+	commits := map[string]*github.GetCommitSHA1Result{
+		"aquaproj/example/v2.0.0": {SHA: "2222222222222222222222222222222222222222"},
+	}
+
+	three := 3
+	zero := 0
+	cfg := &config.Config{
+		Separator: " # ",
+		MinAge:    &config.MinAge{Value: &three},
+		Rules: []*config.Rule{
+			{
+				MinAge: &zero,
+				Conditions: []*config.Condition{
+					{Expr: `ActionRepoOwner == "aquaproj"`},
+				},
+			},
+		},
+	}
+	for i, r := range cfg.Rules {
+		if err := r.Init(); err != nil {
+			t.Fatalf("init rules[%d]: %v", i, err)
+		}
+	}
+
+	fs := afero.NewMemMapFs()
+	ctrl := New(&github.RepositoriesServiceImpl{
+		Tags:     map[string]*github.ListTagsResult{"aquaproj/example/0": tags},
+		Releases: map[string]*github.ListReleasesResult{"aquaproj/example/0": releases},
+		Commits:  commits,
+	}, nil, fs, cfg, &ParamRun{
+		Update: true,
+		Now:    now,
+	})
+	logger := slog.New(slog.DiscardHandler)
+
+	line := "  - uses: aquaproj/example@1111111111111111111111111111111111111111 # v1.0.0"
+	got, err := ctrl.parseLine(t.Context(), logger, line)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "  - uses: aquaproj/example@2222222222222222222222222222222222222222 # v2.0.0"
+	if got != want {
+		t.Fatalf("rules[].min_age=0 should override cooldown:\n  want %s\n  got  %s", want, got)
+	}
+}
+
 // TestController_checkSHAMinAge_boundary verifies that the passive -min-age
 // check returns ErrMinAge when the commit is younger than the cutoff and
 // returns nil when it is older. The mock GitService is reused from
