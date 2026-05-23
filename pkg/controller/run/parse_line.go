@@ -667,7 +667,7 @@ func (c *Controller) verify(ctx context.Context, logger *slog.Logger, action *Ac
 				"version_annotation", action.VersionComment,
 				"commit_hash_of_version_annotation", sha,
 				"correct_version", correctVersion,
-				"help_docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md",
+				"docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md",
 			)
 			return c.patchLine(action, action.Version, correctVersion), nil
 		}
@@ -679,6 +679,6 @@ func (c *Controller) verify(ctx context.Context, logger *slog.Logger, action *Ac
 		"action_version", action.Version,
 		"version_annotation", action.VersionComment,
 		"commit_hash_of_version_annotation", sha,
-		"help_docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md",
+		"docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md",
 	)
 }
