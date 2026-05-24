@@ -516,6 +516,117 @@ func Test_checkTagCooldown(t *testing.T) { //nolint:funlen
 	}
 }
 
+func Test_parseMajor(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		version string
+		want    int64
+		wantOK  bool
+	}{
+		{name: "empty string", version: "", want: 0, wantOK: false},
+		{name: "semver with v prefix", version: "v4.3.1", want: 4, wantOK: true},
+		{name: "semver without v prefix", version: "5.0.0", want: 5, wantOK: true},
+		{name: "short major", version: "v3", want: 3, wantOK: true},
+		{name: "prerelease", version: "v6.0.0-rc.1", want: 6, wantOK: true},
+		{name: "branch name", version: "main", want: 0, wantOK: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, ok := parseMajor(tt.version)
+			if ok != tt.wantOK {
+				t.Fatalf("ok = %v, want %v", ok, tt.wantOK)
+			}
+			if ok && got != tt.want {
+				t.Errorf("got %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_skipMajorMismatch(t *testing.T) {
+	t.Parallel()
+	four := int64(4)
+	tests := []struct {
+		name         string
+		currentMajor *int64
+		tag          string
+		want         bool
+	}{
+		{name: "nil currentMajor lets every tag pass", currentMajor: nil, tag: "v9.0.0", want: false},
+		{name: "matching major passes", currentMajor: &four, tag: "v4.3.1", want: false},
+		{name: "different major is skipped", currentMajor: &four, tag: "v5.0.0", want: true},
+		{name: "non-semver tag passes (cannot judge)", currentMajor: &four, tag: "release", want: false},
+	}
+	logger := slog.New(slog.DiscardHandler)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := skipMajorMismatch(logger, tt.currentMajor, tt.tag)
+			if got != tt.want {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestController_getLatestVersionFromReleases_keepMajor verifies that
+// providing a non-nil currentMajor filters out releases whose major version
+// differs, so the latest candidate stays within the current major series.
+func TestController_getLatestVersionFromReleases_keepMajor(t *testing.T) {
+	t.Parallel()
+	four := int64(4)
+	releases := []*github.RepositoryRelease{
+		{TagName: new("v6.0.2")},
+		{TagName: new("v5.1.0")},
+		{TagName: new("v4.3.1")},
+		{TagName: new("v4.2.0")},
+		{TagName: new("v3.5.0")},
+	}
+	mockRepo := &mockRepoService{
+		listReleasesFunc: func(_ context.Context, _, _ string, _ *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error) {
+			return releases, nil, nil
+		},
+	}
+	c := &Controller{repositoriesService: newTestRepoService(mockRepo)}
+	logger := slog.New(slog.DiscardHandler)
+	got, _, err := c.getLatestVersionFromReleases(t.Context(), logger, "owner", "repo", true, time.Time{}, &four)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "v4.3.1" {
+		t.Errorf("got %q, want v4.3.1", got)
+	}
+}
+
+// TestController_getLatestVersionFromTags_keepMajor verifies the same
+// major-version filter for the tag-based search path.
+func TestController_getLatestVersionFromTags_keepMajor(t *testing.T) {
+	t.Parallel()
+	four := int64(4)
+	tags := []*github.RepositoryTag{
+		{Name: new("v6.0.2")},
+		{Name: new("v5.0.0")},
+		{Name: new("v4.3.1")},
+		{Name: new("v4.0.0")},
+	}
+	mockRepo := &mockRepoService{
+		listTagsFunc: func(_ context.Context, _, _ string, _ *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error) {
+			return tags, nil, nil
+		},
+	}
+	c := &Controller{repositoriesService: newTestRepoService(mockRepo)}
+	logger := slog.New(slog.DiscardHandler)
+	got, err := c.getLatestVersionFromTags(t.Context(), logger, "owner", "repo", false, time.Time{}, nil, &four)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "v4.3.1" {
+		t.Errorf("got %q, want v4.3.1", got)
+	}
+}
+
 type mockGitService struct {
 	getCommitFunc func(ctx context.Context, owner, repo, sha string) (*github.Commit, *github.Response, error)
 }

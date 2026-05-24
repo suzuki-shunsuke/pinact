@@ -1353,6 +1353,152 @@ func TestController_effectiveMinAge(t *testing.T) {
 	}
 }
 
+// TestController_effectiveKeepMajor verifies the rules > CLI > config
+// precedence for the per-action keep-major decision. Rules win over the CLI
+// so an explicit per-action opt-out (rules[].keep_major: false) is honored
+// even when the user passes --keep-major globally.
+func TestController_effectiveKeepMajor(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		cliKeepMajor  bool
+		cfgKeepMajor  *bool
+		ruleKeepMajor *bool
+		want          bool
+	}{
+		{name: "default false when nothing is set", cliKeepMajor: false, cfgKeepMajor: nil, ruleKeepMajor: nil, want: false},
+		{name: "CLI true with no rule and no cfg", cliKeepMajor: true, cfgKeepMajor: nil, ruleKeepMajor: nil, want: true},
+		{name: "cfg true with no CLI and no rule", cliKeepMajor: false, cfgKeepMajor: new(true), ruleKeepMajor: nil, want: true},
+		{name: "rule true overrides cfg/CLI false", cliKeepMajor: false, cfgKeepMajor: new(false), ruleKeepMajor: new(true), want: true},
+		{name: "rule false overrides CLI true (per-action opt-out)", cliKeepMajor: true, cfgKeepMajor: nil, ruleKeepMajor: new(false), want: false},
+		{name: "rule false overrides cfg true (per-action opt-out)", cliKeepMajor: false, cfgKeepMajor: new(true), ruleKeepMajor: new(false), want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := &Controller{
+				cfg:   &config.Config{KeepMajor: tt.cfgKeepMajor},
+				param: &ParamRun{KeepMajor: tt.cliKeepMajor},
+			}
+			got := ctrl.effectiveKeepMajor(&config.Resolved{KeepMajor: tt.ruleKeepMajor})
+			if got != tt.want {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestController_parseLine_update_keepMajor verifies that --keep-major
+// restricts -u to releases within the same major version as the current pin's
+// version comment. The repository advertises v6.0.0 as the latest, but the
+// action is pinned at v4.3.1 so the upgrade target must stay at v4.x.
+func TestController_parseLine_update_keepMajor(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 5, 24, 0, 0, 0, 0, time.UTC)
+	tags := &github.ListTagsResult{
+		Tags: []*github.RepositoryTag{
+			{Name: new("v6.0.0"), Commit: &github.Commit{SHA: new("6666666666666666666666666666666666666666")}},
+			{Name: new("v4.4.0"), Commit: &github.Commit{SHA: new("4444444444444444444444444444444444444444")}},
+			{Name: new("v4.3.1"), Commit: &github.Commit{SHA: new("3333333333333333333333333333333333333333")}},
+		},
+		Response: &github.Response{},
+	}
+	releases := &github.ListReleasesResult{
+		Releases: []*github.RepositoryRelease{
+			{TagName: new("v6.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -10)}},
+			{TagName: new("v4.4.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -20)}},
+			{TagName: new("v4.3.1"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -90)}},
+		},
+		Response: &github.Response{},
+	}
+	commits := map[string]*github.GetCommitSHA1Result{
+		"aquaproj/example/v4.4.0": {SHA: "4444444444444444444444444444444444444444"},
+	}
+	cfg := &config.Config{Separator: " # "}
+	fs := afero.NewMemMapFs()
+	ctrl := New(&github.RepositoriesServiceImpl{
+		Tags:     map[string]*github.ListTagsResult{"aquaproj/example/0": tags},
+		Releases: map[string]*github.ListReleasesResult{"aquaproj/example/0": releases},
+		Commits:  commits,
+	}, nil, fs, cfg, &ParamRun{
+		Update:    true,
+		KeepMajor: true,
+		Now:       now,
+	})
+	logger := slog.New(slog.DiscardHandler)
+
+	line := "  - uses: aquaproj/example@3333333333333333333333333333333333333333 # v4.3.1"
+	got, err := ctrl.parseLine(t.Context(), logger, line)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "  - uses: aquaproj/example@4444444444444444444444444444444444444444 # v4.4.0"
+	if got != want {
+		t.Fatalf("--keep-major must keep the upgrade within v4.x:\n  want %s\n  got  %s", want, got)
+	}
+}
+
+// TestController_parseLine_update_ruleKeepMajor verifies that a per-action
+// rules[].keep_major override takes effect even when the global config and
+// CLI both leave keep-major off. Without the rule, -u would jump to v6.0.0.
+func TestController_parseLine_update_ruleKeepMajor(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 5, 24, 0, 0, 0, 0, time.UTC)
+	tags := &github.ListTagsResult{
+		Tags: []*github.RepositoryTag{
+			{Name: new("v6.0.0"), Commit: &github.Commit{SHA: new("6666666666666666666666666666666666666666")}},
+			{Name: new("v4.4.0"), Commit: &github.Commit{SHA: new("4444444444444444444444444444444444444444")}},
+		},
+		Response: &github.Response{},
+	}
+	releases := &github.ListReleasesResult{
+		Releases: []*github.RepositoryRelease{
+			{TagName: new("v6.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -10)}},
+			{TagName: new("v4.4.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -20)}},
+		},
+		Response: &github.Response{},
+	}
+	commits := map[string]*github.GetCommitSHA1Result{
+		"aquaproj/example/v4.4.0": {SHA: "4444444444444444444444444444444444444444"},
+	}
+	cfg := &config.Config{
+		Separator: " # ",
+		Rules: []*config.Rule{
+			{
+				KeepMajor: new(true),
+				Conditions: []*config.Condition{
+					{Expr: `ActionRepoOwner == "aquaproj"`},
+				},
+			},
+		},
+	}
+	for i, r := range cfg.Rules {
+		if err := r.Init(); err != nil {
+			t.Fatalf("init rules[%d]: %v", i, err)
+		}
+	}
+	fs := afero.NewMemMapFs()
+	ctrl := New(&github.RepositoriesServiceImpl{
+		Tags:     map[string]*github.ListTagsResult{"aquaproj/example/0": tags},
+		Releases: map[string]*github.ListReleasesResult{"aquaproj/example/0": releases},
+		Commits:  commits,
+	}, nil, fs, cfg, &ParamRun{
+		Update: true,
+		Now:    now,
+	})
+	logger := slog.New(slog.DiscardHandler)
+
+	line := "  - uses: aquaproj/example@3333333333333333333333333333333333333333 # v4.3.1"
+	got, err := ctrl.parseLine(t.Context(), logger, line)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "  - uses: aquaproj/example@4444444444444444444444444444444444444444 # v4.4.0"
+	if got != want {
+		t.Fatalf("rules[].keep_major=true must keep the upgrade within v4.x:\n  want %s\n  got  %s", want, got)
+	}
+}
+
 // TestController_minAgeFallback verifies the CLI/env > config.min_age.value
 // precedence used by contexts without rule resolution (the -update cooldown
 // filter inside getLatestVersionWithStable).
