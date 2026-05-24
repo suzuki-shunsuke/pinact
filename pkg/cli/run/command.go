@@ -168,6 +168,11 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 					return nil
 				},
 			},
+			&cli.BoolFlag{
+				Name:        "keep-major",
+				Usage:       "Restrict -u to releases within the same major version as the current pin's version comment",
+				Destination: &flags.KeepMajor,
+			},
 			&cli.StringFlag{
 				Name:        "separator",
 				Aliases:     []string{"sep"},
