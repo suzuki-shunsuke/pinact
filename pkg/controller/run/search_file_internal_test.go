@@ -108,15 +108,18 @@ func TestController_searchFiles_withWorkflowPaths(t *testing.T) {
 }
 
 // When no args/config files are set, a -diff-file becomes the source of
-// file paths. This lets `pinact run --fix=false --diff-file ...` work
-// without requiring the workflow files to be present on disk.
+// file paths, filtered by the default workflow/action patterns via path.Match.
+// This lets `pinact run --fix=false --diff-file ...` work without requiring
+// the workflow files to be present on disk, while still excluding unrelated
+// files that happen to appear in the diff (README.md, source code, etc.).
 func TestController_searchFiles_diffFileAsSource(t *testing.T) {
 	t.Parallel()
 	df := &DiffFilter{files: map[string][]DiffLine{
 		".github/workflows/test.yaml": {{Number: 1, Content: "x"}},
-		"composite/foo/bar/baz/qux/action.yml": {
-			{Number: 2, Content: "y"},
-		},
+		"composite/foo/action.yml":    {{Number: 2, Content: "y"}},
+		"README.md":                   {{Number: 3, Content: "z"}},
+		// Too deep for the default patterns (max */*/*/action.yml).
+		"composite/foo/bar/baz/qux/action.yml": {{Number: 4, Content: "q"}},
 	}}
 	ctrl := New(nil, nil, afero.NewMemMapFs(), nil, &ParamRun{DiffFilter: df})
 
@@ -127,8 +130,38 @@ func TestController_searchFiles_diffFileAsSource(t *testing.T) {
 	sort.Strings(got)
 	want := []string{
 		".github/workflows/test.yaml",
-		"composite/foo/bar/baz/qux/action.yml",
+		"composite/foo/action.yml",
 	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("searchFiles() mismatch (-want +got):\n%s", diff)
+	}
+}
+
+// When cfg.Files patterns are present and -diff-file is set, the diff's
+// files are filtered by those patterns via path.Match (no disk access).
+func TestController_searchFiles_diffFileWithConfigPatterns(t *testing.T) {
+	t.Parallel()
+	df := &DiffFilter{files: map[string][]DiffLine{
+		"a.yaml":     {{Number: 1, Content: "x"}},
+		"dir/b.yaml": {{Number: 2, Content: "y"}},
+		"c.txt":      {{Number: 3, Content: "z"}},
+	}}
+	cfg := &config.Config{
+		Files: []*config.File{{Pattern: "*.yaml"}},
+	}
+	ctrl := New(nil, nil, afero.NewMemMapFs(), cfg, &ParamRun{
+		ConfigFilePath: ".pinact.yaml",
+		DiffFilter:     df,
+	})
+
+	got, err := ctrl.searchFiles()
+	if err != nil {
+		t.Fatalf("searchFiles() error = %v", err)
+	}
+	sort.Strings(got)
+	// "*.yaml" matches a.yaml but not dir/b.yaml (path.Match's `*` does not
+	// cross `/`), and c.txt is excluded.
+	want := []string{"a.yaml"}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("searchFiles() mismatch (-want +got):\n%s", diff)
 	}
