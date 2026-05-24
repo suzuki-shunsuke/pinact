@@ -37,6 +37,7 @@ type Config struct {
 	GHES          *GHES           `json:"ghes,omitempty" yaml:"ghes" jsonschema:"description=GitHub Enterprise Server configuration"`
 	Separator     string          `json:"separator,omitempty" jsonschema:"description=Separator between version and tag comment. Default is ' # '"`
 	MinAge        *MinAge         `json:"min_age,omitzero" yaml:"min_age" jsonschema:"description=Default min-age settings. value is the threshold in days; always opts every run into the passive audit. rules can override value per action"`
+	KeepMajor     *bool           `json:"keep_major,omitempty" yaml:"keep_major" jsonschema:"description=When true -u skips releases whose major version differs from the current pin's version comment. Default false"`
 	Rules         []*Rule         `json:"rules,omitempty" jsonschema:"description=Per-action setting overrides. Later matching rules override earlier ones at the field level"`
 }
 
@@ -172,6 +173,7 @@ func (ia *IgnoreAction) initRef() error {
 type Rule struct {
 	Ignore     *bool        `json:"ignore,omitempty" jsonschema:"description=If true pinact skips pin/update/error for the matched action"`
 	MinAge     *int         `json:"min_age,omitempty" yaml:"min_age" jsonschema:"description=Override the min-age threshold (in days) for the matched action. 0 disables the check for the action"`
+	KeepMajor  *bool        `json:"keep_major,omitempty" yaml:"keep_major" jsonschema:"description=Override the keep-major setting for the matched action. true restricts -u to the same major version as the current pin; false opts the action out"`
 	Conditions []*Condition `json:"conditions,omitempty" jsonschema:"description=Match conditions. The rule matches if any condition evaluates to true"`
 }
 
@@ -196,10 +198,13 @@ type MatchInput struct {
 // Resolved is the merged result of all rules that matched a given action.
 // MinAge is a pointer because nil means "no rule overrode min_age", which is
 // distinct from a rule explicitly setting min_age to 0 (which disables the
-// check for that action).
+// check for that action). KeepMajor is a pointer for the same reason: nil
+// means "no rule overrode keep_major", which is distinct from a rule
+// explicitly opting the action in or out.
 type Resolved struct {
-	Ignore bool
-	MinAge *int
+	Ignore    bool
+	MinAge    *int
+	KeepMajor *bool
 }
 
 var (
@@ -278,6 +283,9 @@ func (cfg *Config) ResolveRules(input *MatchInput) (*Resolved, error) {
 		}
 		if r.MinAge != nil {
 			res.MinAge = r.MinAge
+		}
+		if r.KeepMajor != nil {
+			res.KeepMajor = r.KeepMajor
 		}
 	}
 	return res, nil
@@ -521,6 +529,9 @@ func mergeConfig(global, project *Config) *Config {
 	out.IgnoreActions = append(append([]*IgnoreAction(nil), global.IgnoreActions...), project.IgnoreActions...)
 	out.Rules = append(append([]*Rule(nil), global.Rules...), project.Rules...)
 	out.MinAge = mergeMinAge(global.MinAge, project.MinAge)
+	if project.KeepMajor == nil {
+		out.KeepMajor = global.KeepMajor
+	}
 	return &out
 }
 

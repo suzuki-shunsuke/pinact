@@ -51,6 +51,10 @@
           "$ref": "#/$defs/MinAge",
           "description": "Default min-age settings. value is the threshold in days; always opts every run into the passive audit. rules can override value per action"
         },
+        "keep_major": {
+          "type": "boolean",
+          "description": "When true -u skips releases whose major version differs from the current pin's version comment. Default false"
+        },
         "rules": {
           "items": {
             "$ref": "#/$defs/Rule"
@@ -129,6 +133,10 @@
         "min_age": {
           "type": "integer",
           "description": "Override the min-age threshold (in days) for the matched action. 0 disables the check for the action"
+        },
+        "keep_major": {
+          "type": "boolean",
+          "description": "Override the keep-major setting for the matched action. true restricts -u to the same major version as the current pin; false opts the action out"
         },
         "conditions": {
           "items": {
