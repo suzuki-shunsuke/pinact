@@ -77,6 +77,7 @@ When both a project-level configuration (e.g. `.pinact.yaml`) and a global confi
 | `ghes` | project if set (whole-object replace), otherwise global |
 | `min_age.value` | project if set, otherwise global |
 | `min_age.always` | project if set, otherwise global (so a global `always: true` survives when the project doesn't mention it) |
+| `keep_major` | project if set, otherwise global |
 | `ignore_actions` | concatenated as `[global..., project...]` |
 | `rules` | concatenated as `[global..., project...]` (later rules win per-field under the existing rule resolution semantics) |
 
@@ -137,6 +138,13 @@ rules:
     conditions:
       - expr: |
           ActionName matches "suzuki-shunsuke/.*" && ActionVersion == "main"
+  - keep_major: true
+    conditions:
+      - expr: |
+          ActionRepoOwner == "actions"
+
+# Restrict -u to releases within the same major version (optional, default false)
+keep_major: false
 ```
 
 ### `files`
@@ -185,6 +193,11 @@ rules:
     conditions:
       - expr: |
           ActionRepoFullName == "actions/checkout"
+  # Stay within the current major version for these actions when -u is set.
+  - keep_major: true
+    conditions:
+      - expr: |
+          ActionRepoOwner == "actions"
 ```
 
 #### `rules[].ignore`
@@ -196,6 +209,12 @@ This is optional. If `true`, pinact skips pin/update/error reporting for the mat
 This is optional. Overrides the min-age threshold (in days) for the matched action. Setting it to `0` disables the min-age check for the action.
 
 The effective min-age for an action is resolved in this order: CLI flag `-min-age` > matching rules > top-level `min_age`.
+
+#### `rules[].keep_major`
+
+This is optional. Overrides the [`keep_major`](#keep_major) setting for the matched action. Setting it to `true` restricts `-u` to releases within the same major version as the current pin; `false` opts the action out (even when `--keep-major` is passed on the CLI or `keep_major: true` is set at the top level).
+
+The effective value for an action is resolved in this order: matching rules > CLI flag `--keep-major` > top-level `keep_major`. Rules take the highest precedence so a per-action opt-out is honored.
 
 #### `rules[].conditions`
 
@@ -225,6 +244,16 @@ pinact >= v4.0.0
 This is optional. The default min-age in days for the min-age check. When set, pinact checks that every action's pinned commit is at least this many days old, and exits with code 2 on violation.
 
 The top-level value can be overridden by the CLI flag `-min-age` (highest precedence) or per-action by `rules[].min_age`.
+
+### `keep_major`
+
+This is optional. Default is `false`.
+
+When `true`, `pinact run -u` skips releases whose major version differs from the current pin's version comment, so updates stay within the same major series (e.g. an action pinned at `v4.3.1` is only upgraded to `v4.x.y`, never `v5.0.0`). This is useful for actions that ship breaking changes between majors.
+
+The major is parsed from the existing version comment (`# v4.3.1`). If the comment cannot be parsed as semver, pinact emits a warning and falls back to the unconstrained behavior so the run can still upgrade.
+
+The top-level value can be overridden by the CLI flag `--keep-major` or per-action by [`rules[].keep_major`](#ruleskeep_major). The CLI flag is also useful for one-off runs: `pinact run -u --keep-major`.
 
 ### `ignore_actions`
 
