@@ -11,10 +11,10 @@ USAGE:
    pinact [global options] [command [command options]]
 
 VERSION:
-   3.10.1
+   4.0.0
 
 COMMANDS:
-   init        Create .pinact.yaml if it doesn't exist
+   init        Create a pinact configuration file if it doesn't exist
    run         Pin GitHub Actions versions
    migrate     Migrate .pinact.yaml
    token       Manage GitHub Access token
@@ -34,25 +34,22 @@ GLOBAL OPTIONS:
 ```console
 $ pinact init --help
 NAME:
-   pinact init - Create .pinact.yaml if it doesn't exist
+   pinact init - Create a pinact configuration file if it doesn't exist
 
 USAGE:
    pinact init [options]
 
 DESCRIPTION:
-   Create .pinact.yaml if it doesn't exist
+   Create a pinact configuration file if it doesn't exist. The resolved path is printed to stdout.
 
-   $ pinact init
-
-   You can also pass configuration file path.
-
-   e.g.
-
-   $ pinact init .github/pinact.yaml
+   $ pinact init                          # creates .pinact.yaml in the current directory
+   $ pinact init .github/pinact.yaml      # explicit path
+   $ pinact init -g                       # creates the user-wide global config
 
 
 OPTIONS:
-   --help, -h  show help
+   --global, -g  Create the user-wide global config file (~/.config/pinact/pinact.yaml on Unix, %APPDATA%\pinact\pinact.yaml on Windows). The parent directory is created if it does not exist.
+   --help, -h    show help
 
 GLOBAL OPTIONS:
    --log-level string          log level [$PINACT_LOG_LEVEL]
@@ -82,22 +79,20 @@ DESCRIPTION:
 
 
 OPTIONS:
-   --verify, -v                                                 Verify if pairs of commit SHA and version are correct
-   --check                                                      Exit with a non-zero status code if actions are not pinned. If this is true, files aren't updated
+   --verify-comment, --verify, -v                               Verify that the version comment matches the pinned SHA
+   --verify-min-age                                             Audit every pinned action against the min-age threshold (calls the GitHub API). Auto-enabled when -min-age is set on the CLI
+   --no-api                                                     Skip GitHub API calls. Only the syntactic pin check (40-character SHA) is performed
+   --check                                                      Alias for -fix=false. For offline check use -fix=false -no-api
    --update, -u                                                 Update actions to latest versions
-   --review                                                     Create reviews
    --fix                                                        Fix code. By default, this is true. If -check or -diff is true, this is false by default
-   --diff                                                       Output diff. By default, this is false
+   --diff                                                       Alias for -fix=false. Note: -diff=false is ignored because detail output is always printed in v4
    --format string                                              Output format. Currently only 'sarif' is supported. If sarif is specified, results are output in SARIF format to stdout
-   --repo-owner string                                          GitHub repository owner [$GITHUB_REPOSITORY_OWNER]
-   --repo-name string                                           GitHub repository name
-   --sha string                                                 Commit SHA to be reviewed
-   --pr int                                                     GitHub pull request number (default: 0)
    --include string, -i string [ --include string, -i string ]  A regular expression to fix actions
    --exclude string, -e string [ --exclude string, -e string ]  A regular expression to exclude actions
    --branch-to-tag string [ --branch-to-tag string ]            A regular expression to convert non-semver versions (e.g. branch names) to the latest stable tag. Anchor with ^$ for exact match
-   --min-age int, -m int                                        Skip versions released within the specified number of days (requires -u or --branch-to-tag) (default: 0) [$PINACT_MIN_AGE]
+   --min-age int, -m int                                        Minimum release age threshold in days. Setting this (either via CLI or PINACT_MIN_AGE) implicitly enables -verify-min-age (default: 0) [$PINACT_MIN_AGE]
    --separator string, --sep string                             Separator between version and tag comment
+   --diff-file +                                                Path to a unified diff. Only the + lines of the diff are processed (use `-` to read the diff from stdin). Useful in PR CI to limit pinact to lines changed by the PR
    --help, -h                                                   show help
 
 GLOBAL OPTIONS:
