@@ -4,7 +4,7 @@
 [Install](INSTALL.md) | [How to use](#how-to-use) | [Configuration](#configuration)
 
 pinact is a CLI to pin GitHub Actions and Reusable Workflows.
-pinact can also [update their versions](#update-actions) and [verify version comments](docs/codes/001.md).
+pinact can also [update their versions](#update-actions--update) and [verify version comments](docs/codes/001.md).
 
 ```diff
 $ pinact run
