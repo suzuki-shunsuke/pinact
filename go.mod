@@ -22,7 +22,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.2 => github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.3-0.20260602232307-742ca7041604
+replace github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.2 => github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.3-0.20260603114203-c451d2cf5d6f
 
 require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
