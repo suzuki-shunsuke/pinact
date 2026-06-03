@@ -1,6 +1,11 @@
 version: "2"
+
 linters:
   default: all
+  settings:
+    gomoddirectives:
+      replace-allow-list:
+        - github.com/suzuki-shunsuke/ghtkn-go-sdk # TODO Remove before release
   disable:
     - depguard
     - err113
