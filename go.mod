@@ -1,6 +1,6 @@
 module github.com/suzuki-shunsuke/pinact/v4
 
-go 1.26.3
+go 1.26.4
 
 require (
 	github.com/expr-lang/expr v1.17.8
