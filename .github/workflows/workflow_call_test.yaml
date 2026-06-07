@@ -12,6 +12,7 @@ jobs:
     secrets:
       TAKUMI_GUARD_BOT_ID: ${{secrets.TAKUMI_GUARD_BOT_ID}}
     permissions:
+      contents: read
       id-token: write
 
   test:
