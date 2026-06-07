@@ -14,6 +14,9 @@ jobs:
       - run: exit 1
   test:
     uses: ./.github/workflows/workflow_call_test.yaml
+    secrets:
+      TAKUMI_GUARD_BOT_ID: ${{secrets.TAKUMI_GUARD_BOT_ID}}
     permissions:
       pull-requests: write
       contents: read
+      id-token: write
