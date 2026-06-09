@@ -11,7 +11,7 @@ USAGE:
    pinact [global options] [command [command options]]
 
 VERSION:
-   4.0.0
+   4.1.0
 
 COMMANDS:
    init        Create a pinact configuration file if it doesn't exist
