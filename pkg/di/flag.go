@@ -28,7 +28,6 @@ type Flags struct {
 	IsGitHubActions bool
 	FallbackEnabled bool
 	KeyringEnabled  bool
-	GHTKNEnabled    bool
 
 	GitHubRepository string
 	GitHubAPIURL     string

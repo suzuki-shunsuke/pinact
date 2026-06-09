@@ -36,8 +36,12 @@ type (
 // New creates a new GitHub API client with authentication.
 // It configures the client with appropriate HTTP client based on available
 // authentication methods (environment token or keyring).
-func New(ctx context.Context, logger *slog.Logger, token string, keyringEnabled, ghtknEnabled bool) (*Client, error) {
-	client, err := github.NewClient(github.WithHTTPClient(getHTTPClientForGitHub(ctx, logger, token, keyringEnabled, ghtknEnabled)))
+func New(ctx context.Context, logger *slog.Logger, token string, keyringEnabled bool) (*Client, error) {
+	hc, err := getHTTPClientForGitHub(ctx, logger, token, keyringEnabled)
+	if err != nil {
+		return nil, fmt.Errorf("get HTTP client for GitHub: %w", err)
+	}
+	client, err := github.NewClient(github.WithHTTPClient(hc))
 	if err != nil {
 		return nil, fmt.Errorf("create a GitHub client: %w", err)
 	}
@@ -54,27 +58,42 @@ func Ptr[T any](v T) *T {
 // getHTTPClientForGitHub creates an HTTP client configured for GitHub API access.
 // It handles authentication using environment token, keyring, or falls back
 // to unauthenticated access. The client is configured with OAuth2 for authenticated requests.
-func getHTTPClientForGitHub(ctx context.Context, logger *slog.Logger, token string, keyringEnabled, ghtknEnabled bool) *http.Client {
-	ts := getTokenSourceForGitHub(logger, token, keyringEnabled, ghtknEnabled)
-	if ts == nil {
-		return http.DefaultClient
+func getHTTPClientForGitHub(ctx context.Context, logger *slog.Logger, token string, keyringEnabled bool) (*http.Client, error) {
+	ts, err := getTokenSourceForGitHub(logger, token, keyringEnabled)
+	if err != nil {
+		return nil, fmt.Errorf("get token source for GitHub: %w", err)
 	}
-	return oauth2.NewClient(ctx, ts)
+	if ts == nil {
+		return http.DefaultClient, nil
+	}
+	return oauth2.NewClient(ctx, ts), nil
 }
 
-func getTokenSourceForGitHub(logger *slog.Logger, token string, keyringEnabled, ghtknEnabled bool) oauth2.TokenSource {
+func getTokenSourceForGitHub(logger *slog.Logger, token string, keyringEnabled bool) (oauth2.TokenSource, error) {
 	if token != "" {
 		return oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: token},
-		)
+		), nil
 	}
 	if keyringEnabled {
-		return ghtoken.NewTokenSource(logger, KeyService)
+		return ghtoken.NewTokenSource(logger, KeyService), nil
+	}
+	ghtknEnabled, err := ghtkn.Enabled(&ghtkn.InputEnabled{
+		Envs: []string{
+			"PINACT_GHTKN",
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("check if ghtkn is enabled: %w", err)
 	}
 	if ghtknEnabled {
-		return ghtkn.New().TokenSource(logger, &ghtkn.InputGet{})
+		client, err := ghtkn.New()
+		if err != nil {
+			return nil, fmt.Errorf("create a ghtkn client: %w", err)
+		}
+		return client.TokenSource(logger, &ghtkn.InputGet{}), nil
 	}
-	return nil
+	return nil, nil //nolint:nilnil
 }
 
 // NewWithBaseURL creates a new GitHub API client with a custom base URL.

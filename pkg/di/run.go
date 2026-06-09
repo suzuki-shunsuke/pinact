@@ -40,7 +40,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 		return fmt.Errorf("set log level: %w", err)
 	}
 
-	gh, err := github.New(ctx, logger.Logger, secrets.GitHubToken, flags.KeyringEnabled, flags.GHTKNEnabled)
+	gh, err := github.New(ctx, logger.Logger, secrets.GitHubToken, flags.KeyringEnabled)
 	if err != nil {
 		return fmt.Errorf("create a GitHub client: %w", err)
 	}
