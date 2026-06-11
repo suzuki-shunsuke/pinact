@@ -1,17 +1,8 @@
 ---
 - id: pinact
-  name: Validate versions of Actions and reusable workflows
-  description: Validate versions of GitHub Actions and reusable workflows
-  entry: pinact run --check
-  language: golang
-  types: [yaml]
-  files: ^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$
-
-- id: pinact-fix
   name: Pin versions of Actions and reusable workflows
   description: Pin versions of GitHub Actions and reusable workflows
-  entry: pinact run --fix
-  args: [--diff]
+  entry: pinact run --verify-comment
   language: golang
   types: [yaml]
   files: ^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$
@@ -19,8 +10,15 @@
 - id: pinact-update
   name: Pin and update versions of Actions and reusable workflows
   description: Pin and update versions of GitHub Actions and reusable workflows
-  entry: pinact run --update
-  args: [--diff]
+  entry: pinact run --verify-comment --update
+  language: golang
+  types: [yaml]
+  files: ^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$
+
+- id: pinact-check
+  name: Validate versions of Actions and reusable workflows
+  description: Validate versions of GitHub Actions and reusable workflows
+  entry: pinact run --verify-comment --check
   language: golang
   types: [yaml]
   files: ^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$
@@ -28,7 +26,7 @@
 - id: pinact-system
   name: Pin versions of Actions and reusable workflows
   description: Pin versions of GitHub Actions and reusable workflows
-  entry: pinact run
+  entry: pinact run --verify-comment
   language: system
   types: [yaml]
   files: ^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$
