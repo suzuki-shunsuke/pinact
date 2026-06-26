@@ -59,8 +59,6 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0 h1:g7askc+nskCkKRWTVOdsAT8nMhwiaVT6Dmlnh6uvITM=
 github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0/go.mod h1:yFO7h5wwFejxi6jbtazqmk7b/JSBxHcit8DGwb1bhg0=
-github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.1 h1:2eTHYGwHs27R4GFk466ZrbiAleoFrQ6AT3e282dwtko=
-github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.1/go.mod h1:l3V+n7F4V8q6nqopI6RohWdRlh955HC+4PjCuU/waLE=
 github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.2 h1:oih0cRB7rOSJ7GeOGNFFTM4Y0bz0qYMYcOTP1eX8oZw=
 github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.2/go.mod h1:bTbYGLIP/9RW68CfUDVH8rnNs5LfjxRfGsKToRy8+lg=
 github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0 h1:oVXrrYNGBq4POyITQNWKzwsYz7B2nUcqtDbeX4BfeEc=
