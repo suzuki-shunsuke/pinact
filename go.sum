@@ -61,10 +61,14 @@ github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0 h1:g7askc+nskCkKRWTVOdsAT8nM
 github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0/go.mod h1:yFO7h5wwFejxi6jbtazqmk7b/JSBxHcit8DGwb1bhg0=
 github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.1 h1:2eTHYGwHs27R4GFk466ZrbiAleoFrQ6AT3e282dwtko=
 github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.1/go.mod h1:l3V+n7F4V8q6nqopI6RohWdRlh955HC+4PjCuU/waLE=
+github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.2 h1:oih0cRB7rOSJ7GeOGNFFTM4Y0bz0qYMYcOTP1eX8oZw=
+github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.2/go.mod h1:bTbYGLIP/9RW68CfUDVH8rnNs5LfjxRfGsKToRy8+lg=
 github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0 h1:oVXrrYNGBq4POyITQNWKzwsYz7B2nUcqtDbeX4BfeEc=
 github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0/go.mod h1:kDFtLeftDiIUUHXGI3xq5eJ+uAOi50FPrxPENTHktJ0=
 github.com/suzuki-shunsuke/go-exec v0.0.1 h1:xn/lvYnRQOujUd46ph6f6IT0gVJIC8+3liSZKOjNj44=
 github.com/suzuki-shunsuke/go-exec v0.0.1/go.mod h1:KstSwIiQTKY34wEurUcFyKkaJDogBr5E3xxfdkkzvb0=
+github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.1 h1:GY+LRLuKNEbJ7P5H+dyQzO6x0Rl6UyZUhyh67SVMI3A=
+github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.1/go.mod h1:fSdXI5Cc71V0VHTytPcDrvPvEFNVX3ZekhHACgYQlkE=
 github.com/suzuki-shunsuke/slog-error v0.2.2 h1:z8rymlIlZcMA+ERnnhVigQ0Q+X0pxKqBfDzSIyGh6vU=
 github.com/suzuki-shunsuke/slog-error v0.2.2/go.mod h1:w45QyO2G0uiEuo9hhrcLqqRl3hmYon9jGgq9CrCxxOY=
 github.com/suzuki-shunsuke/slog-util v0.3.2 h1:P4sc/swT8rwmmKDfMrh9GR+AzYJhJdW3BSxZXYBURuY=
