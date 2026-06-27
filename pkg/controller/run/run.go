@@ -27,6 +27,7 @@ type ParamRun struct {
 	IsGitHubActions   bool
 	Fix               bool
 	NoAPI             bool
+	KeepMajor         bool
 	Stderr            io.Writer
 	Stdout            io.Writer
 	Includes          []*regexp.Regexp

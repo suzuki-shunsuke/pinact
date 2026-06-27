@@ -28,6 +28,7 @@ $ pinact run
 1. [Check if actions are pinned without editing files](#just-validation--check--fixfalse)
 1. [Offline check without GitHub API](#offline-check--no-api)
 1. [Update actions](#update-actions--update) with a [minimum release age](#minimum-release-age-cooldown--min-age--verify-min-age)
+1. [Restrict updates to the current major version](#major-version-lock---keep-major)
 1. [Verify version comments](docs/codes/001.md) ([`-verify-comment`](#verify-version-comments--verify-comment--verify--v))
 1. [Require a version comment on SHA-pinned actions](docs/codes/005.md)
 1. [Verify if actions meet the minimum release age](#minimum-release-age-cooldown--min-age)
@@ -152,6 +153,32 @@ On the other hand, when updating actions min_age setting is always used to filte
 
 - For GitHub Releases, the `PublishedAt` date is checked
 - For tags, the commit's `Committer.Date` is checked (requires additional API call)
+
+### Major Version Lock: `--keep-major`
+
+`--keep-major` restricts `pinact run -u` to releases within the same major version as the current pin. For an action pinned at `v4.3.1`, updates are limited to the `v4.x.y` series and a published `v5.0.0` (or higher) is skipped.
+
+```sh
+pinact run -u --keep-major
+```
+
+This is useful for actions that ship breaking changes between major versions, where you want to keep pulling in patch and minor updates without auditing a new major.
+
+The current major is parsed from the existing version comment (e.g. `# v4.3.1`). If the comment cannot be parsed as semver, pinact emits a warning and falls back to the unconstrained behavior so the run can still upgrade.
+
+You can also enable it in the configuration file, either globally or per action:
+
+```yaml
+keep_major: true # default false
+rules:
+  # Opt a specific action out of the major-lock.
+  - keep_major: false
+    conditions:
+      - expr: |
+          ActionRepoFullName == "actions/checkout"
+```
+
+Precedence for the per-action effective value is: matching `rules[].keep_major` > CLI flag `--keep-major` > top-level `keep_major` > default `false`. Rules take the highest precedence so a per-action opt-out is honored even when `--keep-major` is set globally.
 
 ### Verify Version Comments: `-verify-comment` (`-verify`, `-v`)
 

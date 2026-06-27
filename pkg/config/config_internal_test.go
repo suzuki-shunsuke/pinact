@@ -518,10 +518,11 @@ func TestConfig_ResolveRules(t *testing.T) { //nolint:funlen
 	}
 
 	tests := []struct {
-		name       string
-		rules      []*Rule
-		wantIgnore bool
-		wantMinAge *int
+		name          string
+		rules         []*Rule
+		wantIgnore    bool
+		wantMinAge    *int
+		wantKeepMajor *bool
 	}{
 		{
 			name:       "no rules",
@@ -606,6 +607,46 @@ func TestConfig_ResolveRules(t *testing.T) { //nolint:funlen
 			wantIgnore: false,
 			wantMinAge: new(0),
 		},
+		{
+			name: "rule sets keep_major true",
+			rules: []*Rule{
+				{
+					KeepMajor:  new(true),
+					Conditions: []*Condition{{Expr: `ActionRepoOwner == "actions"`}},
+				},
+			},
+			wantIgnore:    false,
+			wantMinAge:    nil,
+			wantKeepMajor: new(true),
+		},
+		{
+			name: "rule sets keep_major false (explicit opt-out)",
+			rules: []*Rule{
+				{
+					KeepMajor:  new(false),
+					Conditions: []*Condition{{Expr: `ActionName == "actions/checkout"`}},
+				},
+			},
+			wantIgnore:    false,
+			wantMinAge:    nil,
+			wantKeepMajor: new(false),
+		},
+		{
+			name: "later matching rule overrides keep_major",
+			rules: []*Rule{
+				{
+					KeepMajor:  new(true),
+					Conditions: []*Condition{{Expr: `ActionRepoOwner == "actions"`}},
+				},
+				{
+					KeepMajor:  new(false),
+					Conditions: []*Condition{{Expr: `ActionName == "actions/checkout"`}},
+				},
+			},
+			wantIgnore:    false,
+			wantMinAge:    nil,
+			wantKeepMajor: new(false),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -628,6 +669,14 @@ func TestConfig_ResolveRules(t *testing.T) { //nolint:funlen
 				t.Errorf("MinAge: got %v, want %v", got.MinAge, tt.wantMinAge)
 			case *got.MinAge != *tt.wantMinAge:
 				t.Errorf("MinAge: got %d, want %d", *got.MinAge, *tt.wantMinAge)
+			}
+			switch {
+			case got.KeepMajor == nil && tt.wantKeepMajor == nil:
+				// ok
+			case got.KeepMajor == nil || tt.wantKeepMajor == nil:
+				t.Errorf("KeepMajor: got %v, want %v", got.KeepMajor, tt.wantKeepMajor)
+			case *got.KeepMajor != *tt.wantKeepMajor:
+				t.Errorf("KeepMajor: got %v, want %v", *got.KeepMajor, *tt.wantKeepMajor)
 			}
 		})
 	}
