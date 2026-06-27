@@ -12,7 +12,7 @@ require (
 	github.com/sourcegraph/go-diff v0.8.0
 	github.com/spf13/afero v1.15.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
-	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.2
+	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.3
 	github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/suzuki-shunsuke/slog-util v0.3.2
