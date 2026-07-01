@@ -89,14 +89,12 @@ func parseAction(line string) *Action {
 }
 
 func parseContainerAction(line string) *Action {
-	if action := parseContainerActionWithPattern(line, usesKeyPattern, true); action != nil {
-		return action
+	matches := usesKeyPattern.FindStringSubmatch(line)
+	withDockerPrefix := true
+	if matches == nil {
+		matches = imageKeyPattern.FindStringSubmatch(line)
+		withDockerPrefix = false
 	}
-	return parseContainerActionWithPattern(line, imageKeyPattern, false)
-}
-
-func parseContainerActionWithPattern(line string, pattern *regexp.Regexp, withDockerPrefix bool) *Action {
-	matches := pattern.FindStringSubmatch(line)
 	if matches == nil {
 		return nil
 	}
