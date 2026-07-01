@@ -70,22 +70,19 @@ func getVersionType(v string) VersionType {
 // It uses regular expressions to parse 'uses' statements and extract
 // action name, version, comments, and formatting details.
 func parseAction(line string) *Action {
-	if action := parseContainerAction(line); action != nil {
-		return action
-	}
 	matches := usesPattern.FindStringSubmatch(line)
-	if matches == nil {
-		return nil
+	if matches != nil && !strings.HasPrefix(matches[3], "docker://") {
+		return &Action{
+			Uses:                    matches[1], // " - uses: "
+			Quote:                   matches[2], // empty, ', "
+			Name:                    matches[3], // local action is excluded by the regular expression because local action doesn't have version @
+			Version:                 matches[4], // full commit hash, main, v3, v3.0.0
+			VersionCommentSeparator: matches[5], // empty, " # ", " # tag="
+			VersionComment:          matches[6], // empty, v1, v3.0.0
+			Suffix:                  matches[7],
+		}
 	}
-	return &Action{
-		Uses:                    matches[1], // " - uses: "
-		Quote:                   matches[2], // empty, ', "
-		Name:                    matches[3], // local action is excluded by the regular expression because local action doesn't have version @
-		Version:                 matches[4], // full commit hash, main, v3, v3.0.0
-		VersionCommentSeparator: matches[5], // empty, " # ", " # tag="
-		VersionComment:          matches[6], // empty, v1, v3.0.0
-		Suffix:                  matches[7],
-	}
+	return parseContainerAction(line)
 }
 
 func parseContainerAction(line string) *Action {
@@ -122,11 +119,11 @@ func parseContainerAction(line string) *Action {
 	}
 
 	return &Action{
-		Uses:    prefix,
-		Quote:   quote,
-		Name:    name,
-		Version: digest,
-		Suffix:  suffix,
+		Uses:    prefix, // " - uses: ", "      image: "
+		Quote:   quote,  // empty, ', "
+		Name:    name,   // docker://ghcr.io/example/action:v1, ghcr.io/example/action:v1
+		Version: digest, // empty or sha256:...
+		Suffix:  suffix, // empty, " # keep", trailing text after the quoted token
 	}
 }
 
@@ -140,11 +137,11 @@ func splitTokenAndSuffix(rest, quote string) (string, string, bool) {
 		}
 		return token, suffix, true
 	}
-	i := strings.Index(rest, quote)
-	if i < 0 {
+	token, suffix, ok := strings.Cut(rest, quote)
+	if !ok {
 		return "", "", false
 	}
-	return rest[:i], rest[i+len(quote):], true
+	return token, suffix, true
 }
 
 func isContainerDigest(v string) bool {
