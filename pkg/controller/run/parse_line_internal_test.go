@@ -529,8 +529,8 @@ func TestController_parseLine_docker(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	const (
 		image       = "docker://ghcr.io/example/action:v1"
-		imageDigest = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
-		newDigest   = "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+		imageDigest = "sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948"
+		newDigest   = "sha256:3d53be4e0f48952112aa4ca00f45e724b70598082e7202c5c412a6779ca38134"
 	)
 	logger := slog.New(slog.DiscardHandler)
 	data := []struct {
@@ -579,20 +579,20 @@ func TestController_parseLine_docker(t *testing.T) { //nolint:funlen
 			line:    `    - "uses": 'docker://ghcr.io/example/action:v1' # keep me`,
 			param:   &ParamRun{Fix: true},
 			digests: map[string]string{image: imageDigest},
-			exp:     `    - "uses": 'docker://ghcr.io/example/action:v1@sha256:1111111111111111111111111111111111111111111111111111111111111111' # keep me`,
+			exp:     `    - "uses": 'docker://ghcr.io/example/action:v1@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948' # keep me`,
 		},
 		{
 			name:    "image tag digest is accepted and trailing comment preserved",
-			line:    "      image: mcr.microsoft.com/playwright:v1.61.0@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948 # v1.60.0",
+			line:    "      image: ghcr.io/example/action:v1.1.0@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948 # v1.0.0",
 			param:   &ParamRun{Fix: true},
-			digests: map[string]string{"mcr.microsoft.com/playwright:v1.61.0": "sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948"},
+			digests: map[string]string{"ghcr.io/example/action:v1.1.0": "sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948"},
 		},
 		{
 			name:    "image verify detects mismatched digest and rewrites digest only",
-			line:    "      image: mcr.microsoft.com/playwright:v1.61.0@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948 # v1.60.0",
+			line:    "      image: ghcr.io/example/action:v1.1.0@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948 # v1.0.0",
 			param:   &ParamRun{IsVerify: true, Fix: true},
-			digests: map[string]string{"mcr.microsoft.com/playwright:v1.61.0": newDigest},
-			exp:     "      image: mcr.microsoft.com/playwright:v1.61.0@" + newDigest + " # v1.60.0",
+			digests: map[string]string{"ghcr.io/example/action:v1.1.0": newDigest},
+			exp:     "      image: ghcr.io/example/action:v1.1.0@" + newDigest + " # v1.0.0",
 		},
 	}
 
@@ -620,7 +620,7 @@ func TestController_parseLine_docker(t *testing.T) { //nolint:funlen
 
 func TestController_parseLine_docker_noAPI(t *testing.T) {
 	t.Parallel()
-	const digest = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+	const digest = "sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948"
 	logger := slog.New(slog.DiscardHandler)
 	data := []struct {
 		name    string
@@ -642,11 +642,11 @@ func TestController_parseLine_docker_noAPI(t *testing.T) {
 		},
 		{
 			name: "pinned image digest is accepted",
-			line: "      image: mcr.microsoft.com/playwright:v1.61.0@" + digest + " # v1.60.0",
+			line: "      image: ghcr.io/example/action:v1.1.0@" + digest + " # v1.0.0",
 		},
 		{
 			name:    "unpinned image tag is rejected",
-			line:    "      image: mcr.microsoft.com/playwright:v1.61.0",
+			line:    "      image: ghcr.io/example/action:v1.1.0",
 			wantErr: ErrCantPinned,
 		},
 	}
