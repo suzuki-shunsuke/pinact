@@ -134,7 +134,6 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 			name: "docker unpinned",
 			line: "  uses: docker://ghcr.io/example/action:v1 # keep",
 			exp: &Action{
-				Kind:         ActionKindDocker,
 				Uses:         "  uses: ",
 				Name:         "docker://ghcr.io/example/action:v1",
 				Suffix:       " # keep",
@@ -145,7 +144,6 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 			name: "docker pinned",
 			line: `  - uses: "docker://ghcr.io/example/action:v1@sha256:3d53be4e0f48952112aa4ca00f45e724b70598082e7202c5c412a6779ca38134" # keep`,
 			exp: &Action{
-				Kind:         ActionKindDocker,
 				Uses:         "  - uses: ",
 				Quote:        `"`,
 				Name:         "docker://ghcr.io/example/action:v1",
@@ -158,7 +156,6 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 			name: "image unpinned",
 			line: "      image: ghcr.io/example/action:v1.1.0 # v1.1.0",
 			exp: &Action{
-				Kind:         ActionKindDocker,
 				Uses:         "      image: ",
 				Name:         "ghcr.io/example/action:v1.1.0",
 				Suffix:       " # v1.1.0",
@@ -169,7 +166,6 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 			name: "image pinned",
 			line: `      image: "ghcr.io/example/action:v1.1.0@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948" # v1.1.0`,
 			exp: &Action{
-				Kind:         ActionKindDocker,
 				Uses:         "      image: ",
 				Quote:        `"`,
 				Name:         "ghcr.io/example/action:v1.1.0",

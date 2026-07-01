@@ -19,20 +19,13 @@ var (
 	usesKeyPattern         = regexp.MustCompile(`^( *(?:- +)?['"]?uses['"]? *: +)(['"]?)(.*)$`)
 	fullCommitSHAPattern   = regexp.MustCompile(`\b[0-9a-f]{40}\b`)
 	imageKeyPattern        = regexp.MustCompile(`^( *['"]?image['"]? *: +)(['"]?)(.*)$`)
+	imagePrefixPattern     = regexp.MustCompile(`^ *['"]?image['"]? *: +$`)
 	containerDigestPattern = regexp.MustCompile(`^sha256:[0-9a-fA-F]{64}$`)
 	semverPattern          = regexp.MustCompile(`^v?\d+\.\d+\.\d+[^ ]*$`)
 	shortTagPattern        = regexp.MustCompile(`^v?\d+(\.\d+)?$`)
 )
 
-type ActionKind int
-
-const (
-	ActionKindGitHub ActionKind = iota
-	ActionKindDocker
-)
-
 type Action struct {
-	Kind                    ActionKind
 	Uses                    string
 	Name                    string
 	Version                 string
@@ -86,7 +79,6 @@ func parseAction(line string) *Action {
 		return nil
 	}
 	return &Action{
-		Kind:                    ActionKindGitHub,
 		Uses:                    matches[1], // " - uses: "
 		Quote:                   matches[2], // empty, ', "
 		Name:                    matches[3], // local action is excluded by the regular expression because local action doesn't have version @
@@ -138,7 +130,6 @@ func parseContainerActionWithPattern(line string, pattern *regexp.Regexp, withDo
 	}
 
 	return &Action{
-		Kind:         ActionKindDocker,
 		Uses:         prefix,
 		Quote:        quote,
 		Name:         name,
@@ -176,6 +167,10 @@ func hasExplicitContainerTag(ref string) bool {
 
 func isContainerDigest(v string) bool {
 	return containerDigestPattern.MatchString(v)
+}
+
+func (a *Action) isDocker() bool {
+	return strings.HasPrefix(a.Name, "docker://") || imagePrefixPattern.MatchString(a.Uses)
 }
 
 func (a *Action) Ref() string {
@@ -252,7 +247,7 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 		return "", nil
 	}
 
-	if action.Kind == ActionKindGitHub {
+	if !action.isDocker() {
 		if !c.parseActionName(action) {
 			logger.Debug("ignore line")
 			return "", nil
@@ -329,7 +324,7 @@ func (c *Controller) minAgeFallback() int {
 // line, the SHA is extracted from the new line; otherwise it falls back to
 // action.Version when that is itself a full commit SHA.
 func (c *Controller) finalPinnedSHA(action *Action, newLine string) string {
-	if action.Kind != ActionKindGitHub {
+	if action.isDocker() {
 		return ""
 	}
 	if newLine != "" {
@@ -410,7 +405,7 @@ func (c *Controller) shouldSkipAction(logger *slog.Logger, action *Action) bool 
 // cannot resolve an unpinned tag. Everything else
 // is reported as unfixable (ExitCodeUnfixable).
 func (c *Controller) processAction(ctx context.Context, logger *slog.Logger, action *Action, attrs *slogerr.Attrs, resolved *config.Resolved) (string, error) {
-	if action.Kind == ActionKindDocker {
+	if action.isDocker() {
 		return c.processDockerAction(ctx, logger, action)
 	}
 	if c.param.NoAPI {
