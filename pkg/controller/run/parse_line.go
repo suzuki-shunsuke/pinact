@@ -439,29 +439,23 @@ func (c *Controller) processDockerAction(ctx context.Context, logger *slog.Logge
 	}
 	if isContainerDigest(action.Version) {
 		if c.param.Update {
-			if c.containerResolver == nil {
-				return "", fmt.Errorf("resolve container digest: %w", ErrAPI)
-			}
-			return c.refreshDockerDigest(ctx, action)
+			return c.resolveDockerDigest(ctx, logger, action, false)
 		}
 		if !c.param.IsVerify || !action.DockerHasTag {
 			return "", nil
 		}
-		if c.containerResolver == nil {
-			return "", fmt.Errorf("resolve container digest: %w", ErrAPI)
-		}
-		return c.verifyDockerDigest(ctx, logger, action)
+		return c.resolveDockerDigest(ctx, logger, action, true)
 	}
 	if !action.DockerHasTag {
 		return "", ErrCantPinned
 	}
+	return c.resolveDockerDigest(ctx, logger, action, false)
+}
+
+func (c *Controller) resolveDockerDigest(ctx context.Context, logger *slog.Logger, action *Action, verify bool) (string, error) {
 	if c.containerResolver == nil {
 		return "", fmt.Errorf("resolve container digest: %w", ErrAPI)
 	}
-	return c.refreshDockerDigest(ctx, action)
-}
-
-func (c *Controller) refreshDockerDigest(ctx context.Context, action *Action) (string, error) {
 	digest, err := c.containerResolver.ResolveDigest(ctx, action.Name)
 	if err != nil {
 		return "", fmt.Errorf("resolve container digest: %w", err)
@@ -469,24 +463,15 @@ func (c *Controller) refreshDockerDigest(ctx context.Context, action *Action) (s
 	if action.Version == digest {
 		return "", nil
 	}
-	return c.patchLine(action, digest, ""), nil
-}
-
-func (c *Controller) verifyDockerDigest(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
-	digest, err := c.containerResolver.ResolveDigest(ctx, action.Name)
-	if err != nil {
-		return "", fmt.Errorf("resolve container digest: %w", err)
-	}
-	if action.Version == digest {
-		return "", nil
-	}
-	if c.param.Fix {
-		logger.Warn(
-			"container digest mismatch detected, correcting digest",
-			"action", action.Name,
-			"image_digest", action.Version,
-			"current_digest", digest,
-		)
+	if !verify || c.param.Fix {
+		if verify {
+			logger.Warn(
+				"container digest mismatch detected, correcting digest",
+				"action", action.Name,
+				"image_digest", action.Version,
+				"current_digest", digest,
+			)
+		}
 		return c.patchLine(action, digest, ""), nil
 	}
 	return "", fmt.Errorf("%w: image digest must match the current digest of the image tag", ErrUnfixable)
