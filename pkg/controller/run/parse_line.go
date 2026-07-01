@@ -15,13 +15,24 @@ import (
 )
 
 var (
-	usesPattern          = regexp.MustCompile(`^( *(?:- +)?['"]?uses['"]? *: +)(['"]?)(.*?)@([^ '"]+)['"]?(?:( +# +(?:tag=)?)(v?\d+[^ ]*)(.*))?`)
-	fullCommitSHAPattern = regexp.MustCompile(`\b[0-9a-f]{40}\b`)
-	semverPattern        = regexp.MustCompile(`^v?\d+\.\d+\.\d+[^ ]*$`)
-	shortTagPattern      = regexp.MustCompile(`^v?\d+(\.\d+)?$`)
+	usesPattern            = regexp.MustCompile(`^( *(?:- +)?['"]?uses['"]? *: +)(['"]?)(.*?)@([^ '"]+)['"]?(?:( +# +(?:tag=)?)(v?\d+[^ ]*)(.*))?`)
+	usesKeyPattern         = regexp.MustCompile(`^( *(?:- +)?['"]?uses['"]? *: +)(['"]?)(.*)$`)
+	fullCommitSHAPattern   = regexp.MustCompile(`\b[0-9a-f]{40}\b`)
+	imageKeyPattern        = regexp.MustCompile(`^( *['"]?image['"]? *: +)(['"]?)(.*)$`)
+	containerDigestPattern = regexp.MustCompile(`^sha256:[0-9a-fA-F]{64}$`)
+	semverPattern          = regexp.MustCompile(`^v?\d+\.\d+\.\d+[^ ]*$`)
+	shortTagPattern        = regexp.MustCompile(`^v?\d+(\.\d+)?$`)
+)
+
+type ActionKind int
+
+const (
+	ActionKindGitHub ActionKind = iota
+	ActionKindDocker
 )
 
 type Action struct {
+	Kind                    ActionKind
 	Uses                    string
 	Name                    string
 	Version                 string
@@ -31,6 +42,7 @@ type Action struct {
 	RepoName                string
 	Quote                   string
 	Suffix                  string
+	DockerHasTag            bool
 }
 
 type VersionType int
@@ -66,11 +78,15 @@ func getVersionType(v string) VersionType {
 // It uses regular expressions to parse 'uses' statements and extract
 // action name, version, comments, and formatting details.
 func parseAction(line string) *Action {
+	if action := parseContainerAction(line); action != nil {
+		return action
+	}
 	matches := usesPattern.FindStringSubmatch(line)
 	if matches == nil {
 		return nil
 	}
 	return &Action{
+		Kind:                    ActionKindGitHub,
 		Uses:                    matches[1], // " - uses: "
 		Quote:                   matches[2], // empty, ', "
 		Name:                    matches[3], // local action is excluded by the regular expression because local action doesn't have version @
@@ -79,6 +95,94 @@ func parseAction(line string) *Action {
 		VersionComment:          matches[6], // empty, v1, v3.0.0
 		Suffix:                  matches[7],
 	}
+}
+
+func parseContainerAction(line string) *Action {
+	if action := parseContainerActionWithPattern(line, usesKeyPattern, true); action != nil {
+		return action
+	}
+	return parseContainerActionWithPattern(line, imageKeyPattern, false)
+}
+
+func parseContainerActionWithPattern(line string, pattern *regexp.Regexp, withDockerPrefix bool) *Action {
+	matches := pattern.FindStringSubmatch(line)
+	if matches == nil {
+		return nil
+	}
+
+	prefix := matches[1]
+	quote := matches[2]
+	rest := matches[3]
+	token, suffix, ok := splitTokenAndSuffix(rest, quote)
+	if !ok {
+		return nil
+	}
+	if withDockerPrefix {
+		if !strings.HasPrefix(token, "docker://") {
+			return nil
+		}
+	} else if strings.HasPrefix(token, "docker://") {
+		return nil
+	}
+
+	name := token
+	digest := ""
+	if i := strings.LastIndex(token, "@sha256:"); i >= 0 {
+		name = token[:i]
+		digest = token[i+1:]
+	}
+
+	refForTagCheck := name
+	if withDockerPrefix {
+		refForTagCheck = strings.TrimPrefix(name, "docker://")
+	}
+
+	return &Action{
+		Kind:         ActionKindDocker,
+		Uses:         prefix,
+		Quote:        quote,
+		Name:         name,
+		Version:      digest,
+		Suffix:       suffix,
+		DockerHasTag: hasExplicitContainerTag(refForTagCheck),
+	}
+}
+
+func splitTokenAndSuffix(rest, quote string) (string, string, bool) {
+	if quote == "" {
+		token := rest
+		suffix := ""
+		if i := strings.IndexByte(rest, ' '); i >= 0 {
+			token = rest[:i]
+			suffix = rest[i:]
+		}
+		return token, suffix, true
+	}
+	i := strings.Index(rest, quote)
+	if i < 0 {
+		return "", "", false
+	}
+	return rest[:i], rest[i+len(quote):], true
+}
+
+func hasExplicitContainerTag(ref string) bool {
+	if i := strings.LastIndex(ref, "@"); i >= 0 {
+		ref = ref[:i]
+	}
+	lastSlash := strings.LastIndex(ref, "/")
+	lastColon := strings.LastIndex(ref, ":")
+	return lastColon > lastSlash
+}
+
+func isContainerDigest(v string) bool {
+	return containerDigestPattern.MatchString(v)
+}
+
+func (a *Action) Ref() string {
+	if a.Version == "" {
+		return a.Name
+	}
+	return a.Name + "@" + a.Version
 }
 
 var (
@@ -142,22 +246,28 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 		return "", nil
 	}
 
-	logger = attrs.Add(logger, "action", action.Name+"@"+action.Version)
+	logger = attrs.Add(logger, "action", action.Ref())
 
 	if c.shouldSkipAction(logger, action) {
 		return "", nil
 	}
 
-	if !c.parseActionName(action) {
-		logger.Debug("ignore line")
-		return "", nil
+	if action.Kind == ActionKindGitHub {
+		if !c.parseActionName(action) {
+			logger.Debug("ignore line")
+			return "", nil
+		}
 	}
 
+	actionRepoFullName := ""
+	if action.RepoOwner != "" || action.RepoName != "" {
+		actionRepoFullName = action.RepoOwner + "/" + action.RepoName
+	}
 	resolved, err := c.cfg.ResolveRules(&config.MatchInput{
 		ActionName:         action.Name,
 		ActionRepoOwner:    action.RepoOwner,
 		ActionRepoName:     action.RepoName,
-		ActionRepoFullName: action.RepoOwner + "/" + action.RepoName,
+		ActionRepoFullName: actionRepoFullName,
 		ActionVersion:      action.Version,
 		VersionComment:     action.VersionComment,
 	})
@@ -219,6 +329,9 @@ func (c *Controller) minAgeFallback() int {
 // line, the SHA is extracted from the new line; otherwise it falls back to
 // action.Version when that is itself a full commit SHA.
 func (c *Controller) finalPinnedSHA(action *Action, newLine string) string {
+	if action.Kind != ActionKindGitHub {
+		return ""
+	}
 	if newLine != "" {
 		if m := fullCommitSHAPattern.FindString(newLine); m != "" {
 			return m
@@ -285,16 +398,21 @@ func (c *Controller) shouldSkipAction(logger *slog.Logger, action *Action) bool 
 	return false
 }
 
-// processAction dispatches based on the action's version form. The version
-// is the primary determinant (already-pinned SHA vs. semver tag vs. branch);
-// the comment refines the behavior inside each branch.
+// processAction dispatches GitHub refs and docker:// refs to their dedicated
+// handlers. For GitHub refs, the version form (already-pinned SHA vs. semver
+// tag vs. branch) is the primary determinant and the trailing comment refines
+// the behavior inside each branch.
 //
-// When -no-api is set, processAction short-circuits any GitHub API call:
-// already-pinned SHAs with a version comment are accepted as-is; SHAs without
-// a comment cannot be cross-verified against any upstream tag (no API to look
-// it up), so they are rejected as ErrMissingVersionComment. Everything else
+// When -no-api is set, GitHub refs short-circuit any API call: already-pinned
+// SHAs with a version comment are accepted as-is; SHAs without a comment
+// cannot be cross-verified against any upstream tag, so they are rejected as
+// ErrMissingVersionComment. Docker refs similarly accept existing digests but
+// cannot resolve an unpinned tag. Everything else
 // is reported as unfixable (ExitCodeUnfixable).
 func (c *Controller) processAction(ctx context.Context, logger *slog.Logger, action *Action, attrs *slogerr.Attrs, resolved *config.Resolved) (string, error) {
+	if action.Kind == ActionKindDocker {
+		return c.processDockerAction(ctx, logger, action)
+	}
 	if c.param.NoAPI {
 		if getVersionType(action.Version) == FullCommitSHA {
 			if getVersionType(action.VersionComment) == Empty {
@@ -315,6 +433,68 @@ func (c *Controller) processAction(ctx context.Context, logger *slog.Logger, act
 	default:
 		return c.processUnpinnedVersion(ctx, logger, action, resolved)
 	}
+}
+
+func (c *Controller) processDockerAction(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
+	if c.param.NoAPI {
+		if isContainerDigest(action.Version) {
+			return "", nil
+		}
+		return "", ErrCantPinned
+	}
+	if isContainerDigest(action.Version) {
+		if c.param.Update {
+			if c.containerResolver == nil {
+				return "", fmt.Errorf("resolve container digest: %w", ErrAPI)
+			}
+			return c.refreshDockerDigest(ctx, action)
+		}
+		if !c.param.IsVerify || !action.DockerHasTag {
+			return "", nil
+		}
+		if c.containerResolver == nil {
+			return "", fmt.Errorf("resolve container digest: %w", ErrAPI)
+		}
+		return c.verifyDockerDigest(ctx, logger, action)
+	}
+	if !action.DockerHasTag {
+		return "", ErrCantPinned
+	}
+	if c.containerResolver == nil {
+		return "", fmt.Errorf("resolve container digest: %w", ErrAPI)
+	}
+	return c.refreshDockerDigest(ctx, action)
+}
+
+func (c *Controller) refreshDockerDigest(ctx context.Context, action *Action) (string, error) {
+	digest, err := c.containerResolver.ResolveDigest(ctx, action.Name)
+	if err != nil {
+		return "", fmt.Errorf("resolve container digest: %w", err)
+	}
+	if action.Version == digest {
+		return "", nil
+	}
+	return c.patchLine(action, digest, ""), nil
+}
+
+func (c *Controller) verifyDockerDigest(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
+	digest, err := c.containerResolver.ResolveDigest(ctx, action.Name)
+	if err != nil {
+		return "", fmt.Errorf("resolve container digest: %w", err)
+	}
+	if action.Version == digest {
+		return "", nil
+	}
+	if c.param.Fix {
+		logger.Warn(
+			"container digest mismatch detected, correcting digest",
+			"action", action.Name,
+			"image_digest", action.Version,
+			"current_digest", digest,
+		)
+		return c.patchLine(action, digest, ""), nil
+	}
+	return "", fmt.Errorf("%w: image digest must match the current digest of the image tag", ErrUnfixable)
 }
 
 // processPinnedVersion handles actions whose Version is already a full commit
@@ -576,11 +756,15 @@ func (c *Controller) verifyIfNeeded(ctx context.Context, logger *slog.Logger, ac
 // It combines the action information with new version and tag to create
 // the updated line with proper formatting and comments.
 func (c *Controller) patchLine(action *Action, version, tag string) string {
+	line := action.Uses + action.Quote + action.Name + "@" + version + action.Quote
+	if tag == "" {
+		return line + action.Suffix
+	}
 	sep := action.VersionCommentSeparator
 	if sep == "" {
 		sep = c.cfg.Separator
 	}
-	return action.Uses + action.Quote + action.Name + "@" + version + action.Quote + sep + tag + action.Suffix
+	return line + sep + tag + action.Suffix
 }
 
 // getLongVersionFromSHA finds the full semantic version tag for a commit SHA.

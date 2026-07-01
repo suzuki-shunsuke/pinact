@@ -81,7 +81,7 @@ DESCRIPTION:
 OPTIONS:
    --verify-comment, --verify, -v                               Verify that the version comment matches the pinned SHA
    --verify-min-age                                             Audit every pinned action against the min-age threshold (calls the GitHub API). Auto-enabled when -min-age is set on the CLI
-   --no-api                                                     Skip GitHub API calls. Only the syntactic pin check (40-character SHA) is performed
+   --no-api                                                     Skip GitHub API calls. Only the syntactic pin check (40-character SHA or sha256 digest) is performed
    --check                                                      Alias for -fix=false. For offline check use -fix=false -no-api
    --update, -u                                                 Update actions to latest versions
    --fix                                                        Fix code. By default, this is true. If -check or -diff is true, this is false by default

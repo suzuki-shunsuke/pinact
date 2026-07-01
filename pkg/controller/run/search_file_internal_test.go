@@ -63,7 +63,7 @@ func TestController_searchFiles(t *testing.T) { //nolint:funlen
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, fs, tt.cfg, tt.param)
+			ctrl := New(nil, nil, nil, fs, tt.cfg, tt.param)
 			got, err := ctrl.searchFiles()
 
 			if (err != nil) != tt.wantErr {
@@ -94,7 +94,7 @@ func TestController_searchFiles_withWorkflowPaths(t *testing.T) {
 	param := &ParamRun{
 		WorkflowFilePaths: []string{"a.yml", "b.yml", "c.yml"},
 	}
-	ctrl := New(nil, nil, fs, &config.Config{}, param)
+	ctrl := New(nil, nil, nil, fs, &config.Config{}, param)
 
 	got, err := ctrl.searchFiles()
 	if err != nil {
@@ -121,7 +121,7 @@ func TestController_searchFiles_diffFileAsSource(t *testing.T) {
 		// Too deep for the default patterns (max */*/*/action.yml).
 		"composite/foo/bar/baz/qux/action.yml": {{Number: 4, Content: "q"}},
 	}}
-	ctrl := New(nil, nil, afero.NewMemMapFs(), nil, &ParamRun{DiffFilter: df})
+	ctrl := New(nil, nil, nil, afero.NewMemMapFs(), nil, &ParamRun{DiffFilter: df})
 
 	got, err := ctrl.searchFiles()
 	if err != nil {
@@ -149,7 +149,7 @@ func TestController_searchFiles_diffFileWithConfigPatterns(t *testing.T) {
 	cfg := &config.Config{
 		Files: []*config.File{{Pattern: "*.yaml"}},
 	}
-	ctrl := New(nil, nil, afero.NewMemMapFs(), cfg, &ParamRun{
+	ctrl := New(nil, nil, nil, afero.NewMemMapFs(), cfg, &ParamRun{
 		ConfigFilePath: ".pinact.yaml",
 		DiffFilter:     df,
 	})
@@ -175,7 +175,7 @@ func TestController_searchFiles_argsWithDiffFile(t *testing.T) {
 		"a.yaml": {{Number: 1, Content: "x"}},
 		"c.yaml": {{Number: 2, Content: "y"}},
 	}}
-	ctrl := New(nil, nil, afero.NewMemMapFs(), &config.Config{}, &ParamRun{
+	ctrl := New(nil, nil, nil, afero.NewMemMapFs(), &config.Config{}, &ParamRun{
 		WorkflowFilePaths: []string{"a.yaml", "b.yaml"},
 		DiffFilter:        df,
 	})
