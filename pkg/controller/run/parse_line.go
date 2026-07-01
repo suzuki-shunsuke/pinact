@@ -35,7 +35,6 @@ type Action struct {
 	RepoName                string
 	Quote                   string
 	Suffix                  string
-	DockerHasTag            bool
 }
 
 type VersionType int
@@ -124,18 +123,12 @@ func parseContainerActionWithPattern(line string, pattern *regexp.Regexp, withDo
 		digest = token[i+1:]
 	}
 
-	refForTagCheck := name
-	if withDockerPrefix {
-		refForTagCheck = strings.TrimPrefix(name, "docker://")
-	}
-
 	return &Action{
-		Uses:         prefix,
-		Quote:        quote,
-		Name:         name,
-		Version:      digest,
-		Suffix:       suffix,
-		DockerHasTag: hasExplicitContainerTag(refForTagCheck),
+		Uses:    prefix,
+		Quote:   quote,
+		Name:    name,
+		Version: digest,
+		Suffix:  suffix,
 	}
 }
 
@@ -156,21 +149,18 @@ func splitTokenAndSuffix(rest, quote string) (string, string, bool) {
 	return rest[:i], rest[i+len(quote):], true
 }
 
-func hasExplicitContainerTag(ref string) bool {
-	if i := strings.LastIndex(ref, "@"); i >= 0 {
-		ref = ref[:i]
-	}
-	lastSlash := strings.LastIndex(ref, "/")
-	lastColon := strings.LastIndex(ref, ":")
-	return lastColon > lastSlash
-}
-
 func isContainerDigest(v string) bool {
 	return containerDigestPattern.MatchString(v)
 }
 
 func (a *Action) isDocker() bool {
 	return strings.HasPrefix(a.Name, "docker://") || imagePrefixPattern.MatchString(a.Uses)
+}
+
+func (a *Action) hasDockerTag() bool {
+	lastSlash := strings.LastIndex(a.Name, "/")
+	lastColon := strings.LastIndex(a.Name, ":")
+	return lastColon > lastSlash
 }
 
 func (a *Action) Ref() string {
@@ -441,12 +431,12 @@ func (c *Controller) processDockerAction(ctx context.Context, logger *slog.Logge
 		if c.param.Update {
 			return c.resolveDockerDigest(ctx, logger, action, false)
 		}
-		if !c.param.IsVerify || !action.DockerHasTag {
+		if !c.param.IsVerify || !action.hasDockerTag() {
 			return "", nil
 		}
 		return c.resolveDockerDigest(ctx, logger, action, true)
 	}
-	if !action.DockerHasTag {
+	if !action.hasDockerTag() {
 		return "", ErrCantPinned
 	}
 	return c.resolveDockerDigest(ctx, logger, action, false)
