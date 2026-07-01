@@ -100,7 +100,7 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 			},
 			&cli.BoolFlag{
 				Name:        "no-api",
-				Usage:       "Skip GitHub API calls. Only the syntactic pin check (40-character SHA or sha256 digest) is performed",
+				Usage:       "Skip GitHub API calls. Only the syntactic pin check (40-character SHA) is performed",
 				Destination: &flags.NoAPI,
 			},
 			&cli.BoolFlag{
