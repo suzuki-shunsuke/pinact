@@ -1,7 +1,7 @@
 // Package run implements the core business logic for pinning GitHub Actions.
 // This package contains the main controller that orchestrates the entire pinning process,
-// including parsing workflow files, resolving action versions through GitHub API,
-// converting mutable tags to immutable commit SHAs, and applying updates.
+// including parsing workflow files, resolving action versions through GitHub or container registry APIs,
+// converting mutable refs to immutable commit SHAs or container digests, and applying updates.
 // It handles various operation modes (check, diff, fix, update), manages caching
 // for API efficiency, and supports creating pull request reviews. The package
 // provides a clean separation between the CLI layer and the actual file processing
@@ -11,11 +11,13 @@ package run
 import (
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/container"
 )
 
 type Controller struct {
 	repositoriesService RepositoriesService
 	gitService          GitService
+	containerResolver   container.Resolver
 	fs                  afero.Fs
 	cfg                 *config.Config
 	param               *ParamRun
@@ -35,10 +37,11 @@ type Controller struct {
 //   - param: operation parameters and settings
 //
 // Returns a pointer to the configured Controller.
-func New(repositoriesService RepositoriesService, gitService GitService, fs afero.Fs, cfg *config.Config, param *ParamRun) *Controller {
+func New(repositoriesService RepositoriesService, gitService GitService, containerResolver container.Resolver, fs afero.Fs, cfg *config.Config, param *ParamRun) *Controller {
 	return &Controller{
 		repositoriesService: repositoriesService,
 		gitService:          gitService,
+		containerResolver:   containerResolver,
 		param:               param,
 		fs:                  fs,
 		cfg:                 cfg,
