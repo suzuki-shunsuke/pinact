@@ -382,6 +382,14 @@ func (c *Controller) processPinnedShortsemverComment(ctx context.Context, logger
 // semver tag. These are unpinned and must be pinned to a commit SHA, or
 // updated to the latest version when --update is set.
 func (c *Controller) processTaggedVersion(ctx context.Context, logger *slog.Logger, action *Action, resolved *config.Resolved) (string, error) {
+	// Skip pinning if the tag corresponds to an immutable release.
+	if c.param.SkipImmutable {
+		if c.isImmutableRelease(ctx, logger, action.RepoOwner, action.RepoName, action.Version) {
+			logger.Debug("skip pinning: tag is an immutable release", "tag", action.Version)
+			return "", nil
+		}
+	}
+
 	typ := getVersionType(action.Version)
 	switch getVersionType(action.VersionComment) {
 	case Empty:
@@ -699,4 +707,16 @@ func (c *Controller) verify(ctx context.Context, logger *slog.Logger, action *Ac
 		"commit_hash_of_version_annotation", sha,
 		"docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md",
 	)
+}
+
+// isImmutableRelease checks whether a tag corresponds to an immutable GitHub release.
+// It calls the GitHub API to get the release by tag and checks the Immutable field.
+// Returns false if the release is not found or an error occurs (fails open).
+func (c *Controller) isImmutableRelease(ctx context.Context, logger *slog.Logger, owner, repo, tag string) bool {
+	release, _, err := c.repositoriesService.GetReleaseByTag(ctx, logger, owner, repo, tag)
+	if err != nil {
+		logger.Debug("failed to get release by tag for immutable check", "tag", tag, "error", err)
+		return false
+	}
+	return release.GetImmutable()
 }

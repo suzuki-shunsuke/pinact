@@ -18,12 +18,13 @@ type Flags struct {
 
 	// -check and -diff are silent aliases for -fix=false in v4. They keep
 	// their own destinations so buildParam can translate them.
-	Check     bool
-	Diff      bool
-	Update    bool
-	Fix       bool
-	Format    string
-	Separator string
+	Check         bool
+	Diff          bool
+	Update        bool
+	Fix           bool
+	SkipImmutable bool
+	Format        string
+	Separator     string
 
 	IsGitHubActions bool
 	FallbackEnabled bool

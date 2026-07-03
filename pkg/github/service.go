@@ -12,6 +12,7 @@ type RepositoriesService interface {
 	ListTags(ctx context.Context, owner string, repo string, opts *ListOptions) ([]*RepositoryTag, *Response, error)
 	GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *Response, error)
 	ListReleases(ctx context.Context, owner, repo string, opts *ListOptions) ([]*RepositoryRelease, *Response, error)
+	GetReleaseByTag(ctx context.Context, owner, repo, tag string) (*RepositoryRelease, *Response, error)
 	Get(ctx context.Context, owner, repo string) (*Repository, *Response, error)
 }
 
@@ -189,12 +190,20 @@ type ListReleasesResult struct {
 	err      error
 }
 
+// GetReleaseByTagResult holds the cached result of a GetReleaseByTag call.
+type GetReleaseByTagResult struct {
+	Release  *RepositoryRelease
+	Response *Response
+	err      error
+}
+
 // RepositoriesServiceImpl wraps a RepositoriesService with caching and GHES fallback support.
 type RepositoriesServiceImpl struct {
-	resolver *ClientResolver
-	Tags     map[string]*ListTagsResult
-	Commits  map[string]*GetCommitSHA1Result
-	Releases map[string]*ListReleasesResult
+	resolver       *ClientResolver
+	Tags           map[string]*ListTagsResult
+	Commits        map[string]*GetCommitSHA1Result
+	Releases       map[string]*ListReleasesResult
+	ReleasesByTag  map[string]*GetReleaseByTagResult
 }
 
 // SetResolver sets the ClientResolver for the RepositoriesServiceImpl.
@@ -265,6 +274,31 @@ func (r *RepositoriesServiceImpl) ListReleases(ctx context.Context, logger *slog
 		err:      err,
 	}
 	return arr, resp, err
+}
+
+// GetReleaseByTag retrieves a release by tag name with caching and GHES fallback.
+func (r *RepositoriesServiceImpl) GetReleaseByTag(ctx context.Context, logger *slog.Logger, owner, repo, tag string) (*RepositoryRelease, *Response, error) {
+	key := fmt.Sprintf("%s/%s/%s", owner, repo, tag)
+	if result, ok := r.ReleasesByTag[key]; ok {
+		return result.Release, result.Response, result.err
+	}
+
+	release, resp, err := r.getReleaseByTag(ctx, logger, owner, repo, tag)
+	r.ReleasesByTag[key] = &GetReleaseByTagResult{
+		Release:  release,
+		Response: resp,
+		err:      err,
+	}
+	return release, resp, err
+}
+
+// getReleaseByTag calls the appropriate RepositoriesService based on the repository host.
+func (r *RepositoriesServiceImpl) getReleaseByTag(ctx context.Context, logger *slog.Logger, owner, repo, tag string) (*RepositoryRelease, *Response, error) {
+	service, err := r.resolver.GetRepositoriesService(ctx, logger, owner, repo)
+	if err != nil {
+		return nil, nil, err
+	}
+	return service.GetReleaseByTag(ctx, owner, repo, tag) //nolint:wrapcheck
 }
 
 // getCommitSHA1 calls the appropriate RepositoriesService based on the repository host.

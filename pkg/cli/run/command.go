@@ -104,6 +104,12 @@ $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
 				Destination: &flags.NoAPI,
 			},
 			&cli.BoolFlag{
+				Name:        "skip-immutable",
+				Usage:       "Skip pinning actions whose version tags correspond to immutable GitHub releases",
+				Destination: &flags.SkipImmutable,
+				Sources:     cli.EnvVars("PINACT_SKIP_IMMUTABLE"),
+			},
+			&cli.BoolFlag{
 				Name:        "check",
 				Usage:       "Alias for -fix=false. For offline check use -fix=false -no-api",
 				Destination: &flags.Check,
