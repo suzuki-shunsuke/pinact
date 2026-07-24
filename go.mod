@@ -1,6 +1,6 @@
 module github.com/suzuki-shunsuke/pinact/v4
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/expr-lang/expr v1.17.8
@@ -12,7 +12,7 @@ require (
 	github.com/sourcegraph/go-diff v0.8.0
 	github.com/spf13/afero v1.15.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
-	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.1
+	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.2-0.20260723233215-4f113a110345
 	github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/suzuki-shunsuke/slog-util v0.3.2
@@ -35,11 +35,12 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.1 // indirect
+	github.com/suzuki-shunsuke/go-github-device-flow v0.0.2-0.20260723200608-b91d9018984b // indirect
+	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.2-0.20260723202049-b59e884ad0ce // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/zalando/go-keyring v0.2.8 // indirect
-	golang.org/x/sys v0.46.0 // indirect
-	golang.org/x/term v0.44.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/term v0.45.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
