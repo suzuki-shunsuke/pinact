@@ -207,7 +207,7 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "single semver release",
 			releases: []*github.RepositoryRelease{
-				{TagName: new("v1.0.0")},
+				{TagName: "v1.0.0"},
 			},
 			wantVersion: "v1.0.0",
 			wantErr:     false,
@@ -215,9 +215,9 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "multiple semver releases - returns highest",
 			releases: []*github.RepositoryRelease{
-				{TagName: new("v1.0.0")},
-				{TagName: new("v2.0.0")},
-				{TagName: new("v1.5.0")},
+				{TagName: "v1.0.0"},
+				{TagName: "v2.0.0"},
+				{TagName: "v1.5.0"},
 			},
 			wantVersion: "v2.0.0",
 			wantErr:     false,
@@ -225,9 +225,9 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "mix of valid and invalid semver",
 			releases: []*github.RepositoryRelease{
-				{TagName: new("v1.0.0")},
-				{TagName: new("not-a-version")},
-				{TagName: new("v2.0.0")},
+				{TagName: "v1.0.0"},
+				{TagName: "not-a-version"},
+				{TagName: "v2.0.0"},
 			},
 			wantVersion: "v2.0.0",
 			wantErr:     false,
@@ -235,9 +235,9 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "only invalid versions - returns latest by string comparison",
 			releases: []*github.RepositoryRelease{
-				{TagName: new("main")},
-				{TagName: new("release")},
-				{TagName: new("develop")},
+				{TagName: "main"},
+				{TagName: "release"},
+				{TagName: "develop"},
 			},
 			wantVersion: "release",
 			wantErr:     false,
@@ -257,9 +257,9 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "prerelease versions",
 			releases: []*github.RepositoryRelease{
-				{TagName: new("v1.0.0-alpha")},
-				{TagName: new("v1.0.0-beta")},
-				{TagName: new("v1.0.0")},
+				{TagName: "v1.0.0-alpha"},
+				{TagName: "v1.0.0-beta"},
+				{TagName: "v1.0.0"},
 			},
 			wantVersion: "v1.0.0",
 			wantErr:     false,
@@ -267,19 +267,19 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "build metadata versions",
 			releases: []*github.RepositoryRelease{
-				{TagName: new("v1.0.0+build.1")},
-				{TagName: new("v1.0.0+build.2")},
-				{TagName: new("v1.0.1")},
+				{TagName: "v1.0.0+build.1"},
+				{TagName: "v1.0.0+build.2"},
+				{TagName: "v1.0.1"},
 			},
 			wantVersion: "v1.0.1",
 			wantErr:     false,
 		},
 		{
-			name: "releases with nil tag names",
+			name: "releases with empty tag names",
 			releases: []*github.RepositoryRelease{
-				{TagName: nil},
-				{TagName: new("v1.0.0")},
-				{TagName: nil},
+				{TagName: ""},
+				{TagName: "v1.0.0"},
+				{TagName: ""},
 			},
 			wantVersion: "v1.0.0",
 			wantErr:     false,
@@ -294,8 +294,8 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "empty tag name",
 			releases: []*github.RepositoryRelease{
-				{TagName: new("")},
-				{TagName: new("v1.0.0")},
+				{TagName: ""},
+				{TagName: "v1.0.0"},
 			},
 			wantVersion: "v1.0.0",
 			wantErr:     false,
@@ -303,9 +303,9 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "stable version ignores prerelease when current is stable (issue #1095)",
 			releases: []*github.RepositoryRelease{
-				{TagName: new("v6-beta"), Prerelease: new(true)},
-				{TagName: new("v5.0.0"), Prerelease: new(false)},
-				{TagName: new("v4.3.0"), Prerelease: new(false)},
+				{TagName: "v6-beta", Prerelease: true},
+				{TagName: "v5.0.0", Prerelease: false},
+				{TagName: "v4.3.0", Prerelease: false},
 			},
 			isStable:    true,
 			wantVersion: "v5.0.0",
@@ -314,8 +314,8 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 		{
 			name: "prerelease version can update to newer prerelease (issue #1095)",
 			releases: []*github.RepositoryRelease{
-				{TagName: new("v6-beta"), Prerelease: new(true)},
-				{TagName: new("v5.0.0"), Prerelease: new(false)},
+				{TagName: "v6-beta", Prerelease: true},
+				{TagName: "v5.0.0", Prerelease: false},
 			},
 			isStable:    false,
 			wantVersion: "v6-beta",
