@@ -1004,8 +1004,8 @@ func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
 	}
 	releasesCheckout := &github.ListReleasesResult{
 		Releases: []*github.RepositoryRelease{
-			{TagName: new("v3.5.2")},
-			{TagName: new("v4.0.0-rc.1"), Prerelease: new(true)},
+			{TagName: "v3.5.2"},
+			{TagName: "v4.0.0-rc.1", Prerelease: true},
 		},
 		Response: &github.Response{},
 	}
@@ -1017,7 +1017,7 @@ func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
 	}
 	releasesNoStable := &github.ListReleasesResult{
 		Releases: []*github.RepositoryRelease{
-			{TagName: new("v1.0.0-beta"), Prerelease: new(true)},
+			{TagName: "v1.0.0-beta", Prerelease: true},
 		},
 		Response: &github.Response{},
 	}
@@ -1036,8 +1036,8 @@ func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
 	}
 	releasesMinAge := &github.ListReleasesResult{
 		Releases: []*github.RepositoryRelease{
-			{TagName: new("v2.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -1)}},
-			{TagName: new("v1.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -30)}},
+			{TagName: "v2.0.0", PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -1)}},
+			{TagName: "v1.0.0", PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -30)}},
 		},
 		Response: &github.Response{},
 	}
@@ -1157,8 +1157,8 @@ func TestController_parseLine_update_ruleMinAge(t *testing.T) {
 	}
 	releases := &github.ListReleasesResult{
 		Releases: []*github.RepositoryRelease{
-			{TagName: new("v2.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -1)}},
-			{TagName: new("v1.0.0"), PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -30)}},
+			{TagName: "v2.0.0", PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -1)}},
+			{TagName: "v1.0.0", PublishedAt: &github.Timestamp{Time: now.AddDate(0, 0, -30)}},
 		},
 		Response: &github.Response{},
 	}
