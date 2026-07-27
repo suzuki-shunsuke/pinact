@@ -82,14 +82,14 @@ pinact run -check
 
 ### Offline Check: `-no-api`
 
-For an offline check (no GitHub API call, only the 40-character SHA syntactic check), add `-no-api`:
+For an offline check (no GitHub API call, only the 40-character SHA syntactic or container digest checks), add `-no-api`:
 
 ```sh
 pinact run -fix=false -no-api
 ```
 
-With `-no-api`, pinact can't fetch action versions and SHA, so pinact can't pin actions.
-So it only checks if actions are pinned with full-length commit SHA.
+With `-no-api`, pinact can't fetch action versions or container digests, so pinact can't pin actions.
+So it only checks if actions are already pinned with a full-length commit SHA or container digest.
 
 ### Update Actions: `-update`
 

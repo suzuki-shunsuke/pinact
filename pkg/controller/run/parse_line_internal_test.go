@@ -14,6 +14,22 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 )
 
+type mockContainerResolver struct {
+	digests map[string]string
+	err     error
+}
+
+func (m *mockContainerResolver) ResolveDigest(_ context.Context, image string) (string, error) {
+	if m.err != nil {
+		return "", m.err
+	}
+	digest, ok := m.digests[image]
+	if !ok {
+		return "", errors.New("digest not found")
+	}
+	return digest, nil
+}
+
 func Test_parseAction(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	data := []struct {
@@ -112,6 +128,46 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 				Version:                 "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
 				VersionCommentSeparator: " # ",
 				VersionComment:          "v3",
+			},
+		},
+		{
+			name: "docker unpinned",
+			line: "  uses: docker://ghcr.io/example/action:v1 # keep",
+			exp: &Action{
+				Uses:   "  uses: ",
+				Name:   "docker://ghcr.io/example/action:v1",
+				Suffix: " # keep",
+			},
+		},
+		{
+			name: "docker pinned",
+			line: `  - uses: "docker://ghcr.io/example/action:v1@sha256:3d53be4e0f48952112aa4ca00f45e724b70598082e7202c5c412a6779ca38134" # keep`,
+			exp: &Action{
+				Uses:    "  - uses: ",
+				Quote:   `"`,
+				Name:    "docker://ghcr.io/example/action:v1",
+				Version: "sha256:3d53be4e0f48952112aa4ca00f45e724b70598082e7202c5c412a6779ca38134",
+				Suffix:  " # keep",
+			},
+		},
+		{
+			name: "image unpinned",
+			line: "      image: ghcr.io/example/action:v1.1.0 # v1.1.0",
+			exp: &Action{
+				Uses:   "      image: ",
+				Name:   "ghcr.io/example/action:v1.1.0",
+				Suffix: " # v1.1.0",
+			},
+		},
+		{
+			name: "image pinned",
+			line: `      image: "ghcr.io/example/action:v1.1.0@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948" # v1.1.0`,
+			exp: &Action{
+				Uses:    "      image: ",
+				Quote:   `"`,
+				Name:    "ghcr.io/example/action:v1.1.0",
+				Version: "sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948",
+				Suffix:  " # v1.1.0",
 			},
 		},
 	}
@@ -235,7 +291,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
 					},
 				},
-			}, nil, fs, &config.Config{
+			}, nil, nil, fs, &config.Config{
 				Separator: " # ",
 			}, &ParamRun{})
 			line, err := ctrl.parseLine(t.Context(), logger, d.line)
@@ -404,7 +460,7 @@ func TestController_parseLine_addMissingComment(t *testing.T) { //nolint:funlen
 					},
 				},
 				Commits: commits,
-			}, nil, fs, &config.Config{
+			}, nil, nil, fs, &config.Config{
 				Separator: " # ",
 			}, &ParamRun{})
 			line, err := ctrl.parseLine(t.Context(), logger, d.line)
@@ -452,9 +508,153 @@ func TestController_parseLine_noAPI(t *testing.T) {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, fs, &config.Config{
+			ctrl := New(nil, nil, nil, fs, &config.Config{
 				Separator: " # ",
 			}, &ParamRun{NoAPI: true})
+			_, err := ctrl.parseLine(t.Context(), logger, d.line)
+			if d.wantErr != nil {
+				if !errors.Is(err, d.wantErr) {
+					t.Fatalf("wanted error %v, got %v", d.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestController_parseLine_docker(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	const (
+		image       = "docker://ghcr.io/example/action:v1"
+		imageDigest = "sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948"
+		newDigest   = "sha256:3d53be4e0f48952112aa4ca00f45e724b70598082e7202c5c412a6779ca38134"
+	)
+	logger := slog.New(slog.DiscardHandler)
+	data := []struct {
+		name    string
+		line    string
+		param   *ParamRun
+		digests map[string]string
+		exp     string
+		wantErr error
+	}{
+		{
+			name:    "unpinned docker tag gets rewritten",
+			line:    "  - uses: " + image,
+			param:   &ParamRun{Fix: true},
+			digests: map[string]string{image: imageDigest},
+			exp:     "  - uses: " + image + "@" + imageDigest,
+		},
+		{
+			name:    "pinned docker tag digest is accepted",
+			line:    "  - uses: " + image + "@" + imageDigest,
+			param:   &ParamRun{Fix: true},
+			digests: map[string]string{image: imageDigest},
+		},
+		{
+			name:    "pinned docker digest without tag is accepted",
+			line:    "  - uses: docker://ghcr.io/example/action@" + imageDigest,
+			param:   &ParamRun{Fix: true},
+			digests: map[string]string{},
+		},
+		{
+			name:    "verify detects mismatched digest",
+			line:    "  - uses: " + image + "@" + imageDigest,
+			param:   &ParamRun{IsVerify: true, Fix: false},
+			digests: map[string]string{image: newDigest},
+			wantErr: ErrUnfixable,
+		},
+		{
+			name:    "fix rewrites mismatched digest",
+			line:    "  - uses: " + image + "@" + imageDigest,
+			param:   &ParamRun{IsVerify: true, Fix: true},
+			digests: map[string]string{image: newDigest},
+			exp:     "  - uses: " + image + "@" + newDigest,
+		},
+		{
+			name:    "quotes comments and spacing are preserved",
+			line:    `    - "uses": 'docker://ghcr.io/example/action:v1' # keep me`,
+			param:   &ParamRun{Fix: true},
+			digests: map[string]string{image: imageDigest},
+			exp:     `    - "uses": 'docker://ghcr.io/example/action:v1@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948' # keep me`,
+		},
+		{
+			name:    "image tag digest is accepted and trailing comment preserved",
+			line:    "      image: ghcr.io/example/action:v1.1.0@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948 # v1.0.0",
+			param:   &ParamRun{Fix: true},
+			digests: map[string]string{"ghcr.io/example/action:v1.1.0": "sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948"},
+		},
+		{
+			name:    "image verify detects mismatched digest and rewrites digest only",
+			line:    "      image: ghcr.io/example/action:v1.1.0@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948 # v1.0.0",
+			param:   &ParamRun{IsVerify: true, Fix: true},
+			digests: map[string]string{"ghcr.io/example/action:v1.1.0": newDigest},
+			exp:     "      image: ghcr.io/example/action:v1.1.0@" + newDigest + " # v1.0.0",
+		},
+	}
+
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			ctrl := New(nil, nil, &mockContainerResolver{digests: d.digests}, fs, &config.Config{Separator: " # "}, d.param)
+			line, err := ctrl.parseLine(t.Context(), logger, d.line)
+			if d.wantErr != nil {
+				if !errors.Is(err, d.wantErr) {
+					t.Fatalf("wanted error %v, got %v", d.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if line != d.exp {
+				t.Fatalf("wanted %q, got %q", d.exp, line)
+			}
+		})
+	}
+}
+
+func TestController_parseLine_docker_noAPI(t *testing.T) {
+	t.Parallel()
+	const digest = "sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948"
+	logger := slog.New(slog.DiscardHandler)
+	data := []struct {
+		name    string
+		line    string
+		wantErr error
+	}{
+		{
+			name: "pinned docker tag digest is accepted",
+			line: "  - uses: docker://ghcr.io/example/action:v1@" + digest,
+		},
+		{
+			name: "pinned docker digest without tag is accepted",
+			line: "  - uses: docker://ghcr.io/example/action@" + digest,
+		},
+		{
+			name:    "unpinned docker tag is rejected",
+			line:    "  - uses: docker://ghcr.io/example/action:v1",
+			wantErr: ErrCantPinned,
+		},
+		{
+			name: "pinned image digest is accepted",
+			line: "      image: ghcr.io/example/action:v1.1.0@" + digest + " # v1.0.0",
+		},
+		{
+			name:    "unpinned image tag is rejected",
+			line:    "      image: ghcr.io/example/action:v1.1.0",
+			wantErr: ErrCantPinned,
+		},
+	}
+
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := New(nil, nil, nil, afero.NewMemMapFs(), &config.Config{Separator: " # "}, &ParamRun{NoAPI: true})
 			_, err := ctrl.parseLine(t.Context(), logger, d.line)
 			if d.wantErr != nil {
 				if !errors.Is(err, d.wantErr) {
@@ -510,7 +710,7 @@ func Test_patchLine(t *testing.T) {
 			cfg := &config.Config{
 				Separator: " # ",
 			}
-			ctrl := New(nil, nil, fs, cfg, &ParamRun{})
+			ctrl := New(nil, nil, nil, fs, cfg, &ParamRun{})
 			line := ctrl.patchLine(d.action, d.version, d.tag)
 			if line != d.exp {
 				t.Fatalf(`wanted %s, got %s`, d.exp, line)
@@ -560,7 +760,7 @@ func Test_patchLine_customSeparator(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
 			cfg := &config.Config{Separator: d.separator}
-			ctrl := New(nil, nil, fs, cfg, &ParamRun{})
+			ctrl := New(nil, nil, nil, fs, cfg, &ParamRun{})
 			line := ctrl.patchLine(d.action, d.version, d.tag)
 			if line != d.exp {
 				t.Fatalf(`wanted %s, got %s`, d.exp, line)
@@ -800,7 +1000,7 @@ func TestController_shouldSkipAction(t *testing.T) { //nolint:funlen
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, fs, tt.cfg, tt.param)
+			ctrl := New(nil, nil, nil, fs, tt.cfg, tt.param)
 			logger := slog.New(slog.DiscardHandler)
 
 			if got := ctrl.shouldSkipAction(logger, tt.action); got != tt.want {
@@ -850,7 +1050,7 @@ func TestController_parseActionName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, fs, &config.Config{}, &ParamRun{})
+			ctrl := New(nil, nil, nil, fs, &config.Config{}, &ParamRun{})
 
 			got := ctrl.parseActionName(tt.action)
 
@@ -916,7 +1116,7 @@ func TestController_excludeAction(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, fs, &config.Config{}, &ParamRun{Excludes: tt.excludes})
+			ctrl := New(nil, nil, nil, fs, &config.Config{}, &ParamRun{Excludes: tt.excludes})
 
 			if got := ctrl.excludeAction(tt.actionName); got != tt.want {
 				t.Errorf("excludeAction() = %v, want %v", got, tt.want)
@@ -981,7 +1181,7 @@ func TestController_excludeByIncludes(t *testing.T) { //nolint:funlen
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fs := afero.NewMemMapFs()
-			ctrl := New(nil, nil, fs, &config.Config{}, &ParamRun{Includes: tt.includes})
+			ctrl := New(nil, nil, nil, fs, &config.Config{}, &ParamRun{Includes: tt.includes})
 
 			if got := ctrl.excludeByIncludes(tt.actionName); got != tt.want {
 				t.Errorf("excludeByIncludes() = %v, want %v", got, tt.want)
@@ -1119,7 +1319,7 @@ func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
 					"actions/min-age/0":   releasesMinAge,
 				},
 				Commits: commits,
-			}, nil, fs, &config.Config{Separator: " # "}, &ParamRun{
+			}, nil, nil, fs, &config.Config{Separator: " # "}, &ParamRun{
 				BranchToTags: d.branchToTag,
 				MinAge:       d.minAge,
 				Now:          now,
@@ -1191,7 +1391,7 @@ func TestController_parseLine_update_ruleMinAge(t *testing.T) {
 		Tags:     map[string]*github.ListTagsResult{"aquaproj/example/0": tags},
 		Releases: map[string]*github.ListReleasesResult{"aquaproj/example/0": releases},
 		Commits:  commits,
-	}, nil, fs, cfg, &ParamRun{
+	}, nil, nil, fs, cfg, &ParamRun{
 		Update: true,
 		Now:    now,
 	})
@@ -1263,7 +1463,7 @@ func TestController_checkSHAMinAge_boundary(t *testing.T) { //nolint:funlen
 					}, &github.Response{}, nil
 				},
 			}
-			ctrl := New(nil, gs, fs, &config.Config{}, &ParamRun{
+			ctrl := New(nil, gs, nil, fs, &config.Config{}, &ParamRun{
 				Now:          now,
 				VerifyMinAge: true, // enable the passive check for this test
 			})
@@ -1304,7 +1504,7 @@ func TestController_checkSHAMinAge_disabledByDefault(t *testing.T) {
 			}, &github.Response{}, nil
 		},
 	}
-	ctrl := New(nil, gs, afero.NewMemMapFs(), &config.Config{}, &ParamRun{
+	ctrl := New(nil, gs, nil, afero.NewMemMapFs(), &config.Config{}, &ParamRun{
 		Now: now,
 		// VerifyMinAge intentionally left false
 	})

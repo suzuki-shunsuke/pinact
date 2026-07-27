@@ -78,7 +78,7 @@ func TestController_processLines(t *testing.T) { //nolint:funlen
 					},
 				},
 				Commits: map[string]*github.GetCommitSHA1Result{},
-			}, nil, fs, &config.Config{}, tt.param)
+			}, nil, nil, fs, &config.Config{}, tt.param)
 
 			logger := slog.New(slog.DiscardHandler)
 			linesCopy := make([]string, len(tt.lines))
@@ -100,6 +100,58 @@ func TestController_processLines(t *testing.T) { //nolint:funlen
 // stderr regardless of the Fix value (v4 spec: detail output is always on).
 // -check / -diff are aliases for -fix=false and are translated by buildParam,
 // so the controller only needs to react to Fix.
+func TestController_processLines_docker(t *testing.T) {
+	t.Parallel()
+	const (
+		image  = "docker://ghcr.io/example/action:v1"
+		digest = "sha256:3d53be4e0f48952112aa4ca00f45e724b70598082e7202c5c412a6779ca38134"
+	)
+	fs := afero.NewMemMapFs()
+	ctrl := New(nil, nil, &mockContainerResolver{digests: map[string]string{image: digest}}, fs, &config.Config{}, &ParamRun{
+		Stderr: &bytes.Buffer{},
+		Fix:    true,
+	})
+	logger := slog.New(slog.DiscardHandler)
+	lines := []string{"    - uses: " + image}
+	changed, exitCode := ctrl.processLines(context.Background(), logger, "test.yml", lines)
+	if !changed {
+		t.Fatal("expected docker line to change")
+	}
+	if exitCode != ExitCodeOK {
+		t.Fatalf("expected exit code %d, got %d", ExitCodeOK, exitCode)
+	}
+	want := "    - uses: " + image + "@" + digest
+	if lines[0] != want {
+		t.Fatalf("wanted %q, got %q", want, lines[0])
+	}
+}
+
+func TestController_processLines_image(t *testing.T) {
+	t.Parallel()
+	const (
+		image  = "ghcr.io/example/action:v1.1.0"
+		digest = "sha256:3d53be4e0f48952112aa4ca00f45e724b70598082e7202c5c412a6779ca38134"
+	)
+	fs := afero.NewMemMapFs()
+	ctrl := New(nil, nil, &mockContainerResolver{digests: map[string]string{image: digest}}, fs, &config.Config{}, &ParamRun{
+		Stderr: &bytes.Buffer{},
+		Fix:    true,
+	})
+	logger := slog.New(slog.DiscardHandler)
+	lines := []string{"      image: " + image + " # v1.1.0"}
+	changed, exitCode := ctrl.processLines(context.Background(), logger, "test.yml", lines)
+	if !changed {
+		t.Fatal("expected image line to change")
+	}
+	if exitCode != ExitCodeOK {
+		t.Fatalf("expected exit code %d, got %d", ExitCodeOK, exitCode)
+	}
+	want := "      image: " + image + "@" + digest + " # v1.1.0"
+	if lines[0] != want {
+		t.Fatalf("wanted %q, got %q", want, lines[0])
+	}
+}
+
 func TestController_outputDiff_alwaysOn(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

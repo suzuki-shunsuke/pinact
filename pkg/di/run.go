@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/go-error-with-exit-code/ecerror"
 	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/container"
 	"github.com/suzuki-shunsuke/pinact/v4/pkg/controller/run"
 	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
@@ -71,7 +72,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 		return err
 	}
 
-	ctrl := run.New(services.repoService, services.gitService, fs, cfg, param)
+	ctrl := run.New(services.repoService, services.gitService, container.NewResolver(), fs, cfg, param)
 	return ctrl.Run(ctx, logger.Logger) //nolint:wrapcheck
 }
 

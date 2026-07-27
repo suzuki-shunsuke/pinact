@@ -124,7 +124,7 @@ func TestController_verify(t *testing.T) { //nolint:funlen
 				},
 			}
 
-			ctrl := New(mockService, nil, fs, &config.Config{
+			ctrl := New(mockService, nil, nil, fs, &config.Config{
 				Separator: " # ",
 			}, &ParamRun{
 				Fix:    tt.fix,
@@ -262,7 +262,7 @@ func TestController_verifyIfNeeded(t *testing.T) { //nolint:funlen
 				}
 			}
 
-			ctrl := New(mockService, nil, fs, &config.Config{
+			ctrl := New(mockService, nil, nil, fs, &config.Config{
 				Separator: " # ",
 			}, &ParamRun{
 				IsVerify: tt.isVerify,
@@ -329,7 +329,7 @@ func newVerifyMockService() *github.RepositoriesServiceImpl {
 func TestController_processLines_verifyOnly(t *testing.T) {
 	t.Parallel()
 	fs := afero.NewMemMapFs()
-	ctrl := New(newVerifyMockService(), nil, fs, &config.Config{
+	ctrl := New(newVerifyMockService(), nil, nil, fs, &config.Config{
 		Separator: " # ",
 	}, &ParamRun{
 		IsVerify: true,
@@ -357,7 +357,7 @@ func TestController_processLines_verifyOnly(t *testing.T) {
 func TestController_processLines_verifyWithFix(t *testing.T) {
 	t.Parallel()
 	fs := afero.NewMemMapFs()
-	ctrl := New(newVerifyMockService(), nil, fs, &config.Config{
+	ctrl := New(newVerifyMockService(), nil, nil, fs, &config.Config{
 		Separator: " # ",
 	}, &ParamRun{
 		IsVerify: true,
@@ -386,7 +386,7 @@ func TestController_processLines_verifyWithFix(t *testing.T) {
 func TestController_processLines_verifyMatchingNoChange(t *testing.T) {
 	t.Parallel()
 	fs := afero.NewMemMapFs()
-	ctrl := New(newVerifyMockService(), nil, fs, &config.Config{
+	ctrl := New(newVerifyMockService(), nil, nil, fs, &config.Config{
 		Separator: " # ",
 	}, &ParamRun{
 		IsVerify: true,
@@ -411,7 +411,7 @@ func TestController_processLines_verifyMatchingNoChange(t *testing.T) {
 func TestController_processLines_verifyMultipleLines(t *testing.T) {
 	t.Parallel()
 	fs := afero.NewMemMapFs()
-	ctrl := New(newVerifyMockService(), nil, fs, &config.Config{
+	ctrl := New(newVerifyMockService(), nil, nil, fs, &config.Config{
 		Separator: " # ",
 	}, &ParamRun{
 		IsVerify: true,
@@ -475,7 +475,7 @@ func TestController_processLines_verifyFixTestdata(t *testing.T) {
 	expected := readLines(t, "../../../testdata/verify_after.yaml")
 
 	fs := afero.NewMemMapFs()
-	ctrl := New(newVerifyMockService(), nil, fs, &config.Config{
+	ctrl := New(newVerifyMockService(), nil, nil, fs, &config.Config{
 		Separator: " # ",
 	}, &ParamRun{
 		IsVerify: true,
