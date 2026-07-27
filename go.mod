@@ -1,6 +1,6 @@
 module github.com/suzuki-shunsuke/pinact/v4
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/expr-lang/expr v1.17.8
@@ -8,7 +8,7 @@ require (
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.21.7
-	github.com/google/go-github/v88 v88.0.0
+	github.com/google/go-github/v89 v89.0.0
 	github.com/hashicorp/go-version v1.9.0
 	github.com/sourcegraph/go-diff v0.8.0
 	github.com/spf13/afero v1.15.0
@@ -18,7 +18,7 @@ require (
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/suzuki-shunsuke/slog-util v0.3.2
 	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.3
-	github.com/urfave/cli/v3 v3.10.0
+	github.com/urfave/cli/v3 v3.10.1
 	golang.org/x/oauth2 v0.36.0
 	gopkg.in/yaml.v3 v3.0.1
 )
