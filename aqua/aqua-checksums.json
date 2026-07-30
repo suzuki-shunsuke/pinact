@@ -301,6 +301,36 @@
       "algorithm": "sha256"
     },
     {
+      "id": "github_release/github.com/suzuki-shunsuke/langcheck/v0.0.1/langcheck_darwin_amd64.tar.gz",
+      "checksum": "A08838FE7D3DF20A7F5EB9063DCD07A00411B6E54877FC49797F086CA9597027",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/suzuki-shunsuke/langcheck/v0.0.1/langcheck_darwin_arm64.tar.gz",
+      "checksum": "EAD68F618347DD51EDE98C1CB9D72DD4685B4ACCC0EFFA6CE4F941C1612EF846",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/suzuki-shunsuke/langcheck/v0.0.1/langcheck_linux_amd64.tar.gz",
+      "checksum": "A1629059EEB51F499B6869CD734F25F682126B83AE1FF0865AC2FCDFB1ED8B32",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/suzuki-shunsuke/langcheck/v0.0.1/langcheck_linux_arm64.tar.gz",
+      "checksum": "874C1EF129691B76C09D5B5DEB69FA34C9D25C2F78CF53801C67D6A8E3C4DC71",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/suzuki-shunsuke/langcheck/v0.0.1/langcheck_windows_amd64.zip",
+      "checksum": "D4D153863C1E564CDED12CCFEBC41367268F3B8D9AF093C92EB2F12CC9120EC2",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/suzuki-shunsuke/langcheck/v0.0.1/langcheck_windows_arm64.zip",
+      "checksum": "8E50DBC9438A3F857B636D4585C10175080506493ED264FBA27D7E888DFEC416",
+      "algorithm": "sha256"
+    },
+    {
       "id": "github_release/github.com/suzuki-shunsuke/nllint/v1.2.0/nllint_darwin_amd64.tar.gz",
       "checksum": "0D9A6CD52F337F597E3C06BF29BDAE55BBE58BE2447E1D7CC2818DA10336626C",
       "algorithm": "sha256"
