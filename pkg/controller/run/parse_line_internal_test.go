@@ -1,10 +1,12 @@
 package run
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"log/slog"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -249,6 +251,94 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 				t.Fatalf(`wanted %s, got %s`, d.exp, line)
 			}
 		})
+	}
+}
+
+func TestController_parseLine_logsMatchedUsesOperations(t *testing.T) {
+	t.Parallel()
+	buf := &bytes.Buffer{}
+	logger := slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	fs := afero.NewMemMapFs()
+	ctrl := New(&github.RepositoriesServiceImpl{
+		Tags: map[string]*github.ListTagsResult{
+			"actions/checkout/0": {
+				Tags: []*github.RepositoryTag{
+					{
+						Name: new("v3"),
+						Commit: &github.Commit{
+							SHA: new("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
+						},
+					},
+					{
+						Name: new("v3.5.2"),
+						Commit: &github.Commit{
+							SHA: new("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
+						},
+					},
+				},
+				Response: &github.Response{},
+			},
+		},
+		Releases: map[string]*github.ListReleasesResult{
+			"actions/checkout/0": {
+				Releases: []*github.RepositoryRelease{},
+				Response: &github.Response{},
+			},
+		},
+		Commits: map[string]*github.GetCommitSHA1Result{
+			"actions/checkout/v3": {
+				SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+			},
+		},
+	}, nil, fs, &config.Config{
+		Separator: " # ",
+	}, &ParamRun{})
+
+	if _, err := ctrl.parseLine(t.Context(), logger, "  uses: actions/checkout@v3"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ctrl.parseLine(t.Context(), logger, "  uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2"); err != nil {
+		t.Fatal(err)
+	}
+
+	logOutput := buf.String()
+	for _, want := range []string{
+		"match, pin the action",
+		"match, no modification on a pinned action",
+	} {
+		if !strings.Contains(logOutput, want) {
+			t.Fatalf("wanted log output to contain %q, got:\n%s", want, logOutput)
+		}
+	}
+}
+
+func TestController_parseLine_updateLogsMissingVersionComment(t *testing.T) {
+	t.Parallel()
+	buf := &bytes.Buffer{}
+	logger := slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	sha := "8e5e7e5ab8b370d6c329ec480221332ada57f0ab"
+	ctrl := New(&github.RepositoriesServiceImpl{
+		Tags: map[string]*github.ListTagsResult{
+			"actions/checkout/0": {
+				Tags:     []*github.RepositoryTag{},
+				Response: &github.Response{},
+			},
+		},
+	}, nil, afero.NewMemMapFs(), &config.Config{Separator: " # "}, &ParamRun{Update: true})
+
+	_, err := ctrl.parseLine(t.Context(), logger, "  uses: actions/checkout@"+sha)
+	if !errors.Is(err, ErrMissingVersionComment) {
+		t.Fatalf("wanted ErrMissingVersionComment, got %v", err)
+	}
+
+	logOutput := buf.String()
+	for _, want := range []string{
+		"match, cannot update the action without version comment",
+		"match, cannot add a version comment",
+	} {
+		if !strings.Contains(logOutput, want) {
+			t.Fatalf("wanted log output to contain %q, got:\n%s", want, logOutput)
+		}
 	}
 }
 

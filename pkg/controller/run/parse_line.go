@@ -331,9 +331,13 @@ func (c *Controller) processPinnedVersion(ctx context.Context, logger *slog.Logg
 		return c.processPinnedShortsemverComment(ctx, logger, action, resolved)
 	case Empty:
 		// @<sha>: add a missing version comment by looking up the tag.
+		if c.param.Update {
+			logger.Warn("match, cannot update the action without version comment")
+		}
 		return c.addMissingComment(ctx, logger, action)
 	default:
 		// Other (@<sha> # hoge): already pinned, leave alone.
+		logger.Info("match, no modification on a pinned action")
 		return "", nil
 	}
 }
@@ -341,19 +345,38 @@ func (c *Controller) processPinnedVersion(ctx context.Context, logger *slog.Logg
 // processPinnedSemverComment handles @<sha> # v1.0.0.
 func (c *Controller) processPinnedSemverComment(ctx context.Context, logger *slog.Logger, action *Action, resolved *config.Resolved) (string, error) {
 	if !c.param.Update {
-		return c.verifyIfNeeded(ctx, logger, action)
+		line, err := c.verifyIfNeeded(ctx, logger, action)
+		if err != nil {
+			return "", err
+		}
+		if line == "" {
+			logger.Info("match, no modification on a pinned action")
+		} else {
+			logger.Info("match, correct the version annotation")
+		}
+		return line, nil
 	}
 	lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment, resolved)
 	if err != nil {
 		return "", fmt.Errorf("get the latest version: %w", err)
 	}
 	if action.VersionComment == lv {
-		return c.verifyIfNeeded(ctx, logger, action)
+		line, err := c.verifyIfNeeded(ctx, logger, action)
+		if err != nil {
+			return "", err
+		}
+		if line == "" {
+			logger.Info("match, no modification for the latest release")
+		} else {
+			logger.Info("match, correct the version annotation")
+		}
+		return line, nil
 	}
 	if !compareVersion(action.VersionComment, lv) {
 		warnSkipOlderVersion(logger, action.VersionComment, lv)
 		return "", nil
 	}
+	logger.Info("match, update")
 	return c.patchToLatestVersion(ctx, logger, action, lv)
 }
 
@@ -364,6 +387,7 @@ func (c *Controller) processPinnedShortsemverComment(ctx context.Context, logger
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
+		logger.Info("match, update")
 		return c.patchToLatestVersion(ctx, logger, action, lv)
 	}
 	// replace Shortsemver to Semver
@@ -372,9 +396,11 @@ func (c *Controller) processPinnedShortsemverComment(ctx context.Context, logger
 		return "", err
 	}
 	if longVersion == "" {
+		logger.Info("match, no modification on a pinned action")
 		logger.Debug("a long tag whose SHA is same as SHA of the version annotation isn't found")
 		return "", nil
 	}
+	logger.Info("match, expand the version annotation")
 	return c.patchLine(action, action.Version, longVersion), nil
 }
 
@@ -387,12 +413,15 @@ func (c *Controller) processTaggedVersion(ctx context.Context, logger *slog.Logg
 	case Empty:
 		// @v1 or @v1.0.0
 		if c.param.Update {
+			logger.Info("match, pin it to the latest release commit")
 			return c.updateToLatestVersion(ctx, logger, action, resolved)
 		}
+		logger.Info("match, pin the action")
 		return c.pinCurrentVersion(ctx, logger, action, typ)
 	case Semver:
 		// @v1 # v1.0.0 or @v1.0.0 # v1.0.0
 		if !c.param.Update {
+			logger.Info("match, pin the action")
 			return c.pinCurrentVersion(ctx, logger, action, typ)
 		}
 		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment, resolved)
@@ -403,9 +432,11 @@ func (c *Controller) processTaggedVersion(ctx context.Context, logger *slog.Logg
 			warnSkipOlderVersion(logger, action.VersionComment, lv)
 			return "", nil
 		}
+		logger.Info("match, update")
 		return c.patchToLatestVersion(ctx, logger, action, lv)
 	default:
 		// Shortsemver or Other comment on an unpinned tag: invalid combination.
+		logger.Warn("match, cannot pin the action")
 		return "", ErrCantPinned
 	}
 }
@@ -416,11 +447,14 @@ func (c *Controller) processUnpinnedVersion(ctx context.Context, logger *slog.Lo
 	switch getVersionType(action.VersionComment) {
 	case Empty:
 		if c.matchBranchToTag(action.Version) {
+			logger.Info("match, pin the action")
 			return c.convertBranchToLatestTag(ctx, logger, action, resolved)
 		}
+		logger.Warn("match, cannot pin the action")
 		return "", ErrCantPinned
 	case Semver:
 		if !c.param.Update {
+			logger.Warn("match, cannot pin the action")
 			return "", ErrCantPinned
 		}
 		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment, resolved)
@@ -428,14 +462,17 @@ func (c *Controller) processUnpinnedVersion(ctx context.Context, logger *slog.Lo
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
 		if action.VersionComment == lv {
+			logger.Info("match, no modification for the latest release")
 			return "", ErrCantPinned
 		}
 		if !compareVersion(action.VersionComment, lv) {
 			warnSkipOlderVersion(logger, action.VersionComment, lv)
 			return "", nil
 		}
+		logger.Info("match, update")
 		return c.patchToLatestVersion(ctx, logger, action, lv)
 	default:
+		logger.Warn("match, cannot pin the action")
 		return "", ErrCantPinned
 	}
 }
@@ -503,11 +540,13 @@ func (c *Controller) addMissingComment(ctx context.Context, logger *slog.Logger,
 		return "", err
 	}
 	if v == "" {
+		logger.Warn("match, cannot add a version comment")
 		return "", slogerr.With( //nolint:wrapcheck
 			ErrMissingVersionComment,
 			"docs", "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/005.md",
 		)
 	}
+	logger.Info("match, add a version comment")
 	return c.patchLine(action, action.Version, v), nil
 }
 
