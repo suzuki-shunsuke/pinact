@@ -11,7 +11,7 @@ USAGE:
    pinact [global options] [command [command options]]
 
 VERSION:
-   4.1.0
+   4.1.1
 
 COMMANDS:
    init        Create a pinact configuration file if it doesn't exist
@@ -143,6 +143,10 @@ COMMANDS:
 
 OPTIONS:
    --help, -h  show help
+
+GLOBAL OPTIONS:
+   --log-level string          log level [$PINACT_LOG_LEVEL]
+   --config string, -c string  configuration file path [$PINACT_CONFIG]
 ```
 
 ### token set
@@ -215,7 +219,7 @@ NAME:
    pinact completion - Output shell completion script for bash, zsh, fish, or Powershell
 
 USAGE:
-   pinact completion [options]
+   pinact completion [command [command options]]
 
 DESCRIPTION:
    Output shell completion script for bash, zsh, fish, or Powershell.
@@ -234,10 +238,68 @@ DESCRIPTION:
    Output the script to path/to/autocomplete/pinact.ps1 an run it.
 
 
+COMMANDS:
+   bash  Output bash completion script
+   zsh   Output zsh completion script
+   fish  Output fish completion script
+   pwsh  Output pwsh completion script
+
 OPTIONS:
    --help, -h  show help
+```
 
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
+### completion bash
+
+```console
+$ completion bash --help
+NAME:
+   pinact completion bash - Output bash completion script
+
+USAGE:
+   pinact completion bash [options]
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### completion zsh
+
+```console
+$ completion zsh --help
+NAME:
+   pinact completion zsh - Output zsh completion script
+
+USAGE:
+   pinact completion zsh [options]
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### completion fish
+
+```console
+$ completion fish --help
+NAME:
+   pinact completion fish - Output fish completion script
+
+USAGE:
+   pinact completion fish [options]
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### completion pwsh
+
+```console
+$ completion pwsh --help
+NAME:
+   pinact completion pwsh - Output pwsh completion script
+
+USAGE:
+   pinact completion pwsh [options]
+
+OPTIONS:
+   --help, -h  show help
 ```
