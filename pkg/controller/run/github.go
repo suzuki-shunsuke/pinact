@@ -18,6 +18,7 @@ type RepositoriesService interface {
 	ListTags(ctx context.Context, logger *slog.Logger, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryTag, *github.Response, error)
 	ListReleases(ctx context.Context, logger *slog.Logger, owner, repo string, opts *github.ListOptions) ([]*github.RepositoryRelease, *github.Response, error)
 	GetCommitSHA1(ctx context.Context, logger *slog.Logger, owner, repo, ref, lastSHA string) (string, *github.Response, error)
+	GetReleaseByTag(ctx context.Context, logger *slog.Logger, owner, repo, tag string) (*github.RepositoryRelease, *github.Response, error)
 }
 
 // GitService defines the interface for GitHub Git API operations
