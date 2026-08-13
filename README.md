@@ -298,13 +298,9 @@ About GitHub Enterprise Server, see also [GitHub Access Token for GHES](#github-
 
 pinact >= v3.8.0
 
-[You can create a GitHub App User Access Token by ghtkn integration](https://github.com/suzuki-shunsuke/ghtkn).
-About ghtkn, please see the document of ghtkn.
-You need to set up ghtkn first.
-
-```sh
-export PINACT_GHTKN=true
-```
+[You can obtain a GitHub App User Access Token by ghtkn integration](https://github.com/suzuki-shunsuke/ghtkn).
+[About ghtkn, please see the document of ghtkn.](https://github.com/suzuki-shunsuke/ghtkn/blob/main/docs/go-sdk.md)
+As the document of ghtkn describes, the integration is enabled by default if the configuration file `ghtkn.yaml` exists, but pinact has the specific `PINACT_GHTKN` environment variable to disable it.
 
 ### Manage GitHub Access token using Keyring
 
