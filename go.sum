@@ -61,6 +61,8 @@ github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0 h1:g7askc+nskCkKRWTVOdsAT8nM
 github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0/go.mod h1:yFO7h5wwFejxi6jbtazqmk7b/JSBxHcit8DGwb1bhg0=
 github.com/suzuki-shunsuke/ghtkn-go-sdk v0.6.0 h1:zpml2+760pYhvuv7D561Zor5oavQd7ShSEZgbkUti6A=
 github.com/suzuki-shunsuke/ghtkn-go-sdk v0.6.0/go.mod h1:HzPUgGvdUg/TFZM2U0ih81zk2y0fflbFZBzHT70AN0w=
+github.com/suzuki-shunsuke/ghtkn-go-sdk v0.6.1 h1:IDvTocqxIfZVMK8Km/5Zk4/bMjDKKY9Z1bPK0mqX71s=
+github.com/suzuki-shunsuke/ghtkn-go-sdk v0.6.1/go.mod h1:HzPUgGvdUg/TFZM2U0ih81zk2y0fflbFZBzHT70AN0w=
 github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0 h1:oVXrrYNGBq4POyITQNWKzwsYz7B2nUcqtDbeX4BfeEc=
 github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0/go.mod h1:kDFtLeftDiIUUHXGI3xq5eJ+uAOi50FPrxPENTHktJ0=
 github.com/suzuki-shunsuke/go-github-device-flow v0.0.2 h1:5O17Yay7cpf9XN0JaP4vyZ7FVm2KcyQjnkgTekURwpc=
