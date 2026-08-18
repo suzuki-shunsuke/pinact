@@ -180,6 +180,7 @@ func buildParam(flags *Flags) (*run.ParamRun, error) {
 		Excludes:          excludes,
 		BranchToTags:      branchToTags,
 		MinAge:            flags.MinAge,
+		KeepMajor:         flags.KeepMajor,
 		Now:               time.Now(),
 		Format:            flags.Format,
 	}

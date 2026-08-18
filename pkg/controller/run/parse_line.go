@@ -213,6 +213,25 @@ func (c *Controller) minAgeFallback() int {
 	return 0
 }
 
+// effectiveKeepMajor resolves the keep-major setting for a single action using
+// the precedence: rules > CLI flag > config.keep_major > default false.
+//
+// rules take the highest precedence so that per-action overrides (including
+// explicit opt-outs via keep_major: false) work even when the user passes
+// --keep-major on the CLI.
+func (c *Controller) effectiveKeepMajor(resolved *config.Resolved) bool {
+	if resolved != nil && resolved.KeepMajor != nil {
+		return *resolved.KeepMajor
+	}
+	if c.param.KeepMajor {
+		return true
+	}
+	if c.cfg.KeepMajor != nil {
+		return *c.cfg.KeepMajor
+	}
+	return false
+}
+
 // finalPinnedSHA returns the commit SHA that the action will resolve to after
 // pinact runs, or "" if no SHA is involved (e.g., an unpinnable branch that
 // will surface as ErrCantPinned elsewhere). If parseLine produced a patched
@@ -473,12 +492,14 @@ func (c *Controller) matchBranchToTag(v string) bool {
 // the line to its commit SHA. Falls back to including pre-releases only when
 // no stable tag exists.
 func (c *Controller) convertBranchToLatestTag(ctx context.Context, logger *slog.Logger, action *Action, resolved *config.Resolved) (string, error) {
-	lv, err := c.getLatestVersionWithStable(ctx, logger, action.RepoOwner, action.RepoName, true, resolved)
+	// branch-to-tag has no semver-shaped current version; pass "" so the
+	// keep-major filter is disabled for this path.
+	lv, err := c.getLatestVersionWithStable(ctx, logger, action.RepoOwner, action.RepoName, true, "", resolved)
 	if err != nil {
 		return "", fmt.Errorf("get the latest stable version: %w", err)
 	}
 	if lv == "" {
-		lv, err = c.getLatestVersionWithStable(ctx, logger, action.RepoOwner, action.RepoName, false, resolved)
+		lv, err = c.getLatestVersionWithStable(ctx, logger, action.RepoOwner, action.RepoName, false, "", resolved)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
