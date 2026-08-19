@@ -26,7 +26,8 @@ import (
 )
 
 const (
-	defaultBranch = "pinact/update-actions"
+	defaultBranch  = "pinact/update-actions"
+	defaultPRTitle = "chore: pin GitHub Actions"
 	// DefaultConcurrency is the default number of repositories processed in parallel.
 	DefaultConcurrency = 4
 	orgReposPerPage    = 100
@@ -86,7 +87,7 @@ func New(client *github.Client, param Param, stdout, stderr io.Writer) *Controll
 		param.Branch = defaultBranch
 	}
 	if param.PRTitle == "" {
-		param.PRTitle = "chore: pin GitHub Actions"
+		param.PRTitle = defaultPRTitle
 	}
 	if param.PRBody == "" {
 		param.PRBody = "Automated GitHub Actions pinning by pinact."
@@ -100,8 +101,8 @@ func New(client *github.Client, param Param, stdout, stderr io.Writer) *Controll
 	return controller
 }
 
-func newController(client *github.Client, service GitHubService, git GitRunner, pinner Pinner, param Param, stdout, stderr io.Writer) *Controller {
-	controller := New(client, param, stdout, stderr)
+func newController(service GitHubService, git GitRunner, pinner Pinner, param Param, stdout io.Writer) *Controller {
+	controller := New(nil, param, stdout, nil)
 	controller.service = service
 	if git != nil {
 		controller.git = git
@@ -331,14 +332,14 @@ func (c *Controller) syncRepository(ctx context.Context, logger *slog.Logger, re
 func (c *Controller) pinStatus(ctx context.Context, logger *slog.Logger, workdir string) (string, error) {
 	hasFiles, err := c.pinner.Pin(ctx, logger, workdir)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("pin repository: %w", err)
 	}
 	if !hasFiles {
 		return statusSkipped, nil
 	}
 	changed, err := c.git.Changed(ctx, workdir)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("check repository changes: %w", err)
 	}
 	if !changed {
 		return statusUnchanged, nil
@@ -428,7 +429,7 @@ func (c *Controller) parentCommit(ctx context.Context, owner, repo, base string,
 func (c *Controller) createChangedTree(ctx context.Context, owner, repo, workdir, parentTreeSHA string) (*ghapi.Tree, error) {
 	paths, err := c.git.ChangedFiles(ctx, workdir)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list changed files: %w", err)
 	}
 	entries := make([]*ghapi.TreeEntry, 0, len(paths))
 	for _, path := range paths {
@@ -646,7 +647,10 @@ func (c *Controller) pullRequest(ctx context.Context, repository *github.Reposit
 }
 
 func (c *Controller) runGit(ctx context.Context, dir string, args ...string) error {
-	return c.git.Run(ctx, dir, c.stdout, c.stderr, args...)
+	if err := c.git.Run(ctx, dir, c.stdout, c.stderr, args...); err != nil {
+		return fmt.Errorf("run git %s: %w", strings.Join(args, " "), err)
+	}
+	return nil
 }
 
 func (c *Controller) executeGit(ctx context.Context, dir string, stdout, stderr io.Writer, args ...string) error {

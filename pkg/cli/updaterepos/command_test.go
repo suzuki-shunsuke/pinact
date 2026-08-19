@@ -1,4 +1,4 @@
-package updaterepos
+package updaterepos //nolint:testpackage // tests unexported runner helpers
 
 import "testing"
 

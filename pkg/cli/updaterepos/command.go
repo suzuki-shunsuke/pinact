@@ -17,6 +17,8 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+const formatJSON = "json"
+
 func New(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags, env *urfave.Env) *cli.Command {
 	r := &runner{}
 	return r.Command(logger, globalFlags, env)
@@ -102,7 +104,7 @@ func (r *runner) param() (updaterepos.Param, error) {
 	if r.concurrency < 1 {
 		return updaterepos.Param{}, errors.New("--concurrency must be at least 1")
 	}
-	if r.format != "" && r.format != "json" {
+	if r.format != "" && r.format != formatJSON {
 		return updaterepos.Param{}, errors.New("--format must be 'json'")
 	}
 	filters, err := r.compileFilters()

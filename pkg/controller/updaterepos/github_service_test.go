@@ -94,7 +94,7 @@ func TestCommitChangesCreatesVerifiedAppCommit(t *testing.T) {
 		SHA:          github.Ptr("new-commit"),
 		Verification: &ghapi.SignatureVerification{Verified: github.Ptr(true)},
 	}}
-	controller := newController(nil, service, nil, nil, Param{PRTitle: "chore: pin GitHub Actions"}, nil, nil)
+	controller := newController(service, nil, nil, Param{PRTitle: defaultPRTitle}, nil)
 	repository := &github.Repository{Owner: &ghapi.User{Login: github.Ptr("acme")}, Name: github.Ptr("service")}
 	if err := controller.commitChanges(context.Background(), repository, workdir, "main", false); err != nil {
 		t.Fatal(err)
@@ -117,7 +117,7 @@ func TestCommitChangesRejectsUnverifiedCommit(t *testing.T) {
 		SHA:          github.Ptr("new-commit"),
 		Verification: &ghapi.SignatureVerification{Verified: github.Ptr(false), Reason: github.Ptr("unsigned")},
 	}}
-	controller := newController(nil, service, nil, nil, Param{}, nil, nil)
+	controller := newController(service, nil, nil, Param{}, nil)
 	repository := &github.Repository{Owner: &ghapi.User{Login: github.Ptr("acme")}, Name: github.Ptr("service")}
 	if err := controller.commitChanges(context.Background(), repository, workdir, "main", false); err == nil {
 		t.Fatal("commitChanges succeeded for an unverified commit")
@@ -134,7 +134,7 @@ func TestCommitChangesUpdatesExistingBranch(t *testing.T) {
 		SHA:          github.Ptr("new-commit"),
 		Verification: &ghapi.SignatureVerification{Verified: github.Ptr(true)},
 	}}
-	controller := newController(nil, service, nil, nil, Param{}, nil, nil)
+	controller := newController(service, nil, nil, Param{}, nil)
 	repository := &github.Repository{Owner: &ghapi.User{Login: github.Ptr("acme")}, Name: github.Ptr("service")}
 	if err := controller.commitChanges(context.Background(), repository, workdir, "main", true); err != nil {
 		t.Fatal(err)
@@ -147,7 +147,7 @@ func TestCommitChangesUpdatesExistingBranch(t *testing.T) {
 func TestPullRequestCreatesExpectedRequest(t *testing.T) {
 	t.Parallel()
 	service := &fakeGitHubService{}
-	controller := newController(nil, service, nil, nil, Param{Branch: "pinact/custom", PRTitle: "title", PRBody: "body", Draft: true}, nil, nil)
+	controller := newController(service, nil, nil, Param{Branch: "pinact/custom", PRTitle: "title", PRBody: "body", Draft: true}, nil)
 	repository := &github.Repository{Owner: &ghapi.User{Login: github.Ptr("acme")}, Name: github.Ptr("service")}
 	pr, err := controller.pullRequest(context.Background(), repository, "main", nil)
 	if err != nil {
@@ -164,7 +164,7 @@ func TestPullRequestCreatesExpectedRequest(t *testing.T) {
 func TestExistingPullRequestRejectsDifferentBase(t *testing.T) {
 	t.Parallel()
 	service := &fakeGitHubService{openPRs: []*ghapi.PullRequest{{Base: &ghapi.PullRequestBranch{Ref: github.Ptr("release")}}}}
-	controller := newController(nil, service, nil, nil, Param{}, nil, nil)
+	controller := newController(service, nil, nil, Param{}, nil)
 	repository := &github.Repository{Owner: &ghapi.User{Login: github.Ptr("acme")}, Name: github.Ptr("service")}
 	if _, err := controller.existingPullRequest(context.Background(), repository, "main"); err == nil {
 		t.Fatal("existingPullRequest accepted a pull request with a different base")
@@ -201,7 +201,7 @@ func TestSyncRepositoryDryRunDoesNotMutateGitHub(t *testing.T) {
 	service := &fakeGitHubService{}
 	git := &fakeGitRunner{changed: true}
 	pinner := &fakePinner{hasFiles: true}
-	controller := newController(nil, service, git, pinner, Param{DryRun: true}, nil, nil)
+	controller := newController(service, git, pinner, Param{DryRun: true}, nil)
 	repository := &github.Repository{FullName: github.Ptr("acme/service")}
 	result := controller.syncRepository(context.Background(), slog.Default(), repository, t.TempDir(), "main", Result{Repository: "acme/service"})
 	if result.Status != statusChanged || pinner.calls != 1 || service.createdRef != nil || service.updatedRef != nil || service.createdPR != nil {
@@ -219,7 +219,7 @@ func TestRunFiltersOrganizationRepositories(t *testing.T) {
 	git := &fakeGitRunner{}
 	pinner := &fakePinner{hasFiles: false}
 	var stdout bytes.Buffer
-	controller := newController(nil, service, git, pinner, Param{Organizations: []string{"acme"}, Concurrency: 1, DryRun: true}, &stdout, nil)
+	controller := newController(service, git, pinner, Param{Organizations: []string{"acme"}, Concurrency: 1, DryRun: true}, &stdout)
 	results, err := controller.Run(context.Background(), slog.Default())
 	if err != nil {
 		t.Fatal(err)
@@ -286,7 +286,7 @@ func changedGitWorkdir(t *testing.T) string {
 
 func runGit(t *testing.T, dir string, args ...string) {
 	t.Helper()
-	cmd := exec.Command("git", args...)
+	cmd := exec.CommandContext(context.Background(), "git", args...)
 	cmd.Dir = dir
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git %v: %v\n%s", args, err, output)
