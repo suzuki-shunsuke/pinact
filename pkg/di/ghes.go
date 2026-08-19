@@ -8,11 +8,19 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
 )
 
-// setupGHESServices creates GitHub API services with GHES (GitHub Enterprise Server) support.
+type GHESServices struct {
+	RepoService *github.RepositoriesServiceImpl
+	GitService  *github.GitServiceImpl
+}
+
+// SetupGHESServices creates GitHub API services with GHES (GitHub Enterprise Server) support.
 // It configures a ClientResolver that routes API requests to either GHES or github.com
 // based on the configuration. When GHES is enabled with fallback, repositories are first
 // checked on GHES and fall back to github.com if not found.
-func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Config, flags *Flags, token string) (*ghesServices, error) {
+func SetupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Config, flags *Flags, token string) (*GHESServices, error) {
+	if flags == nil {
+		flags = &Flags{}
+	}
 	ghesConfig := cfg.GHES
 	if ghesConfig == nil {
 		ghesConfig = flags.GHESFromEnv()
@@ -57,8 +65,8 @@ func setupGHESServices(ctx context.Context, gh *github.Client, cfg *config.Confi
 	}
 	gitService.SetResolver(resolver)
 
-	return &ghesServices{
-		repoService: repoService,
-		gitService:  gitService,
+	return &GHESServices{
+		RepoService: repoService,
+		GitService:  gitService,
 	}, nil
 }
