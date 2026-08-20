@@ -24,11 +24,6 @@ import (
 // formatSarif is the only -format value supported by pinact.
 const formatSarif = "sarif"
 
-type ghesServices struct {
-	repoService *github.RepositoriesServiceImpl
-	gitService  *github.GitServiceImpl
-}
-
 // Run executes the main run command logic.
 // It configures logging, processes GitHub Actions context, parses includes/excludes,
 // sets up the controller, and executes the pinning operation.
@@ -66,12 +61,12 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 		}
 		param.DiffFilter = df
 	}
-	services, err := setupGHESServices(ctx, gh, cfg, flags, secrets.GHESToken)
+	services, err := SetupGHESServices(ctx, gh, cfg, flags, secrets.GHESToken)
 	if err != nil {
 		return err
 	}
 
-	ctrl := run.New(services.repoService, services.gitService, fs, cfg, param)
+	ctrl := run.New(services.RepoService, services.GitService, fs, cfg, param)
 	return ctrl.Run(ctx, logger.Logger) //nolint:wrapcheck
 }
 

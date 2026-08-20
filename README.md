@@ -99,6 +99,22 @@ Update actions to latest versions:
 pinact run -update
 ```
 
+### Update Repositories: `update-repos`
+
+`update-repos` clones selected repositories, pins their GitHub Actions, and opens a pull request for each repository that changes. Use a GitHub App installation token with repository contents and pull-request write permission. GitHub signs the resulting commits as the App, which satisfies required signed-commit policies.
+
+```sh
+# Process every active, non-fork repository visible in the organization.
+pinact update-repos --org acme
+
+# Process one or more repositories.
+pinact update-repos --repo acme/api --repo acme/web
+```
+
+The command pins each repository's current action references by default. Use `--update` to upgrade actions, `--branch` to customize the pull-request branch, and `--base-branch` to override the repository default branch. `--include-forks` and `--include-archived` opt organization scans into those repositories. Branch references require an explicit `--branch-to-tag` match, for example `--branch-to-tag '^(main|master)$'`.
+
+Use `--dry-run` to clone and calculate changes without creating branches, commits, pushes, or pull requests. `--format json` emits the per-repository result summary for automation.
+
 ### Minimum Release Age (Cooldown): `-min-age`, `-verify-min-age`
 
 pinact supports two kinds of minimum release age checks:
