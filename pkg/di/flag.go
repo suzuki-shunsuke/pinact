@@ -38,6 +38,7 @@ type Flags struct {
 
 	FixCount    int
 	MinAge      int
+	KeepMajor   bool
 	Include     []string
 	Exclude     []string
 	BranchToTag []string
