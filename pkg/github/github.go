@@ -48,6 +48,23 @@ func New(ctx context.Context, logger *slog.Logger, token string, keyringEnabled 
 	return client, nil
 }
 
+// Token resolves the GitHub token used by pinact. Callers that need to
+// authenticate a Git transport can use the returned access token.
+func Token(_ context.Context, logger *slog.Logger, token string, keyringEnabled bool) (string, error) {
+	ts, err := getTokenSourceForGitHub(logger, token, keyringEnabled)
+	if err != nil {
+		return "", fmt.Errorf("get token source for GitHub: %w", err)
+	}
+	if ts == nil {
+		return "", nil
+	}
+	t, err := ts.Token()
+	if err != nil {
+		return "", fmt.Errorf("get GitHub token: %w", err)
+	}
+	return t.AccessToken, nil
+}
+
 // Ptr returns a pointer to the provided value.
 // This is a convenience function that delegates to new for
 // creating pointers to values, commonly needed for GitHub API structs.

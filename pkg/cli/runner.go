@@ -13,6 +13,7 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/migrate"
 	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/run"
 	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/tokencmd"
+	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/updaterepos"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
@@ -30,6 +31,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
 		Commands: []*cli.Command{
 			initcmd.New(logger, globalFlags, env),
 			run.New(logger, globalFlags, env),
+			updaterepos.New(logger, globalFlags, env),
 			migrate.New(logger, globalFlags),
 			tokencmd.New(logger),
 		},
