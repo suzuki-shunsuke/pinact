@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/github"
 )
 
 func Test_parseAction(t *testing.T) { //nolint:funlen
@@ -1208,7 +1208,7 @@ func TestController_parseLine_update_ruleMinAge(t *testing.T) {
 	}
 }
 
-// TestController_checkSHAMinAge_boundary verifies that the passive -min-age
+// TestController_checkSHAMinAge_boundary verifies that the passive --min-age
 // check returns ErrMinAge when the commit is younger than the cutoff and
 // returns nil when it is older. The mock GitService is reused from
 // github_internal_test.go.
@@ -1318,8 +1318,8 @@ func TestController_checkSHAMinAge_disabledByDefault(t *testing.T) {
 
 // TestController_effectiveMinAge verifies the CLI/env > rules > config
 // precedence for resolving the per-action min-age threshold. PINACT_MIN_AGE
-// is wired into param.MinAge via urfave Sources, so it shares the slot with
-// the CLI -min-age flag and the "cliMinAge" column models either source.
+// is wired into param.MinAge via cobrautil.Envs, so it shares the slot with
+// the CLI --min-age flag and the "cliMinAge" column models either source.
 func TestController_effectiveMinAge(t *testing.T) {
 	t.Parallel()
 	zero := 0
@@ -1354,7 +1354,7 @@ func TestController_effectiveMinAge(t *testing.T) {
 }
 
 // TestController_minAgeFallback verifies the CLI/env > config.min_age.value
-// precedence used by contexts without rule resolution (the -update cooldown
+// precedence used by contexts without rule resolution (the --update cooldown
 // filter inside getLatestVersionWithStable).
 func TestController_minAgeFallback(t *testing.T) {
 	t.Parallel()

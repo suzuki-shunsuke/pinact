@@ -14,14 +14,14 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/go-error-with-exit-code/ecerror"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/controller/run"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/controller/run"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 )
 
-// formatSarif is the only -format value supported by pinact.
+// formatSarif is the only --format value supported by pinact.
 const formatSarif = "sarif"
 
 type ghesServices struct {
@@ -187,9 +187,9 @@ func buildParam(flags *Flags) (*run.ParamRun, error) {
 }
 
 // resolveFix derives the controller-facing Fix value from the user's flags.
-// The default is true. The v3 -check and -diff flags act as silent aliases
-// for -fix=false. -format sarif also implies fix=false. An explicit -fix /
-// -fix=false wins over all of these.
+// The default is true. The v3 --check and --diff flags act as silent aliases
+// for --fix=false. --format sarif also implies fix=false. An explicit --fix /
+// --fix=false wins over all of these.
 func resolveFix(flags *Flags) bool {
 	switch {
 	case flags.FixCount > 0:
@@ -216,49 +216,49 @@ func validateFlagCombo(flags *Flags) error {
 	return nil
 }
 
-// validateUpdateFix rejects -update -fix=false (modification is implied by
-// -update). -format sarif acts as "report without writing", so it is allowed
-// to coexist with -update -fix=false.
+// validateUpdateFix rejects --update --fix=false (modification is implied by
+// --update). --format sarif acts as "report without writing", so it is allowed
+// to coexist with --update --fix=false.
 func validateUpdateFix(flags *Flags) error {
 	if flags.Update && flags.FixCount > 0 && !flags.Fix && flags.Format != formatSarif {
 		return ecerror.Wrap(
-			errors.New("-update cannot be combined with -fix=false (use -format sarif to report update candidates without writing files)"),
+			errors.New("--update cannot be combined with --fix=false (use --format sarif to report update candidates without writing files)"),
 			run.ExitCodeAPIError,
 		)
 	}
 	return nil
 }
 
-// validateNoAPI rejects -no-api combinations that cannot be satisfied without
-// a GitHub API call: discovering the latest version (-update), comparing the
-// pinned SHA against its version comment (-verify-comment), and resolving any
-// non-SHA reference to a SHA (the default -fix=true).
+// validateNoAPI rejects --no-api combinations that cannot be satisfied without
+// a GitHub API call: discovering the latest version (--update), comparing the
+// pinned SHA against its version comment (--verify-comment), and resolving any
+// non-SHA reference to a SHA (the default --fix=true).
 func validateNoAPI(flags *Flags) error {
 	if flags.Update {
 		return ecerror.Wrap(
-			errors.New("-no-api cannot be combined with -update (update needs the GitHub API to discover the latest version)"),
+			errors.New("--no-api cannot be combined with --update (update needs the GitHub API to discover the latest version)"),
 			run.ExitCodeAPIError,
 		)
 	}
 	if flags.VerifyComment {
 		return ecerror.Wrap(
-			errors.New("-no-api cannot be combined with -verify-comment (verify needs the GitHub API to compare the SHA)"),
+			errors.New("--no-api cannot be combined with --verify-comment (verify needs the GitHub API to compare the SHA)"),
 			run.ExitCodeAPIError,
 		)
 	}
 	if flags.VerifyMinAge {
 		return ecerror.Wrap(
-			errors.New("-no-api cannot be combined with -verify-min-age (the min-age audit calls GetCommit)"),
+			errors.New("--no-api cannot be combined with --verify-min-age (the min-age audit calls GetCommit)"),
 			run.ExitCodeAPIError,
 		)
 	}
-	// -no-api with the default fix mode would silently skip every action it
+	// --no-api with the default fix mode would silently skip every action it
 	// cannot resolve via the syntactic check. Require an explicit opt-out via
-	// -fix=false or -format sarif.
+	// --fix=false or --format sarif.
 	fixExplicitlyFalse := flags.FixCount > 0 && !flags.Fix
 	if !fixExplicitlyFalse && flags.Format != formatSarif {
 		return ecerror.Wrap(
-			errors.New("-no-api requires -fix=false (or -format sarif)"),
+			errors.New("--no-api requires --fix=false (or --format sarif)"),
 			run.ExitCodeAPIError,
 		)
 	}

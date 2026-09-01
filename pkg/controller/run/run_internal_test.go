@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/github"
 )
 
 func TestController_processLines(t *testing.T) { //nolint:funlen
@@ -98,7 +98,7 @@ func TestController_processLines(t *testing.T) { //nolint:funlen
 
 // TestController_outputDiff_alwaysOn verifies that the line diff is emitted to
 // stderr regardless of the Fix value (v4 spec: detail output is always on).
-// -check / -diff are aliases for -fix=false and are translated by buildParam,
+// --check / --diff are aliases for --fix=false and are translated by buildParam,
 // so the controller only needs to react to Fix.
 func TestController_outputDiff_alwaysOn(t *testing.T) {
 	t.Parallel()

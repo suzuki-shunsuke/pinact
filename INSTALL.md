@@ -55,7 +55,7 @@ mise use -g pinact@latest
 ## Build an executable binary from source code yourself using Go
 
 ```sh
-go install github.com/suzuki-shunsuke/pinact/v4/cmd/pinact@latest
+go install github.com/suzuki-shunsuke/pinact/v5/cmd/pinact@latest
 ```
 
 ## GitHub Releases

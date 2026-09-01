@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
+	"github.com/suzuki-shunsuke/cobra-util/cobrautil"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli"
 )
 
 var version = ""
 
 func main() {
-	urfave.Main("pinact", version, cli.Run)
+	cobrautil.Main("pinact", version, cli.Run)
 }

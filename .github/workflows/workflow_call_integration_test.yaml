@@ -91,7 +91,7 @@ jobs:
       # Test --diff-file
       # 1. actions included in diff are pinned
       # 1. actions not included in diff aren't pinned
-      - run: pinact run -diff-file testdata/diff-file/diff.txt testdata/diff-file/action.yaml
+      - run: pinact run --diff-file testdata/diff-file/diff.txt testdata/diff-file/action.yaml
         env:
           GITHUB_TOKEN: ${{github.token}}
       - run: diff testdata/diff-file/action.yaml testdata/diff-file/action_after.yaml

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/github"
 )
 
 func Test_compare(t *testing.T) { //nolint:funlen

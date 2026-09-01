@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/config"
 )
 
 func TestController_searchFiles(t *testing.T) { //nolint:funlen
@@ -107,7 +107,7 @@ func TestController_searchFiles_withWorkflowPaths(t *testing.T) {
 	}
 }
 
-// When no args/config files are set, a -diff-file becomes the source of
+// When no args/config files are set, a --diff-file becomes the source of
 // file paths, filtered by the default workflow/action patterns via path.Match.
 // This lets `pinact run --fix=false --diff-file ...` work without requiring
 // the workflow files to be present on disk, while still excluding unrelated
@@ -137,7 +137,7 @@ func TestController_searchFiles_diffFileAsSource(t *testing.T) {
 	}
 }
 
-// When cfg.Files patterns are present and -diff-file is set, the diff's
+// When cfg.Files patterns are present and --diff-file is set, the diff's
 // files are filtered by those patterns via path.Match (no disk access).
 func TestController_searchFiles_diffFileWithConfigPatterns(t *testing.T) {
 	t.Parallel()
@@ -167,7 +167,7 @@ func TestController_searchFiles_diffFileWithConfigPatterns(t *testing.T) {
 	}
 }
 
-// Explicit args still win over a -diff-file: the args define the candidate
+// Explicit args still win over a --diff-file: the args define the candidate
 // set and the diff filter intersects it.
 func TestController_searchFiles_argsWithDiffFile(t *testing.T) {
 	t.Parallel()

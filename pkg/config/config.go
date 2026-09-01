@@ -43,12 +43,12 @@ type Config struct {
 // MinAge controls both the threshold and whether the passive audit auto-runs.
 //
 // Value is the default min-age threshold in days. It is used as the update
-// target gate when -update is set, and as the cutoff for the passive audit
-// when the audit runs. rules[].min_age and the -min-age CLI flag can override
+// target gate when --update is set, and as the cutoff for the passive audit
+// when the audit runs. rules[].min_age and the --min-age CLI flag can override
 // Value per action / per run.
 //
 // Always opts every `pinact run` into the passive audit even without the
-// -verify-min-age CLI flag. Default false so config.min_age alone does not
+// --verify-min-age CLI flag. Default false so config.min_age alone does not
 // add a GetCommit call per pinned action on every run.
 //
 // Value and Always are pointers so we can distinguish "unset" from the zero

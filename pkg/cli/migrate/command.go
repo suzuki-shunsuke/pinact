@@ -6,15 +6,14 @@
 package migrate
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/gflag"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/controller/migrate"
+	"github.com/spf13/cobra"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/gflag"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/controller/migrate"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	"github.com/urfave/cli/v3"
 )
 
 type runner struct{}
@@ -23,7 +22,7 @@ type runner struct{}
 // It initializes a runner with the provided logger and returns
 // the configured CLI command for migrating pinact configuration files.
 // Returns a pointer to the configured CLI command.
-func New(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags) *cli.Command {
+func New(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags) *cobra.Command {
 	r := runner{}
 	return r.Command(logger, globalFlags)
 }
@@ -33,15 +32,16 @@ func New(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags) *cli.Command {
 // for the migrate subcommand.
 //
 // Returns a pointer to the configured CLI command.
-func (r *runner) Command(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags) *cli.Command {
-	return &cli.Command{
-		Name:  "migrate",
-		Usage: "Migrate .pinact.yaml",
-		Description: `Migrate the version of .pinact.yaml
+func (r *runner) Command(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags) *cobra.Command {
+	return &cobra.Command{
+		Use:   "migrate",
+		Short: "Migrate .pinact.yaml",
+		Long: `Migrate the version of .pinact.yaml
 
 $ pinact migrate
 `,
-		Action: func(_ context.Context, _ *cli.Command) error {
+		Args: cobra.NoArgs,
+		RunE: func(*cobra.Command, []string) error {
 			return r.action(logger, globalFlags)
 		},
 	}

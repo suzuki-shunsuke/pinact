@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/suzuki-shunsuke/cobra-util/cobrautil"
 	"github.com/suzuki-shunsuke/go-error-with-exit-code/ecerror"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 )
 
 type ParamRun struct {
@@ -60,12 +60,12 @@ var (
 	ErrAPI = errors.New("GitHub API error")
 
 	// ErrUnfixable is returned when an action cannot be auto-fixed (e.g., a branch reference
-	// without a matching -branch-to-tag rule, or a verify-comment mismatch).
+	// without a matching --branch-to-tag rule, or a verify-comment mismatch).
 	// Maps to ExitCodeUnfixable.
 	ErrUnfixable = errors.New("action cannot be auto-fixed")
 
 	// ErrMinAge is returned when an action's pinned commit was created after the
-	// -min-age cutoff. This is a soft error: the fix (if any) is still applied,
+	// --min-age cutoff. This is a soft error: the fix (if any) is still applied,
 	// but the run exits with ExitCodeUnfixable so CI can flag the violation.
 	ErrMinAge = errors.New("action version is younger than the min-age cutoff")
 )
@@ -105,11 +105,11 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 		}
 	}
 	if exitCode > ExitCodeOK {
-		// Wrap ErrSilent so urfave-cli-v3-util suppresses the trailing
+		// Wrap ErrSilent so cobra-util suppresses the trailing
 		// "pinact failed" log line (per-file errors have already been logged
 		// in detail by slogerr.WithError above). ecerror.Wrap surfaces the
 		// 0/1/2/3 exit code through ecerror.GetExitCode in main.
-		return ecerror.Wrap(urfave.ErrSilent, exitCode)
+		return ecerror.Wrap(cobrautil.ErrSilent, exitCode)
 	}
 	return nil
 }
@@ -234,8 +234,8 @@ func (c *Controller) processLine(ctx context.Context, logger *slog.Logger, workf
 	}
 	lineLogger = lineLogger.With("new_line", l)
 	// When Fix is disabled, a changed line counts as "needs pinning" since the
-	// fix is not being auto-applied. -check and -diff are aliases for
-	// -fix=false (handled in di.buildParam), so this single check covers them.
+	// fix is not being auto-applied. --check and --diff are aliases for
+	// --fix=false (handled in di.buildParam), so this single check covers them.
 	code := ExitCodeOK
 	if !c.param.Fix {
 		code = ExitCodeNotPinned
@@ -256,7 +256,7 @@ func (c *Controller) handleLineError(ctx context.Context, lineLogger *slog.Logge
 			c.handleChangedLine(ctx, lineLogger, line, l)
 			return l, true, code
 		}
-		// Already-pinned action whose SHA fails -min-age: no diff to emit,
+		// Already-pinned action whose SHA fails --min-age: no diff to emit,
 		// but surface file:line + the line in the human-readable output so
 		// the user can see which action triggered the exit-2.
 		c.param.Findings = append(c.param.Findings, Finding{
@@ -375,7 +375,7 @@ func (c *Controller) outputGitHubActionsAnnotation(line *Line, newLine string) {
 }
 
 // outputDiff outputs the diff information for the changed line.
-// In v4, the detail output is always emitted regardless of -fix / -check / -diff
+// In v4, the detail output is always emitted regardless of --fix / --check / --diff
 // flag combinations. Error level is used when the run will exit non-zero
 // (Fix disabled), info level otherwise.
 func (c *Controller) outputDiff(line *Line, newLine string) {

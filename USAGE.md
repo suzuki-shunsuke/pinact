@@ -4,302 +4,340 @@
 
 ```console
 $ pinact --help
-NAME:
-   pinact - Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact
+Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact
 
-USAGE:
-   pinact [global options] [command [command options]]
+Usage:
+  pinact [flags]
+  pinact [command]
 
-VERSION:
-   4.1.1
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  init        Create a pinact configuration file if it doesn't exist
+  migrate     Migrate .pinact.yaml
+  run         Pin GitHub Actions versions
+  token       Manage GitHub Access token
+  version     Show version
 
-COMMANDS:
-   init        Create a pinact configuration file if it doesn't exist
-   run         Pin GitHub Actions versions
-   migrate     Migrate .pinact.yaml
-   token       Manage GitHub Access token
-   version     Show version
-   help, h     Shows a list of commands or help for one command
-   completion  Output shell completion script for bash, zsh, fish, or Powershell
+Flags:
+  -c, --config string      configuration file path [$PINACT_CONFIG]
+  -h, --help               help for pinact
+      --log-level string   log level [$PINACT_LOG_LEVEL]
+  -v, --version            print the version
 
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
-   --help, -h                  show help
-   --version, -v               print the version
-```
-
-## pinact init
-
-```console
-$ pinact init --help
-NAME:
-   pinact init - Create a pinact configuration file if it doesn't exist
-
-USAGE:
-   pinact init [options]
-
-DESCRIPTION:
-   Create a pinact configuration file if it doesn't exist. The resolved path is printed to stdout.
-
-   $ pinact init                          # creates .pinact.yaml in the current directory
-   $ pinact init .github/pinact.yaml      # explicit path
-   $ pinact init -g                       # creates the user-wide global config
-
-
-OPTIONS:
-   --global, -g  Create the user-wide global config file (~/.config/pinact/pinact.yaml on Unix, %APPDATA%\pinact\pinact.yaml on Windows). The parent directory is created if it does not exist.
-   --help, -h    show help
-
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
-```
-
-## pinact run
-
-```console
-$ pinact run --help
-NAME:
-   pinact run - Pin GitHub Actions versions
-
-USAGE:
-   pinact run [options] [files ...] 
-
-DESCRIPTION:
-   If no argument is passed, pinact searches GitHub Actions workflow files from .github/workflows.
-
-   $ pinact run
-
-   You can also pass workflow file paths as arguments.
-
-   e.g.
-
-   $ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
-
-
-OPTIONS:
-   --verify-comment, --verify, -v                               Verify that the version comment matches the pinned SHA
-   --verify-min-age                                             Audit every pinned action against the min-age threshold (calls the GitHub API). Auto-enabled when -min-age is set on the CLI
-   --no-api                                                     Skip GitHub API calls. Only the syntactic pin check (40-character SHA) is performed
-   --check                                                      Alias for -fix=false. For offline check use -fix=false -no-api
-   --update, -u                                                 Update actions to latest versions
-   --fix                                                        Fix code. By default, this is true. If -check or -diff is true, this is false by default
-   --diff                                                       Alias for -fix=false. Note: -diff=false is ignored because detail output is always printed in v4
-   --format string                                              Output format. Currently only 'sarif' is supported. If sarif is specified, results are output in SARIF format to stdout
-   --include string, -i string [ --include string, -i string ]  A regular expression to fix actions
-   --exclude string, -e string [ --exclude string, -e string ]  A regular expression to exclude actions
-   --branch-to-tag string [ --branch-to-tag string ]            A regular expression to convert non-semver versions (e.g. branch names) to the latest stable tag. Anchor with ^$ for exact match
-   --min-age int, -m int                                        Minimum release age threshold in days. Setting this (either via CLI or PINACT_MIN_AGE) implicitly enables -verify-min-age (default: 0) [$PINACT_MIN_AGE]
-   --separator string, --sep string                             Separator between version and tag comment
-   --diff-file +                                                Path to a unified diff. Only the + lines of the diff are processed (use `-` to read the diff from stdin). Useful in PR CI to limit pinact to lines changed by the PR
-   --help, -h                                                   show help
-
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
-```
-
-## pinact migrate
-
-```console
-$ pinact migrate --help
-NAME:
-   pinact migrate - Migrate .pinact.yaml
-
-USAGE:
-   pinact migrate [options]
-
-DESCRIPTION:
-   Migrate the version of .pinact.yaml
-
-   $ pinact migrate
-
-
-OPTIONS:
-   --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
-```
-
-## pinact token
-
-```console
-$ pinact token --help
-NAME:
-   pinact token - Manage GitHub Access token
-
-USAGE:
-   pinact token [command [command options]]
-
-DESCRIPTION:
-   Manage GitHub Access token by keyring.
-
-COMMANDS:
-   set         Set GitHub Access token
-   remove, rm  Remove GitHub Access token
-
-OPTIONS:
-   --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
-```
-
-### token set
-
-```console
-$ token set --help
-NAME:
-   pinact token set - Set GitHub Access token
-
-USAGE:
-   pinact token set [options]
-
-DESCRIPTION:
-   Set GitHub Access token to keyring.
-
-OPTIONS:
-   --stdin     Read GitHub Access token from stdin
-   --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
-```
-
-### token remove
-
-```console
-$ token remove --help
-NAME:
-   pinact token remove - Remove GitHub Access token
-
-USAGE:
-   pinact token remove [options]
-
-DESCRIPTION:
-   Remove GitHub Access token from keyring.
-
-OPTIONS:
-   --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
-```
-
-## pinact version
-
-```console
-$ pinact version --help
-NAME:
-   pinact version - Show version
-
-USAGE:
-   pinact version [options]
-
-OPTIONS:
-   --json, -j  Output version in JSON format
-   --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          log level [$PINACT_LOG_LEVEL]
-   --config string, -c string  configuration file path [$PINACT_CONFIG]
+Use "pinact [command] --help" for more information about a command.
 ```
 
 ## pinact completion
 
 ```console
 $ pinact completion --help
-NAME:
-   pinact completion - Output shell completion script for bash, zsh, fish, or Powershell
+Generate the autocompletion script for pinact for the specified shell.
+See each sub-command's help for details on how to use the generated script.
 
-USAGE:
-   pinact completion [command [command options]]
+Usage:
+  pinact completion [command]
 
-DESCRIPTION:
-   Output shell completion script for bash, zsh, fish, or Powershell.
-   Source the output to enable completion.
+Available Commands:
+  bash        Generate the autocompletion script for bash
+  fish        Generate the autocompletion script for fish
+  powershell  Generate the autocompletion script for powershell
+  zsh         Generate the autocompletion script for zsh
 
-   # .bashrc
-   source <(pinact completion bash)
+Flags:
+  -h, --help   help for completion
 
-   # .zshrc
-   source <(pinact completion zsh)
+Global Flags:
+  -c, --config string      configuration file path [$PINACT_CONFIG]
+      --log-level string   log level [$PINACT_LOG_LEVEL]
 
-   # fish
-   pinact completion fish > ~/.config/fish/completions/pinact.fish
-
-   # Powershell
-   Output the script to path/to/autocomplete/pinact.ps1 an run it.
-
-
-COMMANDS:
-   bash  Output bash completion script
-   zsh   Output zsh completion script
-   fish  Output fish completion script
-   pwsh  Output pwsh completion script
-
-OPTIONS:
-   --help, -h  show help
+Use "pinact completion [command] --help" for more information about a command.
 ```
 
-### completion bash
+### pinact completion bash
 
 ```console
-$ completion bash --help
-NAME:
-   pinact completion bash - Output bash completion script
+$ pinact completion bash --help
+Generate the autocompletion script for the bash shell.
 
-USAGE:
-   pinact completion bash [options]
+This script depends on the 'bash-completion' package.
+If it is not installed already, you can install it via your OS's package manager.
 
-OPTIONS:
-   --help, -h  show help
+To load completions in your current shell session:
+
+	source <(pinact completion bash)
+
+To load completions for every new session, execute once:
+
+#### Linux:
+
+	pinact completion bash > /etc/bash_completion.d/pinact
+
+#### macOS:
+
+	pinact completion bash > $(brew --prefix)/etc/bash_completion.d/pinact
+
+You will need to start a new shell for this setup to take effect.
+
+Usage:
+  pinact completion bash
+
+Flags:
+  -h, --help              help for bash
+      --no-descriptions   disable completion descriptions
+
+Global Flags:
+  -c, --config string      configuration file path [$PINACT_CONFIG]
+      --log-level string   log level [$PINACT_LOG_LEVEL]
 ```
 
-### completion zsh
+### pinact completion fish
 
 ```console
-$ completion zsh --help
-NAME:
-   pinact completion zsh - Output zsh completion script
+$ pinact completion fish --help
+Generate the autocompletion script for the fish shell.
 
-USAGE:
-   pinact completion zsh [options]
+To load completions in your current shell session:
 
-OPTIONS:
-   --help, -h  show help
+	pinact completion fish | source
+
+To load completions for every new session, execute once:
+
+	pinact completion fish > ~/.config/fish/completions/pinact.fish
+
+You will need to start a new shell for this setup to take effect.
+
+Usage:
+  pinact completion fish [flags]
+
+Flags:
+  -h, --help              help for fish
+      --no-descriptions   disable completion descriptions
+
+Global Flags:
+  -c, --config string      configuration file path [$PINACT_CONFIG]
+      --log-level string   log level [$PINACT_LOG_LEVEL]
 ```
 
-### completion fish
+### pinact completion powershell
 
 ```console
-$ completion fish --help
-NAME:
-   pinact completion fish - Output fish completion script
+$ pinact completion powershell --help
+Generate the autocompletion script for powershell.
 
-USAGE:
-   pinact completion fish [options]
+To load completions in your current shell session:
 
-OPTIONS:
-   --help, -h  show help
+	pinact completion powershell | Out-String | Invoke-Expression
+
+To load completions for every new session, add the output of the above command
+to your powershell profile.
+
+Usage:
+  pinact completion powershell [flags]
+
+Flags:
+  -h, --help              help for powershell
+      --no-descriptions   disable completion descriptions
+
+Global Flags:
+  -c, --config string      configuration file path [$PINACT_CONFIG]
+      --log-level string   log level [$PINACT_LOG_LEVEL]
 ```
 
-### completion pwsh
+### pinact completion zsh
 
 ```console
-$ completion pwsh --help
-NAME:
-   pinact completion pwsh - Output pwsh completion script
+$ pinact completion zsh --help
+Generate the autocompletion script for the zsh shell.
 
-USAGE:
-   pinact completion pwsh [options]
+If shell completion is not already enabled in your environment you will need
+to enable it.  You can execute the following once:
 
-OPTIONS:
-   --help, -h  show help
+	echo "autoload -U compinit; compinit" >> ~/.zshrc
+
+To load completions in your current shell session:
+
+	source <(pinact completion zsh)
+
+To load completions for every new session, execute once:
+
+#### Linux:
+
+	pinact completion zsh > "${fpath[1]}/_pinact"
+
+#### macOS:
+
+	pinact completion zsh > $(brew --prefix)/share/zsh/site-functions/_pinact
+
+You will need to start a new shell for this setup to take effect.
+
+Usage:
+  pinact completion zsh [flags]
+
+Flags:
+  -h, --help              help for zsh
+      --no-descriptions   disable completion descriptions
+
+Global Flags:
+  -c, --config string      configuration file path [$PINACT_CONFIG]
+      --log-level string   log level [$PINACT_LOG_LEVEL]
+```
+
+## pinact init
+
+```console
+$ pinact init --help
+Create a pinact configuration file if it doesn't exist. The resolved path is printed to stdout.
+
+$ pinact init                          # creates .pinact.yaml in the current directory
+$ pinact init .github/pinact.yaml      # explicit path
+$ pinact init -g                       # creates the user-wide global config
+
+Usage:
+  pinact init [<config file path>] [flags]
+
+Flags:
+  -g, --global   Create the user-wide global config file (~/.config/pinact/pinact.yaml on Unix, %APPDATA%\pinact\pinact.yaml on Windows). The parent directory is created if it does not exist.
+  -h, --help     help for init
+
+Global Flags:
+  -c, --config string      configuration file path [$PINACT_CONFIG]
+      --log-level string   log level [$PINACT_LOG_LEVEL]
+```
+
+## pinact migrate
+
+```console
+$ pinact migrate --help
+Migrate the version of .pinact.yaml
+
+$ pinact migrate
+
+Usage:
+  pinact migrate [flags]
+
+Flags:
+  -h, --help   help for migrate
+
+Global Flags:
+  -c, --config string      configuration file path [$PINACT_CONFIG]
+      --log-level string   log level [$PINACT_LOG_LEVEL]
+```
+
+## pinact run
+
+```console
+$ pinact run --help
+If no argument is passed, pinact searches GitHub Actions workflow files from .github/workflows.
+
+$ pinact run
+
+You can also pass workflow file paths as arguments.
+
+e.g.
+
+$ pinact run .github/actions/foo/action.yaml .github/actions/bar/action.yaml
+
+Usage:
+  pinact run [<workflow file>...] [flags]
+
+Flags:
+      --branch-to-tag strings   A regular expression to convert non-semver versions (e.g. branch names) to the latest stable tag. Anchor with ^$ for exact match
+      --check                   Alias for --fix=false. For offline check use --fix=false --no-api
+      --diff                    Alias for --fix=false. Note: --diff=false is ignored because detail output is always printed in v4
+      --diff-file string        Path to a unified diff. Only the '+' lines of the diff are processed (use '-' to read the diff from stdin). Useful in PR CI to limit pinact to lines changed by the PR
+  -e, --exclude strings         A regular expression to exclude actions
+      --fix                     Fix code. By default, this is true. If --check or --diff is true, this is false by default
+      --format string           Output format. Currently only 'sarif' is supported. If sarif is specified, results are output in SARIF format to stdout
+  -h, --help                    help for run
+  -i, --include strings         A regular expression to fix actions
+  -m, --min-age int             Minimum release age threshold in days. Setting this (either via CLI or PINACT_MIN_AGE) implicitly enables --verify-min-age [$PINACT_MIN_AGE]
+      --no-api                  Skip GitHub API calls. Only the syntactic pin check (40-character SHA) is performed
+      --separator string        Separator between version and tag comment
+  -u, --update                  Update actions to latest versions
+  -v, --verify-comment          Verify that the version comment matches the pinned SHA
+      --verify-min-age          Audit every pinned action against the min-age threshold (calls the GitHub API). Auto-enabled when --min-age is set on the CLI
+
+Global Flags:
+  -c, --config string      configuration file path [$PINACT_CONFIG]
+      --log-level string   log level [$PINACT_LOG_LEVEL]
+```
+
+## pinact token
+
+```console
+$ pinact token --help
+Manage GitHub Access token by keyring.
+
+Usage:
+  pinact token [command]
+
+Available Commands:
+  remove      Remove GitHub Access token
+  set         Set GitHub Access token
+
+Flags:
+  -h, --help   help for token
+
+Global Flags:
+  -c, --config string      configuration file path [$PINACT_CONFIG]
+      --log-level string   log level [$PINACT_LOG_LEVEL]
+
+Use "pinact token [command] --help" for more information about a command.
+```
+
+### pinact token remove
+
+```console
+$ pinact token remove --help
+Remove GitHub Access token from keyring.
+
+Usage:
+  pinact token remove [flags]
+
+Aliases:
+  remove, rm
+
+Flags:
+  -h, --help   help for remove
+
+Global Flags:
+  -c, --config string      configuration file path [$PINACT_CONFIG]
+      --log-level string   log level [$PINACT_LOG_LEVEL]
+```
+
+### pinact token set
+
+```console
+$ pinact token set --help
+Set GitHub Access token to keyring.
+
+Usage:
+  pinact token set [flags]
+
+Flags:
+  -h, --help    help for set
+      --stdin   Read GitHub Access token from stdin
+
+Global Flags:
+  -c, --config string      configuration file path [$PINACT_CONFIG]
+      --log-level string   log level [$PINACT_LOG_LEVEL]
+```
+
+## pinact version
+
+```console
+$ pinact version --help
+Show version
+
+Usage:
+  pinact version [flags]
+
+Flags:
+  -h, --help   help for version
+  -j, --json   Output version in JSON format
+
+Global Flags:
+  -c, --config string      configuration file path [$PINACT_CONFIG]
+      --log-level string   log level [$PINACT_LOG_LEVEL]
 ```

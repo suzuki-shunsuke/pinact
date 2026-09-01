@@ -195,7 +195,7 @@ This is optional. If `true`, pinact skips pin/update/error reporting for the mat
 
 This is optional. Overrides the min-age threshold (in days) for the matched action. Setting it to `0` disables the min-age check for the action.
 
-The effective min-age for an action is resolved in this order: CLI flag `-min-age` > matching rules > top-level `min_age`.
+The effective min-age for an action is resolved in this order: CLI flag `--min-age` > matching rules > top-level `min_age`.
 
 #### `rules[].conditions`
 
@@ -224,7 +224,7 @@ pinact >= v4.0.0
 
 This is optional. The default min-age in days for the min-age check. When set, pinact checks that every action's pinned commit is at least this many days old, and exits with code 2 on violation.
 
-The top-level value can be overridden by the CLI flag `-min-age` (highest precedence) or per-action by `rules[].min_age`.
+The top-level value can be overridden by the CLI flag `--min-age` (highest precedence) or per-action by `rules[].min_age`.
 
 ### `ignore_actions`
 

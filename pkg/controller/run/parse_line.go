@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-version"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/github"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
@@ -127,8 +127,8 @@ func (c *Controller) excludeByIncludes(actionName string) bool {
 // It parses the line for action usage, applies filtering rules, and determines
 // what modifications (if any) should be made based on the operation mode.
 //
-// As of v4, parseLine also runs the passive -min-age check on the final pinned
-// SHA. The check is skipped when -min-age is not set or no git service is
+// As of v4, parseLine also runs the passive --min-age check on the final pinned
+// SHA. The check is skipped when --min-age is not set or no git service is
 // available. On violation it returns the patched line together with ErrMinAge
 // so the caller can apply the fix and bump the exit code to ExitCodeUnfixable.
 func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line string) (s string, e error) {
@@ -185,7 +185,7 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 // effectiveMinAge resolves the min-age threshold for a single action using the
 // precedence: CLI flag / PINACT_MIN_AGE env var > rules > config.min_age.value.
 //
-// PINACT_MIN_AGE is wired into the same flag via urfave Sources, so the env
+// PINACT_MIN_AGE is wired into the same flag via cobrautil.Envs, so the env
 // var and CLI flag share the param.MinAge slot.
 //
 // A CLI / env value of 0 means the source was unset, so the rules / config
@@ -234,9 +234,9 @@ func (c *Controller) finalPinnedSHA(action *Action, newLine string) string {
 // commit is younger than the min-age cutoff. minAge is the effective threshold
 // for this action, already merged across CLI flag, rules, and config defaults.
 //
-// The audit is opt-in: it runs only when -verify-min-age is set on the CLI or
+// The audit is opt-in: it runs only when --verify-min-age is set on the CLI or
 // config.min_age.always is true. Returns nil otherwise, or when minAge is 0
-// or negative, the git service is unavailable, or -no-api is set.
+// or negative, the git service is unavailable, or --no-api is set.
 func (c *Controller) checkSHAMinAge(ctx context.Context, logger *slog.Logger, owner, repo, sha string, minAge int) error {
 	always := c.cfg.MinAge != nil && c.cfg.MinAge.Always != nil && *c.cfg.MinAge.Always
 	if !c.param.VerifyMinAge && !always {
@@ -289,7 +289,7 @@ func (c *Controller) shouldSkipAction(logger *slog.Logger, action *Action) bool 
 // is the primary determinant (already-pinned SHA vs. semver tag vs. branch);
 // the comment refines the behavior inside each branch.
 //
-// When -no-api is set, processAction short-circuits any GitHub API call:
+// When --no-api is set, processAction short-circuits any GitHub API call:
 // already-pinned SHAs with a version comment are accepted as-is; SHAs without
 // a comment cannot be cross-verified against any upstream tag (no API to look
 // it up), so they are rejected as ErrMissingVersionComment. Everything else
@@ -657,8 +657,8 @@ func (c *Controller) parseActionName(action *Action) bool {
 //
 // When Fix is enabled (the v4 default), a mismatch triggers a tag lookup for
 // the action's current SHA; if a matching tag is found, verify returns the
-// patched line with the version comment rewritten. With -fix=false (-check /
-// -diff) the mismatch is reported as an error instead, so CI can flag it.
+// patched line with the version comment rewritten. With --fix=false (--check /
+// --diff) the mismatch is reported as an error instead, so CI can flag it.
 func (c *Controller) verify(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
 	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment, "")
 	if err != nil {
