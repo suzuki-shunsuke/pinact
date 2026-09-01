@@ -59,6 +59,10 @@ func Run(ctx context.Context, logger *slogutil.Logger, flags *Flags, secrets *Se
 	if err != nil {
 		return err
 	}
+	// Merge config's skip_immutable when the CLI flag was not explicitly set.
+	if !param.SkipImmutable && cfg.SkipImmutable {
+		param.SkipImmutable = true
+	}
 	if flags.DiffFile != "" {
 		df, err := loadDiffFilter(flags.DiffFile, os.Stdin)
 		if err != nil {
@@ -174,6 +178,7 @@ func buildParam(flags *Flags) (*run.ParamRun, error) {
 		NoAPI:             flags.NoAPI,
 		Fix:               resolveFix(flags),
 		IsGitHubActions:   flags.IsGitHubActions,
+		SkipImmutable:     flags.SkipImmutable,
 		Stderr:            os.Stderr,
 		Stdout:            os.Stdout,
 		Includes:          includes,
