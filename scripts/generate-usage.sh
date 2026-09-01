@@ -4,10 +4,7 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-# Build from the working tree rather than running the pinact on PATH, which aqua
-# pins to the released version: USAGE.md documents the code in this repository, so
-# generating it from a release would keep it a release behind.
-help=$(go run ./cmd/pinact help-all)
+help=$(pinact help-all)
 
 echo "# Usage
 
