@@ -17,7 +17,9 @@ func TestSchema(t *testing.T) {
 	if err := json.Unmarshal(schema.Schema, &m); err != nil {
 		t.Fatalf("the schema isn't a JSON object: %v", err)
 	}
-	if _, ok := m["$schema"]; !ok {
-		t.Error("the schema has no $schema")
+	// The value, not just the key: a generated file holding something other than the
+	// URL of a schema draft is not one an editor can read either.
+	if v, ok := m["$schema"].(string); !ok || v == "" {
+		t.Errorf("the schema has no $schema: %v", m["$schema"])
 	}
 }
