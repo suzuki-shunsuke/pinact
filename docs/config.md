@@ -15,6 +15,13 @@ You can generate a configuration file by `pinact init`.
 pinact init [<configuration file path>]
 ```
 
+## Configuration Priority
+
+1. Command line options
+2. Environment variables
+3. Local configuration file
+4. Global configuration file
+
 As of pinact v2.2.0, pinact configuration file has a schema version.
 
 ```yaml
