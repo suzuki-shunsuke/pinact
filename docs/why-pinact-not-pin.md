@@ -1,3 +1,7 @@
+---
+description: Why pinact leaves some actions unpinned. Use when an action referencing a branch such as `main` isn't pinned, when a version isn't changed although a newer tag exists, or when deciding whether to use `--branch-to-tag`.
+---
+
 # Why doesn't pinact pin some actions?
 
 > [!TIP]

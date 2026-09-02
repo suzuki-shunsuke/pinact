@@ -6,6 +6,10 @@
 pinact is a CLI to pin GitHub Actions and Reusable Workflows.
 pinact can also [update their versions](#update-actions--update) and [verify version comments](docs/codes/001.md).
 
+> [!NOTE]
+> If you are a coding agent and pinact is installed, run `pinact docs list` to list the documentation and `pinact docs show <name>` to read it before answering questions about pinact or troubleshooting its errors.
+> The embedded documentation matches the installed version. If pinact isn't installed, read the documents under [docs](docs).
+
 ```diff
 $ pinact run
 .github/workflows/test.yaml:8
@@ -382,6 +386,18 @@ We develop GitHub Actions to pin GitHub Actions and reusable workflows by pinact
 In some cases pinact doesn't pin versions intentionally, which may confuse you.
 For instance, pinact doesn't pin branches like `main` and `master` by default.
 [For more details, please see here?](docs/why-pinact-not-pin.md).
+
+## Documentation
+
+The documentation is split by topic under [docs](docs): the configuration file, GHES support, the error codes pinact reports, and the upgrade guides.
+
+These documents are embedded in the binary, so `pinact docs` serves the documentation of the version that is installed rather than of whatever version the website happens to show.
+
+```sh
+pinact docs list # The name and the description of every document, as JSON
+pinact docs show config # One document
+pinact docs show codes/005 # A document in a subdirectory is named by its path
+```
 
 ## Motivation
 

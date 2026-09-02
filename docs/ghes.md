@@ -1,3 +1,7 @@
+---
+description: Pin actions hosted on GitHub Enterprise Server. Use when setting `ghes.api_url` or the fallback to github.com, choosing the token environment variable (PINACT_GHES_TOKEN, GHES_TOKEN, GITHUB_TOKEN_ENTERPRISE, GITHUB_ENTERPRISE_TOKEN), or working out why GHES mode is or isn't enabled.
+---
+
 # GitHub Enterprise Server (GHES) Support
 
 v3.6.0 [#839](https://github.com/suzuki-shunsuke/pinact/issues/839) [#1275](https://github.com/suzuki-shunsuke/pinact/pull/1275)

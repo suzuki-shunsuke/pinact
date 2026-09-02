@@ -12,6 +12,7 @@ import (
 	"github.com/suzuki-shunsuke/cobra-util/cobrautil"
 	"github.com/suzuki-shunsuke/cobra-util/jsonschema"
 	schema "github.com/suzuki-shunsuke/pinact/v5/json-schema"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/docs"
 	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/gflag"
 	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/initcmd"
 	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/migrate"
@@ -52,10 +53,33 @@ func newCommand(logger *slogutil.Logger, env *cobrautil.Env, globalFlags *gflag.
 		run.New(logger, globalFlags, env),
 		migrate.New(logger, globalFlags),
 		tokencmd.New(logger),
+		docs.New(),
 	)
-	// json-schema is added on its own because it is the one command that takes
-	// neither the logger nor the global flags: it only writes the embedded schema.
-	// With names the program in the example in its help, taking the name from cmd.
+	// json-schema is added on its own because With takes the name of the program
+	// from cmd, which is what the example in the command's help says.
 	jsonschema.With(cmd, schema.Schema)
-	return cobrautil.Command(env, cmd, nil)
+	return cobrautil.Command(env, cmd, &cobrautil.Options{
+		AfterVersion: func() {
+			hintDocsOnVersion(logger, globalFlags)
+		},
+	})
+}
+
+// hintDocsOnVersion makes `pinact -v`, `pinact --version`, and `pinact version` log
+// docs.Hint. Checking the version is often the only pinact command a coding agent
+// runs before it starts answering, so without this it never learns that
+// `pinact docs` exists and reads the source code or the website instead.
+//
+// The hint goes to stderr as a log rather than to stdout so that it doesn't break
+// scripts that parse the version, and it's logged at the info level so that
+// `--log-level warn` silences it.
+//
+// PINACT_LOG_LEVEL needs no special handling: cobrautil prints the version from the
+// root command's action, which runs after the environment variables have been
+// applied to the flags, so the log level is already resolved here.
+func hintDocsOnVersion(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags) {
+	// An invalid log level is ignored here because the version output must succeed
+	// regardless. Subcommands report it when they set the level.
+	_ = logger.SetLevel(globalFlags.LogLevel)
+	logger.Info(docs.Hint())
 }
