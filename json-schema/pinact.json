@@ -7,7 +7,7 @@
       "properties": {
         "expr": {
           "type": "string",
-          "description": "A boolean expression evaluated against the action, such as ActionName matches 'suzuki-shunsuke/.*'. It is required. See https://expr-lang.org/docs/language-definition"
+          "description": "A boolean expression evaluated against the action, such as ActionName matches 'suzuki-shunsuke/.*'. See https://expr-lang.org/docs/language-definition"
         }
       },
       "additionalProperties": false,
@@ -24,7 +24,7 @@
             2,
             3
           ],
-          "description": "The schema version of the configuration file. It is required. The latest version is 3. Version 2 is abandoned, so run 'pinact migrate' to migrate an old configuration file to the latest version"
+          "description": "The schema version of the configuration file. The latest version is 3. Version 2 is abandoned, so run 'pinact migrate' to migrate an old configuration file to the latest version"
         },
         "files": {
           "items": {
@@ -70,7 +70,7 @@
       "properties": {
         "pattern": {
           "type": "string",
-          "description": "A glob pattern of target files, such as '.github/workflows/*.yaml'. It is required. Go's path/filepath#Glob is used, so the pattern follows its syntax"
+          "description": "A glob pattern of target files, such as '.github/workflows/*.yaml'. Go's path/filepath#Glob is used, so the pattern follows its syntax"
         }
       },
       "additionalProperties": false,
@@ -97,11 +97,11 @@
       "properties": {
         "name": {
           "type": "string",
-          "description": "A regular expression of ignored actions and reusable workflows. It is required. It must match the action name exactly, so 'actions/.*' matches 'actions/checkout' while 'actions' matches nothing"
+          "description": "A regular expression of ignored actions and reusable workflows. It must match the action name exactly, so 'actions/.*' matches 'actions/checkout' while 'actions' matches nothing"
         },
         "ref": {
           "type": "string",
-          "description": "A regular expression of ignored action versions, which are a branch, a tag, or a commit hash. It is required. It must match the version exactly, so 'main' doesn't match 'malicious-main'"
+          "description": "A regular expression of ignored action versions, which are a branch, a tag, or a commit hash. It must match the version exactly, so 'main' doesn't match 'malicious-main'"
         }
       },
       "additionalProperties": false,
@@ -141,7 +141,7 @@
           },
           "type": "array",
           "minItems": 1,
-          "description": "Match conditions. It is required. The rule matches if any condition evaluates to true"
+          "description": "Match conditions. The rule matches if any condition evaluates to true"
         }
       },
       "additionalProperties": false,
