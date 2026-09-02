@@ -1,7 +1,7 @@
 # pinact
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/suzuki-shunsuke/pinact)
-[Install](INSTALL.md) | [Usage](docs/usage.md) | [Configuration](docs/config.md)
+[Install](INSTALL.md) | [Usage](docs/usage.md) | [Configuration](docs/config.md) | [Agent Skill](#installing-the-agent-skill)
 
 pinact is a CLI to pin GitHub Actions and Reusable Workflows.
 pinact can also [update their versions](docs/update.md) and [verify version comments](docs/codes/001.md).
@@ -79,9 +79,19 @@ pinact init
 
 The configuration file is optional. It says which files to pin, which actions to ignore, and what the default minimum release age is. See [Configuration File](docs/config.md).
 
+## Installing the Agent Skill
+
+pinact ships a single skill. It holds no documentation of its own: it tells the coding agent to read the documentation embedded in the pinact binary with `pinact docs list` and `pinact docs show <name>`, so the agent always reads the documentation of the version it is actually running.
+
+[gh skill install](https://cli.github.com/manual/gh_skill_install):
+
+```sh
+gh skill install suzuki-shunsuke/pinact pinact
+```
+
 ## Documentation
 
-The documentation is split by topic under [`docs/`](docs). These documents are embedded in the pinact binary, so `pinact docs list` and `pinact docs show <name>` serve exactly what is listed below, matching the version that is installed. They are the single source of truth, shared between this README and the embedded documentation, so there's no duplicated maintenance.
+The documentation is split by topic under [`docs/`](docs). These documents are embedded in the pinact binary, so `pinact docs list` and `pinact docs show <name>` serve exactly what is listed below, matching the version that is installed. They are the single source of truth, shared between this README, the embedded documentation, and the skill, so there's no duplicated maintenance.
 
 ```sh
 pinact docs list # The name and the description of every document, as JSON

@@ -41,6 +41,8 @@ Every document requires a YAML frontmatter with a `description` field, and holds
 
 A document in a subdirectory is named by its path, such as `pinact docs show codes/005`. A new subdirectory has to be added to the `go:embed` patterns in [docs/doc.go](docs/doc.go); a new document in an existing directory is served by dropping the file in.
 
+Keep guidance about how to answer out of [docs](docs). Instructions like "read the documentation before answering" belong in [skills/pinact/SKILL.md](skills/pinact/SKILL.md), which governs the agent rather than describing pinact. For the same reason, don't copy procedures or commands into the skill: it is installed separately from the binary and would go stale, so it deliberately carries no documentation of its own.
+
 The README links every document from its Documentation section, so add a new document there too. Details belong in a document rather than in the README: the README is what someone reads to decide whether to use pinact, and only the documents are served by `pinact docs`, which is what a coding agent reads. Write each document so it can be read alone, since `pinact docs show` prints one document and nothing around it, and link across documents instead of building on them.
 
 ## Add tests
