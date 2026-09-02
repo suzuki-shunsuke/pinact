@@ -13,7 +13,7 @@ require (
 	github.com/spf13/afero v1.15.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
-	github.com/suzuki-shunsuke/cobra-util v0.0.2
+	github.com/suzuki-shunsuke/cobra-util v0.0.3
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.6.1
 	github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0
