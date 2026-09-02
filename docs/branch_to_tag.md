@@ -7,7 +7,7 @@ description: Pin actions referencing a branch by converting the branch to a tag 
 pinact >= v3.10.0, [#1529](https://github.com/suzuki-shunsuke/pinact/issues/1529)
 
 By default, pinact doesn't pin branches such as `main` or `master`.
-[This is intentional.](why-pinact-not-pin.md)
+[This is intentional.](why_pinact_not_pin.md)
 If you want to pin specific branches, you can use the `--branch-to-tag` option.
 
 ```sh

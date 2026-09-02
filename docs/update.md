@@ -66,4 +66,4 @@ On the other hand, when updating actions min_age setting is always used to filte
 - For GitHub Releases, the `PublishedAt` date is checked
 - For tags, the commit's `Committer.Date` is checked (requires additional API call)
 
-A violation of the minimum release age is not something pinact can fix, so it [exits with the code 2](exit-codes.md).
+A violation of the minimum release age is not something pinact can fix, so it [exits with the code 2](exit_codes.md).

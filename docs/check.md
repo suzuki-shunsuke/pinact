@@ -14,7 +14,7 @@ If `--check` or `--fix=false` is specified, pinact just checks if actions are pi
 pinact run --check
 ```
 
-The check reports what needs pinning and exits with a non-zero [exit code](exit-codes.md), which is what makes it useful in CI.
+The check reports what needs pinning and exits with a non-zero [exit code](exit_codes.md), which is what makes it useful in CI.
 
 ## Offline check: `--no-api`
 

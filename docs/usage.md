@@ -26,7 +26,7 @@ action.yaml
 The list of target files is configurable with [`files` in the configuration file](config.md).
 
 pinact calls the GitHub API to fetch releases and tags.
-To avoid API rate limiting, you should [pass a GitHub access token](github-token.md).
+To avoid API rate limiting, you should [pass a GitHub access token](github_token.md).
 
 ## Fix example codes in documents
 
@@ -42,13 +42,13 @@ pinact run README.md
 - [Check without editing files](check.md): `--check`, `--fix=false`, `--no-api`
 - [Update actions](update.md): `--update`, `--min-age`, `--verify-min-age`
 - [Verify version comments](codes/001.md): `--verify-comment`
-- [Pin branches](branch-to-tag.md): `--branch-to-tag`
-- [Include and exclude specific actions](include-exclude.md): `--include`, `--exclude`
+- [Pin branches](branch_to_tag.md): `--branch-to-tag`
+- [Include and exclude specific actions](include_exclude.md): `--include`, `--exclude`
 - [Generate SARIF](sarif.md): `--format sarif`
-- [Pin only changed lines](diff-file.md): `--diff-file`
+- [Pin only changed lines](diff_file.md): `--diff-file`
 
 Every option is also listed in [USAGE.md](../USAGE.md), which is the help of every command.
 
 ## Exit codes
 
-[See Exit codes](exit-codes.md).
+[See Exit codes](exit_codes.md).

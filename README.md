@@ -35,11 +35,11 @@ $ pinact run
 1. [Verify version comments](docs/codes/001.md)
 1. [Require a version comment on SHA-pinned actions](docs/codes/005.md)
 1. [Verify if actions meet the minimum release age](docs/update.md)
-1. [Pin branches](docs/branch-to-tag.md)
-1. [Include and exclude specific actions](docs/include-exclude.md)
+1. [Pin branches](docs/branch_to_tag.md)
+1. [Include and exclude specific actions](docs/include_exclude.md)
 1. [Generate SARIF](docs/sarif.md). This is useful to create reviews using [reviewdog](docs/sarif.md)
-1. [Read GitHub access token via keyrings or ghtkn](docs/github-token.md)
-1. [Pin only changed lines](docs/diff-file.md)
+1. [Read GitHub access token via keyrings or ghtkn](docs/github_token.md)
+1. [Pin only changed lines](docs/diff_file.md)
 1. [Support GitHub Enterprise Server](docs/ghes.md)
 1. [GitHub Action](https://github.com/suzuki-shunsuke/pinact-action)
 
@@ -61,7 +61,7 @@ Without an argument, pinact pins the workflow files and the action files of the 
 pinact run --check
 ```
 
-The run [exits with a non-zero code](docs/exit-codes.md) when something needs pinning. [Checking without fixing](docs/check.md) covers `--check`, `--fix=false`, and the offline check `--no-api`.
+The run [exits with a non-zero code](docs/exit_codes.md) when something needs pinning. [Checking without fixing](docs/check.md) covers `--check`, `--fix=false`, and the offline check `--no-api`.
 
 4. Pass a GitHub access token so the API calls aren't rate limited:
 
@@ -69,7 +69,7 @@ The run [exits with a non-zero code](docs/exit-codes.md) when something needs pi
 export GITHUB_TOKEN=<your token>
 ```
 
-pinact can also read the token from [the OS keyring or from ghtkn](docs/github-token.md).
+pinact can also read the token from [the OS keyring or from ghtkn](docs/github_token.md).
 
 5. Optionally, write a configuration file:
 
@@ -92,15 +92,15 @@ pinact docs show codes/005 # A document in a subdirectory is named by its path
 - [Usage](docs/usage.md) - run pinact, which files it pins when none is given, and pinning actions written in a document.
 - [Checking without fixing](docs/check.md) - `--check`, `--fix=false`, the offline check `--no-api`, and verifying version comments.
 - [Updating actions](docs/update.md) - `--update` and the minimum release age (cooldown).
-- [Pin branches](docs/branch-to-tag.md) - `--branch-to-tag`, which opts a branch reference in to being pinned.
-- [Include and exclude specific actions](docs/include-exclude.md) - `--include` and `--exclude`.
+- [Pin branches](docs/branch_to_tag.md) - `--branch-to-tag`, which opts a branch reference in to being pinned.
+- [Include and exclude specific actions](docs/include_exclude.md) - `--include` and `--exclude`.
 - [SARIF](docs/sarif.md) - `--format sarif`, reviewdog, and GitHub code scanning.
-- [Pin only changed lines](docs/diff-file.md) - `--diff-file`, to introduce pinact gradually.
-- [GitHub access token](docs/github-token.md) - `PINACT_GITHUB_TOKEN`, the ghtkn integration, and the OS keyring.
+- [Pin only changed lines](docs/diff_file.md) - `--diff-file`, to introduce pinact gradually.
+- [GitHub access token](docs/github_token.md) - `PINACT_GITHUB_TOKEN`, the ghtkn integration, and the OS keyring.
 - [Configuration File](docs/config.md) - the configuration file, the global configuration file, and every field of the schema.
 - [GitHub Enterprise Server](docs/ghes.md) - pinning actions hosted on GHES.
-- [Exit codes](docs/exit-codes.md) - what 0, 1, 2, and 3 mean.
-- [Why doesn't pinact pin some actions?](docs/why-pinact-not-pin.md) - why a branch reference isn't pinned by default.
+- [Exit codes](docs/exit_codes.md) - what 0, 1, 2, and 3 mean.
+- [Why doesn't pinact pin some actions?](docs/why_pinact_not_pin.md) - why a branch reference isn't pinned by default.
 - [Verify version comments](docs/codes/001.md) - why a version comment isn't necessarily true, and how `--verify-comment` checks it.
 - [SHA-pinned action requires a version comment](docs/codes/005.md) - why a bare SHA is rejected, and how to resolve it.
 - [Schema version is required](docs/codes/002.md), [this version was abandoned](docs/codes/003.md), [unsupported configuration format version](docs/codes/004.md) - the configuration schema version errors.
