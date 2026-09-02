@@ -7,7 +7,7 @@
       "properties": {
         "expr": {
           "type": "string",
-          "description": "A boolean expression. See https://expr-lang.org/docs/language-definition"
+          "description": "A boolean expression evaluated against the action, such as ActionName matches 'suzuki-shunsuke/.*'. See https://expr-lang.org/docs/language-definition"
         }
       },
       "additionalProperties": false,
@@ -23,14 +23,15 @@
           "enum": [
             2,
             3
-          ]
+          ],
+          "description": "The schema version of the configuration file. The latest version is 3. Version 2 is abandoned, so run 'pinact migrate' to migrate an old configuration file to the latest version"
         },
         "files": {
           "items": {
             "$ref": "#/$defs/File"
           },
           "type": "array",
-          "description": "Target files. If files are passed via positional command line arguments"
+          "description": "Target files. If files are passed via positional command line arguments, this is ignored"
         },
         "ignore_actions": {
           "items": {
@@ -49,7 +50,7 @@
         },
         "min_age": {
           "$ref": "#/$defs/MinAge",
-          "description": "Default min-age settings. value is the threshold in days; always opts every run into the passive audit. rules can override value per action"
+          "description": "Default min-age settings. value is the threshold in days, always opts every run into the passive audit, and rules can override value per action"
         },
         "rules": {
           "items": {
@@ -62,13 +63,14 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "min_age"
+        "version"
       ]
     },
     "File": {
       "properties": {
         "pattern": {
-          "type": "string"
+          "type": "string",
+          "description": "A glob pattern of target files, such as '.github/workflows/*.yaml'. Go's path/filepath#Glob is used, so the pattern follows its syntax"
         }
       },
       "additionalProperties": false,
@@ -81,11 +83,11 @@
       "properties": {
         "api_url": {
           "type": "string",
-          "description": "API URL of the GHES instance (e.g. https://ghes.example.com)"
+          "description": "API URL of the GHES instance, such as https://ghes.example.com. GHES support is enabled by setting this field"
         },
         "fallback": {
           "type": "boolean",
-          "description": "Whether to fallback to github.com when a repository is not found on GHES. Default is false"
+          "description": "Fall back to github.com when a repository is not found on GHES. The default value is false"
         }
       },
       "additionalProperties": false,
@@ -94,27 +96,30 @@
     "IgnoreAction": {
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "A regular expression of ignored actions and reusable workflows. It must match the action name exactly, so 'actions/.*' matches 'actions/checkout' while 'actions' matches nothing"
         },
         "ref": {
-          "type": "string"
+          "type": "string",
+          "description": "A regular expression of ignored action versions, which are a branch, a tag, or a commit hash. It must match the version exactly, so 'main' doesn't match 'malicious-main'"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "ref"
       ]
     },
     "MinAge": {
       "properties": {
         "value": {
           "type": "integer",
-          "description": "Default min-age threshold in days"
+          "description": "The default min-age threshold in days. rules[].min_age and the --min-age flag override this value"
         },
         "always": {
           "type": "boolean",
-          "description": "When true every run performs the passive min-age audit. Default false"
+          "description": "Perform the passive min-age audit on every run, even without the --verify-min-age flag. The default value is false"
         }
       },
       "additionalProperties": false,
@@ -124,22 +129,26 @@
       "properties": {
         "ignore": {
           "type": "boolean",
-          "description": "If true pinact skips pin/update/error for the matched action"
+          "description": "If true, pinact skips pin/update/error for the matched action"
         },
         "min_age": {
           "type": "integer",
-          "description": "Override the min-age threshold (in days) for the matched action. 0 disables the check for the action"
+          "description": "Override the min-age threshold, in days, for the matched action. 0 disables the check for the action"
         },
         "conditions": {
           "items": {
             "$ref": "#/$defs/Condition"
           },
           "type": "array",
+          "minItems": 1,
           "description": "Match conditions. The rule matches if any condition evaluates to true"
         }
       },
       "additionalProperties": false,
-      "type": "object"
+      "type": "object",
+      "required": [
+        "conditions"
+      ]
     }
   }
 }
