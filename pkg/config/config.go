@@ -31,13 +31,13 @@ const (
 )
 
 type Config struct {
-	Version       int             `json:"version,omitempty" jsonschema:"enum=2,enum=3"`
-	Files         []*File         `json:"files,omitempty" jsonschema:"description=Target files. If files are passed via positional command line arguments, this is ignored"`
-	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema:"description=Actions and reusable workflows that pinact ignores. For new configurations consider using 'rules' with 'ignore: true' for more flexibility"`
-	GHES          *GHES           `json:"ghes,omitempty" yaml:"ghes" jsonschema:"description=GitHub Enterprise Server configuration"`
-	Separator     string          `json:"separator,omitempty" jsonschema:"description=Separator between version and tag comment. Default is ' # '"`
-	MinAge        *MinAge         `json:"min_age,omitzero" yaml:"min_age" jsonschema:"description=Default min-age settings. value is the threshold in days; always opts every run into the passive audit. rules can override value per action"`
-	Rules         []*Rule         `json:"rules,omitempty" jsonschema:"description=Per-action setting overrides. Later matching rules override earlier ones at the field level"`
+	Version       int             `json:"version" jsonschema:"enum=2,enum=3" jsonschema_description:"The schema version of the configuration file. It is required. The latest version is 3. Version 2 is abandoned, so run 'pinact migrate' to migrate an old configuration file to the latest version"`
+	Files         []*File         `json:"files,omitempty" jsonschema_description:"Target files. If files are passed via positional command line arguments, this is ignored"`
+	IgnoreActions []*IgnoreAction `json:"ignore_actions,omitempty" yaml:"ignore_actions" jsonschema_description:"Actions and reusable workflows that pinact ignores. For new configurations consider using 'rules' with 'ignore: true' for more flexibility"`
+	GHES          *GHES           `json:"ghes,omitempty" yaml:"ghes" jsonschema_description:"GitHub Enterprise Server configuration"`
+	Separator     string          `json:"separator,omitempty" jsonschema_description:"Separator between version and tag comment. Default is ' # '"`
+	MinAge        *MinAge         `json:"min_age,omitempty" yaml:"min_age" jsonschema_description:"Default min-age settings. value is the threshold in days, always opts every run into the passive audit, and rules can override value per action"`
+	Rules         []*Rule         `json:"rules,omitempty" jsonschema_description:"Per-action setting overrides. Later matching rules override earlier ones at the field level"`
 }
 
 // MinAge controls both the threshold and whether the passive audit auto-runs.
@@ -55,17 +55,17 @@ type Config struct {
 // value when merging a project config on top of a global config: a project
 // that omits min_age.always must not clobber a global true with a false.
 type MinAge struct {
-	Value  *int  `json:"value,omitempty" jsonschema:"description=Default min-age threshold in days"`
-	Always *bool `json:"always,omitempty" jsonschema:"description=When true every run performs the passive min-age audit. Default false"`
+	Value  *int  `json:"value,omitempty" jsonschema_description:"The default min-age threshold in days. rules[].min_age and the --min-age flag override this value"`
+	Always *bool `json:"always,omitempty" jsonschema_description:"Perform the passive min-age audit on every run, even without the --verify-min-age flag. The default value is false"`
 }
 
 type GHES struct {
-	APIURL   string `json:"api_url,omitempty" yaml:"api_url" jsonschema:"description=API URL of the GHES instance (e.g. https://ghes.example.com)"`
-	Fallback bool   `json:"fallback,omitempty" yaml:"fallback" jsonschema:"description=Whether to fallback to github.com when a repository is not found on GHES. Default is false"`
+	APIURL   string `json:"api_url,omitempty" yaml:"api_url" jsonschema_description:"API URL of the GHES instance, such as https://ghes.example.com. GHES support is enabled by setting this field"`
+	Fallback bool   `json:"fallback,omitempty" yaml:"fallback" jsonschema_description:"Fall back to github.com when a repository is not found on GHES. The default value is false"`
 }
 
 type File struct {
-	Pattern string `json:"pattern"`
+	Pattern string `json:"pattern" jsonschema_description:"A glob pattern of target files, such as '.github/workflows/*.yaml'. It is required. Go's path/filepath#Glob is used, so the pattern follows its syntax"`
 }
 
 var (
@@ -118,8 +118,8 @@ func (f *File) Init() error {
 }
 
 type IgnoreAction struct {
-	Name       string `json:"name"`
-	Ref        string `json:"ref,omitempty"`
+	Name       string `json:"name" jsonschema_description:"A regular expression of ignored actions and reusable workflows. It is required. It must match the action name exactly, so 'actions/.*' matches 'actions/checkout' while 'actions' matches nothing"`
+	Ref        string `json:"ref" jsonschema_description:"A regular expression of ignored action versions, which are a branch, a tag, or a commit hash. It is required. It must match the version exactly, so 'main' doesn't match 'malicious-main'"`
 	nameRegexp *regexp.Regexp
 	refRegexp  *regexp.Regexp
 }
@@ -170,15 +170,15 @@ func (ia *IgnoreAction) initRef() error {
 // in declaration order: later rules override earlier ones, but only for fields
 // they explicitly set.
 type Rule struct {
-	Ignore     *bool        `json:"ignore,omitempty" jsonschema:"description=If true pinact skips pin/update/error for the matched action"`
-	MinAge     *int         `json:"min_age,omitempty" yaml:"min_age" jsonschema:"description=Override the min-age threshold (in days) for the matched action. 0 disables the check for the action"`
-	Conditions []*Condition `json:"conditions,omitempty" jsonschema:"description=Match conditions. The rule matches if any condition evaluates to true"`
+	Ignore     *bool        `json:"ignore,omitempty" jsonschema_description:"If true, pinact skips pin/update/error for the matched action"`
+	MinAge     *int         `json:"min_age,omitempty" yaml:"min_age" jsonschema_description:"Override the min-age threshold, in days, for the matched action. 0 disables the check for the action"`
+	Conditions []*Condition `json:"conditions" jsonschema:"minItems=1" jsonschema_description:"Match conditions. It is required. The rule matches if any condition evaluates to true"`
 }
 
 // Condition is one of the expressions in a rule. The rule matches when at
 // least one of its conditions evaluates to true.
 type Condition struct {
-	Expr    string      `json:"expr" jsonschema:"description=A boolean expression. See https://expr-lang.org/docs/language-definition"`
+	Expr    string      `json:"expr" jsonschema_description:"A boolean expression evaluated against the action, such as ActionName matches 'suzuki-shunsuke/.*'. It is required. See https://expr-lang.org/docs/language-definition"`
 	program *vm.Program // cached compiled program, populated by Init
 }
 
