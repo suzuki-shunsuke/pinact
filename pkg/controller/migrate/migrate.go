@@ -5,7 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/config"
 	"gopkg.in/yaml.v3"
 )
 

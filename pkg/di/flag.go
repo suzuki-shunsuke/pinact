@@ -1,8 +1,8 @@
 package di
 
 import (
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/gflag"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/gflag"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/config"
 )
 
 // Flags holds all command-line flags for the run command.
@@ -10,13 +10,13 @@ type Flags struct {
 	*gflag.GlobalFlags
 
 	// v4 flags
-	// -verify and -v are urfave/cli aliases for -verify-comment, so they
+	// --verify and -v are aliases of --verify-comment, so they
 	// share VerifyComment and do not need a separate field.
 	VerifyComment bool
 	VerifyMinAge  bool
 	NoAPI         bool
 
-	// -check and -diff are silent aliases for -fix=false in v4. They keep
+	// --check and --diff are silent aliases for --fix=false in v4. They keep
 	// their own destinations so buildParam can translate them.
 	Check     bool
 	Diff      bool

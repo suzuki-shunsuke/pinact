@@ -3,7 +3,7 @@ package di
 import (
 	"testing"
 
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/gflag"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/gflag"
 )
 
 func Test_compileRegexps(t *testing.T) {
@@ -118,7 +118,7 @@ func Test_buildParam_verifyCheck(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if got.Fix {
-		t.Error("Fix: wanted false (with -check), got true")
+		t.Error("Fix: wanted false (with --check), got true")
 	}
 	if !got.IsVerify {
 		t.Error("IsVerify: wanted true, got false")
@@ -156,37 +156,37 @@ func Test_validateFlagCombo(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "-update -fix=false is invalid",
+			name:    "--update --fix=false is invalid",
 			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, Update: true, FixCount: 1, Fix: false},
 			wantErr: true,
 		},
 		{
-			name:    "-update -fix=false -format sarif is valid",
+			name:    "--update --fix=false --format sarif is valid",
 			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, Update: true, FixCount: 1, Fix: false, Format: "sarif"},
 			wantErr: false,
 		},
 		{
-			name:    "-no-api -update is invalid",
+			name:    "--no-api --update is invalid",
 			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, Update: true},
 			wantErr: true,
 		},
 		{
-			name:    "-no-api -verify-comment is invalid",
+			name:    "--no-api --verify-comment is invalid",
 			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, VerifyComment: true},
 			wantErr: true,
 		},
 		{
-			name:    "-no-api alone (implicit -fix=true) is invalid",
+			name:    "--no-api alone (implicit --fix=true) is invalid",
 			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true},
 			wantErr: true,
 		},
 		{
-			name:    "-no-api -fix=false is valid",
+			name:    "--no-api --fix=false is valid",
 			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, FixCount: 1, Fix: false},
 			wantErr: false,
 		},
 		{
-			name:    "-no-api -format sarif is valid",
+			name:    "--no-api --format sarif is valid",
 			flags:   &Flags{GlobalFlags: &gflag.GlobalFlags{}, NoAPI: true, Format: "sarif"},
 			wantErr: false,
 		},

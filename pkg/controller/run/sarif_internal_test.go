@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/sarif"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/sarif"
 )
 
 func TestController_outputSARIF(t *testing.T) { //nolint:funlen

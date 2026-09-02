@@ -182,7 +182,7 @@ pinact run
 ### Adding a New Command
 
 1. Create new package under `pkg/cli/`
-2. Implement command structure with `urfave/cli/v3`
+2. Implement command structure with `spf13/cobra`
 3. Add controller logic under `pkg/controller/`
 4. Register command in `pkg/cli/runner.go`
 5. Add tests for new functionality

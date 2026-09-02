@@ -28,7 +28,7 @@ $ pinact run
 1. [Check if actions are pinned without editing files](#just-validation--check--fixfalse)
 1. [Offline check without GitHub API](#offline-check--no-api)
 1. [Update actions](#update-actions--update) with a [minimum release age](#minimum-release-age-cooldown--min-age--verify-min-age)
-1. [Verify version comments](docs/codes/001.md) ([`-verify-comment`](#verify-version-comments--verify-comment--verify--v))
+1. [Verify version comments](docs/codes/001.md) ([`--verify-comment`](#verify-version-comments--verify-comment--verify--v))
 1. [Require a version comment on SHA-pinned actions](docs/codes/005.md)
 1. [Verify if actions meet the minimum release age](#minimum-release-age-cooldown--min-age)
 1. [Pin branches](#pin-branches--branch-to-tag)
@@ -71,40 +71,40 @@ This is useful to pin actions in text files such as `README.md`.
 pinact run README.md
 ```
 
-### Just Validation: `-check`, `-fix=false`
+### Just Validation: `--check`, `--fix=false`
 
 By default, pinact edit files.
-If `-check` or `-fix=false` is specified, pinact just checks if actions are pinned without editing files.
+If `--check` or `--fix=false` is specified, pinact just checks if actions are pinned without editing files.
 
 ```sh
-pinact run -check
+pinact run --check
 ```
 
-### Offline Check: `-no-api`
+### Offline Check: `--no-api`
 
-For an offline check (no GitHub API call, only the 40-character SHA syntactic check), add `-no-api`:
+For an offline check (no GitHub API call, only the 40-character SHA syntactic check), add `--no-api`:
 
 ```sh
-pinact run -fix=false -no-api
+pinact run --fix=false --no-api
 ```
 
-With `-no-api`, pinact can't fetch action versions and SHA, so pinact can't pin actions.
+With `--no-api`, pinact can't fetch action versions and SHA, so pinact can't pin actions.
 So it only checks if actions are pinned with full-length commit SHA.
 
-### Update Actions: `-update`
+### Update Actions: `--update`
 
 Update actions to latest versions:
 
 ```sh
-pinact run -update
+pinact run --update
 ```
 
-### Minimum Release Age (Cooldown): `-min-age`, `-verify-min-age`
+### Minimum Release Age (Cooldown): `--min-age`, `--verify-min-age`
 
 pinact supports two kinds of minimum release age checks:
 
 1. Verify current versions: Verify if current action versions meet the minimum release age requirement
-1. Verify new versions: Exclude versions that don't meet the minimum release age requirement when updating actions (`-update`)
+1. Verify new versions: Exclude versions that don't meet the minimum release age requirement when updating actions (`--update`)
     1. If no release meeting the given minimum age is found, pinact will exit with an error.
 
 This helps reduce supply chain security risks.
@@ -112,10 +112,10 @@ This helps reduce supply chain security risks.
 By default, no minimum release age is set.
 You can set the minimum release age by some methods:
 
-1. `-min-age <minimum release age>`: Set the minimum release age in days
+1. `--min-age <minimum release age>`: Set the minimum release age in days
 
 ```sh
-pinact run -min-age 7
+pinact run --min-age 7
 ```
 
 2. Environment variable `PINACT_MIN_AGE`
@@ -137,7 +137,7 @@ It may be wasteful to verify all current versions against the minimum release ag
 Therefore, current versions are verified using the min_age setting in .pinact.yml and `PINACT_MIN_AGE` only when --verify-min-age is set or .min_age.always is true.
 
 ```sh
-pinact run -verify-min-age
+pinact run --verify-min-age
 ```
 
 Or
@@ -153,15 +153,15 @@ On the other hand, when updating actions min_age setting is always used to filte
 - For GitHub Releases, the `PublishedAt` date is checked
 - For tags, the commit's `Committer.Date` is checked (requires additional API call)
 
-### Verify Version Comments: `-verify-comment` (`-verify`, `-v`)
+### Verify Version Comments: `--verify-comment` (`--verify`, `-v`)
 
 [Please see `Verify version comments`.](docs/codes/001.md)
 
 ```sh
-pinact run -verify-comment
+pinact run --verify-comment
 ```
 
-### Pin Branches: `-branch-to-tag`
+### Pin Branches: `--branch-to-tag`
 
 pinact >= v3.10.0, [#1529](https://github.com/suzuki-shunsuke/pinact/issues/1529)
 
@@ -192,8 +192,8 @@ pinact run --branch-to-tag '^main$' --branch-to-tag '^release/.*$'
 
 [#1082](https://github.com/suzuki-shunsuke/pinact/pull/1082) pinact >= v3.4.0
 
-You can fix only specific actions using the `-include (-i) <regular expression>` option.
-You can also exclude only specific actions using the `-exclude (-e) <regular expression>` option.
+You can fix only specific actions using the `--include (-i) <regular expression>` option.
+You can also exclude only specific actions using the `--exclude (-e) <regular expression>` option.
 
 e.g.
 
@@ -217,24 +217,24 @@ pinact run --format sarif
 
 This format is useful to integration tools like [reviewdog](https://github.com/reviewdog/reviewdog) and [GitHub SARIF Code Scanning](https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/sarif-support-for-code-scanning).
 
-`-format sarif` implies `-fix=false`, so files are not modified.
-If you want to fix files, use `-fix`.
+`--format sarif` implies `--fix=false`, so files are not modified.
+If you want to fix files, use `--fix`.
 
 ```sh
-pinact run --format sarif -fix
+pinact run --format sarif --fix
 ```
 
 #### Reviewdog
 
 ```sh
-pinact run -format sarif |
+pinact run --format sarif |
   reviewdog -f sarif -name pinact -reporter github-pr-review
 ```
 
 #### GitHub SARIF Code Scanning
 
 ```yaml
-- run: pinact run -format sarif > sarif.json || true
+- run: pinact run --format sarif > sarif.json || true
 - name: Upload SARIF file
   uses: github/codeql-action/upload-sarif@5d4e8d1aca955e8d8589aabd499c5cae939e33c7 # v4.31.9
   with:
@@ -246,11 +246,11 @@ pinact run -format sarif |
 
 pinact >= v4.0.0
 
-pinact supports pinning only changed lines using the `-diff-file` option.
+pinact supports pinning only changed lines using the `--diff-file` option.
 This is useful to introduce pinact gradually.
 
 ```sh
-pinact run -diff-file diff.txt 
+pinact run --diff-file diff.txt 
 ```
 
 diff.txt must be the unified diff format.
@@ -271,10 +271,10 @@ index 0000001..0000002 100644
        - uses: actions/cache@v3.3.1
 ```
 
-`-diff-file -` means reading from stdin:
+`--diff-file -` means reading from stdin:
 
 ```sh
-cat diff.txt | pinact run -diff-file -
+cat diff.txt | pinact run --diff-file -
 ```
 
 You can generate a diff file via GitHub Actions using [pr-unified-diff-action](https://github.com/suzuki-shunsuke/pr-unified-diff-action).
@@ -282,7 +282,7 @@ You can generate a diff file via GitHub Actions using [pr-unified-diff-action](h
 ```yaml
 - uses: suzuki-shunsuke/pr-unified-diff-action@c932c1df5f577028d8ca05d2d3c0c059072d8821 # v0.0.1
   id: diff
-- run: pinact run -diff-file "$DIFF_FILE"
+- run: pinact run --diff-file "$DIFF_FILE"
   env:
     DIFF_FILE: ${{ steps.diff.outputs.diff_path }}
 ```
@@ -318,7 +318,7 @@ Enter a GitHub access token: # Input GitHub Access token
 or you can also pass a GitHub Access token via standard input:
 
 ```sh
-echo "<github access token>" | pinact token set -stdin
+echo "<github access token>" | pinact token set --stdin
 ```
 
 2. Enable the feature by setting the environment variable `PINACT_KEYRING_ENABLED`:
@@ -364,8 +364,8 @@ For more details, see [Configuration File](docs/config.md).
 | Code | Meaning |
 | --- | --- |
 | 0 | Everything is pinned, or pinact fixed it |
-| 1 | `-fix=false` was set and something needs pinning |
-| 2 | An action cannot be auto-fixed (branch reference, [missing version comment on a SHA pin](docs/codes/005.md), `-verify-comment` mismatch, or `-min-age` violation) |
+| 1 | `--fix=false` was set and something needs pinning |
+| 2 | An action cannot be auto-fixed (branch reference, [missing version comment on a SHA pin](docs/codes/005.md), `--verify-comment` mismatch, or `--min-age` violation) |
 | 3 | GitHub API error, invalid CLI flag combination, or other unexpected error |
 
 ## GitHub Actions

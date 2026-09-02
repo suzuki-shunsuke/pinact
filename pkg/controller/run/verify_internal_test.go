@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/github"
 )
 
 func TestController_verify(t *testing.T) { //nolint:funlen
@@ -173,7 +173,7 @@ func TestController_verifyIfNeeded(t *testing.T) { //nolint:funlen
 			shouldError:  false,
 		},
 		{
-			name: "verify with -fix=false - mismatch errors",
+			name: "verify with --fix=false - mismatch errors",
 			action: &Action{
 				Uses:                    "  - uses: ",
 				Name:                    "actions/checkout",

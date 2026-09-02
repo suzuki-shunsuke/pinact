@@ -12,12 +12,12 @@ import (
 	"io"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/cli/gflag"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/config"
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/controller/initcmd"
+	"github.com/spf13/cobra"
+	"github.com/suzuki-shunsuke/cobra-util/cobrautil"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/gflag"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/config"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/controller/initcmd"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
-	"github.com/urfave/cli/v3"
 )
 
 type Flags struct {
@@ -30,7 +30,7 @@ type Flags struct {
 
 // New creates a new init command instance with the provided logger.
 // It returns a CLI command that can be registered with the main CLI application.
-func New(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags, env *urfave.Env) *cli.Command {
+func New(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags, env *cobrautil.Env) *cobra.Command {
 	r := &runner{}
 	return r.Command(logger, globalFlags, env)
 }
@@ -39,31 +39,29 @@ type runner struct{}
 
 // Command returns the CLI command definition for the init subcommand.
 // It defines the command name, usage, description, and action handler.
-func (r *runner) Command(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags, env *urfave.Env) *cli.Command {
+func (r *runner) Command(logger *slogutil.Logger, globalFlags *gflag.GlobalFlags, env *cobrautil.Env) *cobra.Command {
 	flags := &Flags{GlobalFlags: globalFlags}
-	return &cli.Command{
-		Name:  "init",
-		Usage: "Create a pinact configuration file if it doesn't exist",
-		Description: `Create a pinact configuration file if it doesn't exist. The resolved path is printed to stdout.
+	cmd := &cobra.Command{
+		Use:   "init [<config file path>]",
+		Short: "Create a pinact configuration file if it doesn't exist",
+		Long: `Create a pinact configuration file if it doesn't exist. The resolved path is printed to stdout.
 
 $ pinact init                          # creates .pinact.yaml in the current directory
 $ pinact init .github/pinact.yaml      # explicit path
 $ pinact init -g                       # creates the user-wide global config
 `,
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:        "global",
-				Aliases:     []string{"g"},
-				Usage:       "Create the user-wide global config file (~/.config/pinact/pinact.yaml on Unix, %APPDATA%\\pinact\\pinact.yaml on Windows). The parent directory is created if it does not exist.",
-				Destination: &flags.Global,
-			},
-		},
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			flags.Args = cmd.Args().Slice()
-			flags.FirstArg = cmd.Args().First()
-			return r.action(ctx, logger, flags, env.Stdout)
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			flags.Args = args
+			if len(args) > 0 {
+				flags.FirstArg = args[0]
+			}
+			return r.action(cmd.Context(), logger, flags, env.Stdout)
 		},
 	}
+	cmd.Flags().BoolVarP(&flags.Global, "global", "g", false,
+		"Create the user-wide global config file (~/.config/pinact/pinact.yaml on Unix, %APPDATA%\\pinact\\pinact.yaml on Windows). The parent directory is created if it does not exist.")
+	return cmd
 }
 
 // action handles the execution of the init command.

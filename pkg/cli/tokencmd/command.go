@@ -7,16 +7,16 @@
 package tokencmd
 
 import (
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/github"
+	"github.com/spf13/cobra"
+	"github.com/suzuki-shunsuke/cobra-util/keyring/ghtoken"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/github"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/keyring/ghtoken"
-	"github.com/urfave/cli/v3"
 )
 
 // New creates a new token command for the CLI.
 // It initializes a GitHub token management command using the system keyring
 // for secure credential storage and retrieval.
 // Returns a pointer to the configured CLI command for token operations.
-func New(logger *slogutil.Logger) *cli.Command {
+func New(logger *slogutil.Logger) *cobra.Command {
 	return ghtoken.Command(ghtoken.NewActor(logger.Logger, github.KeyService))
 }

@@ -3,7 +3,7 @@ package di_test
 import (
 	"testing"
 
-	"github.com/suzuki-shunsuke/pinact/v4/pkg/di"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/di"
 )
 
 func TestFlags_GetAPIURL(t *testing.T) {

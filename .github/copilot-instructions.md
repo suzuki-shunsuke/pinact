@@ -28,7 +28,7 @@ When suggesting code completions:
 ### Autocomplete Behavior
 
 - For test files, automatically suggest table-driven test patterns
-- For CLI commands, follow the `urfave/cli/v3` patterns used throughout the project
+- For CLI commands, follow the `spf13/cobra` patterns used throughout the project
 - For error handling, wrap errors with context using `fmt.Errorf` with `%w`
 
 ## Quick Reference
