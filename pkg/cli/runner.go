@@ -10,6 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/suzuki-shunsuke/cobra-util/cobrautil"
+	"github.com/suzuki-shunsuke/cobra-util/jsonschema"
+	schema "github.com/suzuki-shunsuke/pinact/v5/json-schema"
 	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/gflag"
 	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/initcmd"
 	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/migrate"
@@ -51,5 +53,9 @@ func newCommand(logger *slogutil.Logger, env *cobrautil.Env, globalFlags *gflag.
 		migrate.New(logger, globalFlags),
 		tokencmd.New(logger),
 	)
+	// json-schema is added on its own because it is the one command that takes
+	// neither the logger nor the global flags: it only writes the embedded schema.
+	// With names the program in the example in its help, taking the name from cmd.
+	jsonschema.With(cmd, schema.Schema)
 	return cobrautil.Command(env, cmd, nil)
 }
