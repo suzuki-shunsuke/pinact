@@ -33,8 +33,8 @@ updates go through Renovate, and so on - is outside what `pinact docs` covers, s
 that from the user's own documentation and the conversation. When the two disagree about
 how pinact itself behaves, `pinact docs` wins.
 
-If `pinact docs` is rejected as an unknown command, the installed pinact predates the
-docs command. Tell the user to upgrade, and don't fall back to guessing.
+If `pinact docs` is rejected as an unknown command, the installed pinact is older than
+v5.0.0. Tell the user to upgrade, and don't fall back to guessing.
 
 If `pinact` is not installed at all, point them at the install guide:
 

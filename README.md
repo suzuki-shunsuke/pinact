@@ -91,7 +91,7 @@ gh skill install suzuki-shunsuke/pinact pinact
 
 ## Documentation
 
-The documentation is split by topic under [`docs/`](docs). These documents are embedded in the pinact binary, so `pinact docs list` and `pinact docs show <name>` serve exactly what is listed below, matching the version that is installed. They are the single source of truth, shared between this README, the embedded documentation, and the skill, so there's no duplicated maintenance.
+The documentation is split by topic under [`docs/`](docs). These documents are embedded in the pinact binary, so `pinact docs list` and `pinact docs show <name>` (pinact >= v5.0.0) serve exactly what is listed below, matching the version that is installed. They are the single source of truth, shared between this README, the embedded documentation, and the skill, so there's no duplicated maintenance.
 
 ```sh
 pinact docs list # The name and the description of every document, as JSON
