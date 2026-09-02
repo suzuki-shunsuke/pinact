@@ -38,6 +38,12 @@ If you look for a CLI tool to validate configuration with JSON Schema, [ajv-cli]
 ajv --spec=draft2020 -s json-schema/pinact.json -d pinact.yaml
 ```
 
+As of pinact v5.0.0, pinact also has a `json-schema` command that outputs the schema embedded in the binary, which is the schema of the configuration that version accepts:
+
+```sh
+pinact json-schema
+```
+
 ### Input Complementation by YAML Language Server
 
 [Please see the comment too.](https://github.com/szksh-lab/.github/issues/67#issuecomment-2564960491)
