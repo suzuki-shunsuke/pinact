@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/suzuki-shunsuke/cobra-util/cobrautil"
 	"github.com/suzuki-shunsuke/cobra-util/jsonschema"
+	"github.com/suzuki-shunsuke/go-error-with-exit-code/ecerror"
 	schema "github.com/suzuki-shunsuke/pinact/v5/json-schema"
 	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/docs"
 	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/gflag"
@@ -18,6 +19,7 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/migrate"
 	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/run"
 	"github.com/suzuki-shunsuke/pinact/v5/pkg/cli/tokencmd"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 )
 
@@ -33,10 +35,39 @@ func Run(ctx context.Context, logger *slogutil.Logger, env *cobrautil.Env) error
 	// already stripped it from what the command will parse.
 	if len(env.Args) > 1 {
 		if err := checkSingleDashLongFlags(cmd, env.Args[1:]); err != nil {
-			return err
+			return withHelp(err)
 		}
 	}
-	return cmd.ExecuteContext(ctx) //nolint:wrapcheck
+	if err := cmd.ExecuteContext(ctx); err != nil {
+		return withHelp(err)
+	}
+	return nil
+}
+
+// withHelp adds the hint about the documentation to an error while keeping any exit
+// code it carries. Every error pinact reports goes through here, because an error is
+// where a coding agent arrives without knowing that pinact ships its documentation
+// in the binary; without this it troubleshoots from the source code or the website
+// instead.
+//
+// The routine outcomes of `pinact run` are unaffected: they are reported as
+// cobrautil.ErrSilent carrying the exit code, whose message is empty, so Main logs
+// nothing for them and the hint is attached to nothing.
+//
+// The code has to be read before slogerr.With and attached again afterwards, because
+// slogerr.With collapses the chain to the innermost error holding attributes and
+// drops every wrapper around it, including the one holding the code. Exit codes are
+// what tells pinning from a GitHub API failure, so losing one turns a 2 into a 1.
+func withHelp(err error) error {
+	code := ecerror.GetExitCode(err)
+	err = slogerr.With(err, "help",
+		"Run `pinact docs list` to see documentation and `pinact docs show <name>` to read it; this may help resolve the error.")
+	if code == 1 {
+		// 1 is also what an error carrying no code exits with, so there is nothing to
+		// preserve.
+		return err //nolint:wrapcheck // The error is the command's own, only annotated.
+	}
+	return ecerror.Wrap(err, code)
 }
 
 // newCommand builds the command tree. It is separate from Run so that a test can run
@@ -46,6 +77,18 @@ func newCommand(logger *slogutil.Logger, env *cobrautil.Env, globalFlags *gflag.
 	cmd := &cobra.Command{
 		Use:   "pinact",
 		Short: "Pin GitHub Actions versions. https://github.com/suzuki-shunsuke/pinact",
+		Long: `Pin GitHub Actions and Reusable Workflows.
+
+pinact pins the actions and reusable workflows a workflow uses to full commit
+SHAs with a version comment, updates them, and verifies that a comment names the
+version its SHA actually is.
+
+See each subcommand's help with 'pinact help <command>'.
+See https://github.com/suzuki-shunsuke/pinact for details.
+
+If you are a coding agent, run 'pinact docs list' to list the documentation and
+'pinact docs show <name>' to read it before answering questions about pinact or
+troubleshooting its errors.`,
 	}
 	globalFlags.Set(cmd.PersistentFlags())
 	cmd.AddCommand(
