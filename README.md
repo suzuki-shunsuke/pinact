@@ -1,10 +1,14 @@
 # pinact
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/suzuki-shunsuke/pinact)
-[Install](INSTALL.md) | [How to use](#how-to-use) | [Configuration](#configuration)
+[Install](INSTALL.md) | [Usage](docs/usage.md) | [Configuration](docs/config.md) | [Agent Skill](#installing-the-agent-skill)
 
 pinact is a CLI to pin GitHub Actions and Reusable Workflows.
-pinact can also [update their versions](#update-actions--update) and [verify version comments](docs/codes/001.md).
+pinact can also [update their versions](docs/update.md) and [verify version comments](docs/codes/001.md).
+
+> [!NOTE]
+> If you are a coding agent and pinact is installed, run `pinact docs list` to list the documentation and `pinact docs show <name>` to read it before answering questions about pinact or troubleshooting its errors.
+> The embedded documentation matches the installed version. If pinact isn't installed, read the documents listed in [Documentation](#documentation).
 
 ```diff
 $ pinact run
@@ -25,363 +29,101 @@ $ pinact run
 ## Features
 
 1. Pin GitHub Actions and Reusable Workflows
-1. [Check if actions are pinned without editing files](#just-validation--check--fixfalse)
-1. [Offline check without GitHub API](#offline-check--no-api)
-1. [Update actions](#update-actions--update) with a [minimum release age](#minimum-release-age-cooldown--min-age--verify-min-age)
-1. [Verify version comments](docs/codes/001.md) ([`--verify-comment`](#verify-version-comments--verify-comment--verify--v))
+1. [Check if actions are pinned without editing files](docs/check.md)
+1. [Offline check without GitHub API](docs/check.md)
+1. [Update actions](docs/update.md) with a [minimum release age](docs/update.md)
+1. [Verify version comments](docs/codes/001.md)
 1. [Require a version comment on SHA-pinned actions](docs/codes/005.md)
-1. [Verify if actions meet the minimum release age](#minimum-release-age-cooldown--min-age)
-1. [Pin branches](#pin-branches--branch-to-tag)
-1. [Include and exclude specific actions](#include-and-exclude-specific-actions)
-1. [Generate SARIF](#sarif). This is useful to create reviews using [reviewdog](#reviewdog)
-1. [Read GitHub access token via keyrings or ghtkn](#github-access-token)
-1. [Pin only changed lines](#pin-only-changed-lines)
+1. [Verify if actions meet the minimum release age](docs/update.md)
+1. [Pin branches](docs/branch_to_tag.md)
+1. [Include and exclude specific actions](docs/include_exclude.md)
+1. [Generate SARIF](docs/sarif.md). This is useful to create reviews using [reviewdog](docs/sarif.md)
+1. [Read GitHub access token via keyrings or ghtkn](docs/github_token.md)
+1. [Pin only changed lines](docs/diff_file.md)
 1. [Support GitHub Enterprise Server](docs/ghes.md)
 1. [GitHub Action](https://github.com/suzuki-shunsuke/pinact-action)
 
-## Usage
+## Getting Started
+
+1. [Install pinact](INSTALL.md)
+
+2. Pin the actions of a repository:
 
 ```sh
-pinact run [<workflow file>...]
+pinact run
 ```
 
-If no file is specified, the following files are pinned:
+Without an argument, pinact pins the workflow files and the action files of the repository; [Usage](docs/usage.md) lists them and shows how to pin actions written in a document such as `README.md`.
 
-```
-.github/workflows/*.yml
-.github/workflows/*.yaml
-action.yml
-action.yaml
-*/action.yml
-*/action.yaml
-*/*/action.yml
-*/*/action.yaml
-*/*/*/action.yml
-*/*/*/action.yaml
-```
-
-[pinact calls GitHub API to fetch releases and tags. To avoid api rate limiting, you should pass a GitHub Access token.](#github-access-token)
-
-### Fix example codes in documents
-
-Not only workflow files, but also text files of any formats are supported.
-This is useful to pin actions in text files such as `README.md`.
-
-```sh
-pinact run README.md
-```
-
-### Just Validation: `--check`, `--fix=false`
-
-By default, pinact edit files.
-If `--check` or `--fix=false` is specified, pinact just checks if actions are pinned without editing files.
+3. Check them in CI instead of fixing them:
 
 ```sh
 pinact run --check
 ```
 
-### Offline Check: `--no-api`
+The run [exits with a non-zero code](docs/exit_codes.md) when something needs pinning. [Checking without fixing](docs/check.md) covers `--check`, `--fix=false`, and the offline check `--no-api`.
 
-For an offline check (no GitHub API call, only the 40-character SHA syntactic check), add `--no-api`:
-
-```sh
-pinact run --fix=false --no-api
-```
-
-With `--no-api`, pinact can't fetch action versions and SHA, so pinact can't pin actions.
-So it only checks if actions are pinned with full-length commit SHA.
-
-### Update Actions: `--update`
-
-Update actions to latest versions:
+4. Pass a GitHub access token so the API calls aren't rate limited:
 
 ```sh
-pinact run --update
+export GITHUB_TOKEN=<your token>
 ```
 
-### Minimum Release Age (Cooldown): `--min-age`, `--verify-min-age`
+pinact can also read the token from [the OS keyring or from ghtkn](docs/github_token.md).
 
-pinact supports two kinds of minimum release age checks:
-
-1. Verify current versions: Verify if current action versions meet the minimum release age requirement
-1. Verify new versions: Exclude versions that don't meet the minimum release age requirement when updating actions (`--update`)
-    1. If no release meeting the given minimum age is found, pinact will exit with an error.
-
-This helps reduce supply chain security risks.
-
-By default, no minimum release age is set.
-You can set the minimum release age by some methods:
-
-1. `--min-age <minimum release age>`: Set the minimum release age in days
+5. Optionally, write a configuration file:
 
 ```sh
-pinact run --min-age 7
+pinact init
 ```
 
-2. Environment variable `PINACT_MIN_AGE`
-3. Configuration file `.pinact.yml`
-    1. `.rules[].min_age`: A rule specific minimum release age in days
-    1. `.min_age.value`: The default minimum release age in days
+The configuration file is optional. It says which files to pin, which actions to ignore, and what the default minimum release age is. See [Configuration File](docs/config.md).
 
-```yaml
-min_age:
-  value: 7
-rules:
-  - min_age: 0
-    conditions:
-      - expr: |
-          ActionRepoOwner == "suzuki-shunsuke"
-```
+## Installing the Agent Skill
 
-It may be wasteful to verify all current versions against the minimum release age every time pinact runs.
-Therefore, current versions are verified using the min_age setting in .pinact.yml and `PINACT_MIN_AGE` only when --verify-min-age is set or .min_age.always is true.
+pinact ships a single skill. It holds no documentation of its own: it tells the coding agent to read the documentation embedded in the pinact binary with `pinact docs list` and `pinact docs show <name>`, so the agent always reads the documentation of the version it is actually running.
+
+[gh skill install](https://cli.github.com/manual/gh_skill_install):
 
 ```sh
-pinact run --verify-min-age
+gh skill install suzuki-shunsuke/pinact pinact
 ```
 
-Or
+## Documentation
 
-```yaml
-min_age:
-  value: 7
-  always: true # default is false
-```
-
-On the other hand, when updating actions min_age setting is always used to filter new versions.
-
-- For GitHub Releases, the `PublishedAt` date is checked
-- For tags, the commit's `Committer.Date` is checked (requires additional API call)
-
-### Verify Version Comments: `--verify-comment` (`--verify`, `-v`)
-
-[Please see `Verify version comments`.](docs/codes/001.md)
+The documentation is split by topic under [`docs/`](docs). These documents are embedded in the pinact binary, so `pinact docs list` and `pinact docs show <name>` (pinact >= v5.0.0) serve exactly what is listed below, matching the version that is installed. They are the single source of truth, shared between this README, the embedded documentation, and the skill, so there's no duplicated maintenance.
 
 ```sh
-pinact run --verify-comment
+pinact docs list # The name and the description of every document, as JSON
+pinact docs show config # One document
+pinact docs show codes/005 # A document in a subdirectory is named by its path
 ```
 
-### Pin Branches: `--branch-to-tag`
-
-pinact >= v3.10.0, [#1529](https://github.com/suzuki-shunsuke/pinact/issues/1529)
-
-By default, pinact doesn't pin branches such as `main` or `master`.
-If you want to pin specific branches, you can use the `--branch-to-tag` option.
-
-```sh
-pinact run --branch-to-tag '<regular expression matching branch name>'
-```
-
-The value is evaluated as a regular expression with partial match, just like `--include` / `--exclude`.
-Anchor with `^...$` for an exact match - for short branch names like `main` this is recommended to avoid matching `mainline` etc.
-Versions that don't match any of the supplied regexps continue to error out as before.
-
-The branch is converted to the **latest stable tag** of the action. Pre-releases are used only when no stable tag exists.
-
-[`--min-age`](#skip-recently-released-versions) is honored: when set, tags released within the cooldown window are skipped.
-
-`--branch-to-tag` can be specified multiple times.
-
-e.g.
-
-```sh
-pinact run --branch-to-tag '^main$' --branch-to-tag '^release/.*$'
-```
-
-### Include and exclude specific actions
-
-[#1082](https://github.com/suzuki-shunsuke/pinact/pull/1082) pinact >= v3.4.0
-
-You can fix only specific actions using the `--include (-i) <regular expression>` option.
-You can also exclude only specific actions using the `--exclude (-e) <regular expression>` option.
-
-e.g.
-
-```sh
-pinact run -i "actions/.*" -i "^aquaproj/aqua-installer$"
-```
-
-```sh
-pinact run -e "actions/.*" -e "^aquaproj/aqua-installer$"
-```
-
-### SARIF
-
-pinact >= v3.7.0 [#1294](https://github.com/suzuki-shunsuke/pinact/pull/1294)
-
-pinact can output the result in [the SARIF format](https://sarifweb.azurewebsites.net/).
-
-```sh
-pinact run --format sarif
-```
-
-This format is useful to integration tools like [reviewdog](https://github.com/reviewdog/reviewdog) and [GitHub SARIF Code Scanning](https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/sarif-support-for-code-scanning).
-
-`--format sarif` implies `--fix=false`, so files are not modified.
-If you want to fix files, use `--fix`.
-
-```sh
-pinact run --format sarif --fix
-```
-
-#### Reviewdog
-
-```sh
-pinact run --format sarif |
-  reviewdog -f sarif -name pinact -reporter github-pr-review
-```
-
-#### GitHub SARIF Code Scanning
-
-```yaml
-- run: pinact run --format sarif > sarif.json || true
-- name: Upload SARIF file
-  uses: github/codeql-action/upload-sarif@5d4e8d1aca955e8d8589aabd499c5cae939e33c7 # v4.31.9
-  with:
-    sarif_file: sarif.json
-    category: pinact
-```
-
-### Pin Only Changed Lines
-
-pinact >= v4.0.0
-
-pinact supports pinning only changed lines using the `--diff-file` option.
-This is useful to introduce pinact gradually.
-
-```sh
-pinact run --diff-file diff.txt 
-```
-
-diff.txt must be the unified diff format.
-
-[example](testdata/diff-file/diff.txt)
-
-```diff
-diff --git a/testdata/diff-file/action.yaml b/testdata/diff-file/action.yaml
-index 0000001..0000002 100644
---- a/testdata/diff-file/action.yaml
-+++ b/testdata/diff-file/action.yaml
-@@ -7,5 +7,5 @@ jobs:
-     permissions: {}
-     steps:
-       - uses: actions/checkout@v3.6.0
--      - uses: actions/setup-go@v3.5.0
-+      - uses: actions/setup-go@v4.0.0
-       - uses: actions/cache@v3.3.1
-```
-
-`--diff-file -` means reading from stdin:
-
-```sh
-cat diff.txt | pinact run --diff-file -
-```
-
-You can generate a diff file via GitHub Actions using [pr-unified-diff-action](https://github.com/suzuki-shunsuke/pr-unified-diff-action).
-
-```yaml
-- uses: suzuki-shunsuke/pr-unified-diff-action@c932c1df5f577028d8ca05d2d3c0c059072d8821 # v0.0.1
-  id: diff
-- run: pinact run --diff-file "$DIFF_FILE"
-  env:
-    DIFF_FILE: ${{ steps.diff.outputs.diff_path }}
-```
-
-## GitHub Access token
-
-pinact calls GitHub REST API to get commit hashes and tags.
-You can pass GitHub Access token via environment variable `PINACT_GITHUB_TOKEN` or `GITHUB_TOKEN`.
-If no GitHub Access token is passed, pinact calls GitHub REST API without access token.
-About GitHub Enterprise Server, see also [GitHub Access Token for GHES](#github-access-token-for-ghes).
-
-### Manage GitHub Access token using ghtkn
-
-pinact >= v3.8.0
-
-[You can obtain a GitHub App User Access Token by ghtkn integration](https://github.com/suzuki-shunsuke/ghtkn).
-[About ghtkn, please see the document of ghtkn.](https://github.com/suzuki-shunsuke/ghtkn/blob/main/docs/go-sdk.md)
-As the document of ghtkn describes, the integration is enabled by default if the configuration file `ghtkn.yaml` exists, but pinact has the specific `PINACT_GHTKN` environment variable to disable it.
-
-### Manage GitHub Access token using Keyring
-
-pinact >= v3.1.0
-
-You can manage a GitHub Access token using secret store such as [Windows Credential Manager](https://support.microsoft.com/en-us/windows/accessing-credential-manager-1b5c916a-6a16-889f-8581-fc16e8165ac0), [macOS Keychain](https://en.wikipedia.org/wiki/Keychain_(software)), and [GNOME Keyring](https://wiki.gnome.org/Projects/GnomeKeyring).
-
-1. Configure a GitHub Access token by `pinact token set` command:
-
-```console
-$ pinact token set
-Enter a GitHub access token: # Input GitHub Access token
-```
-
-or you can also pass a GitHub Access token via standard input:
-
-```sh
-echo "<github access token>" | pinact token set --stdin
-```
-
-2. Enable the feature by setting the environment variable `PINACT_KEYRING_ENABLED`:
-
-```sh
-export PINACT_KEYRING_ENABLED=true
-```
-
-Note that if the environment variable `GITHUB_TOKEN` is set, this feature gets disabled.
-
-You can remove a GitHub Access token from keyring by `pinact token rm` command:
-
-```sh
-pinact token rm
-```
-
-## Configuration Priority
-
-1. Command line options
-2. Environment variables
-3. Local configuration file
-4. Global configuration file
-
-## Configuration File
-
-[JSON Schema](json-schema/pinact.json)
-
-A configuration file is optional.
-pinact supports a configuration file `.pinact.yaml`, `.github/pinact.yaml`, `.pinact.yml` or `.github/pinact.yml`.
-You can also specify the configuration file path by the environment variable `PINACT_CONFIG` or command line option `-c`.
-You can generate a configuration file by `pinact init`.
-
-```sh
-pinact init [<configuration file path>]
-```
-
-Furthermore, pinact supports a global configuration file for user-wide defaults.
-
-For more details, see [Configuration File](docs/config.md).
-
-## Exit codes
-
-| Code | Meaning |
-| --- | --- |
-| 0 | Everything is pinned, or pinact fixed it |
-| 1 | `--fix=false` was set and something needs pinning |
-| 2 | An action cannot be auto-fixed (branch reference, [missing version comment on a SHA pin](docs/codes/005.md), `--verify-comment` mismatch, or `--min-age` violation) |
-| 3 | GitHub API error, invalid CLI flag combination, or other unexpected error |
+- [Usage](docs/usage.md) - run pinact, which files it pins when none is given, and pinning actions written in a document.
+- [Checking without fixing](docs/check.md) - `--check`, `--fix=false`, the offline check `--no-api`, and verifying version comments.
+- [Updating actions](docs/update.md) - `--update` and the minimum release age (cooldown).
+- [Pin branches](docs/branch_to_tag.md) - `--branch-to-tag`, which opts a branch reference in to being pinned.
+- [Include and exclude specific actions](docs/include_exclude.md) - `--include` and `--exclude`.
+- [SARIF](docs/sarif.md) - `--format sarif`, reviewdog, and GitHub code scanning.
+- [Pin only changed lines](docs/diff_file.md) - `--diff-file`, to introduce pinact gradually.
+- [GitHub access token](docs/github_token.md) - `PINACT_GITHUB_TOKEN`, the ghtkn integration, and the OS keyring.
+- [Configuration File](docs/config.md) - the configuration file, the global configuration file, and every field of the schema.
+- [GitHub Enterprise Server](docs/ghes.md) - pinning actions hosted on GHES.
+- [Exit codes](docs/exit_codes.md) - what 0, 1, 2, and 3 mean.
+- [Why doesn't pinact pin some actions?](docs/why_pinact_not_pin.md) - why a branch reference isn't pinned by default.
+- [Verify version comments](docs/codes/001.md) - why a version comment isn't necessarily true, and how `--verify-comment` checks it.
+- [SHA-pinned action requires a version comment](docs/codes/005.md) - why a bare SHA is rejected, and how to resolve it.
+- [Schema version is required](docs/codes/002.md), [this version was abandoned](docs/codes/003.md), [unsupported configuration format version](docs/codes/004.md) - the configuration schema version errors.
+- [Old schemas](docs/old_schema.md) - the configuration schema versions pinact no longer supports.
+- [Upgrade guide: v3 to v4](docs/upgrade_guide/v4.md), [v4 to v5](docs/upgrade_guide/v5.md) - what changed between major versions.
+
+[USAGE.md](USAGE.md) is the help of every command, generated from the CLI itself.
 
 ## GitHub Actions
 
 https://github.com/suzuki-shunsuke/pinact-action
 
 We develop GitHub Actions to pin GitHub Actions and reusable workflows by pinact.
-
-## Q. Why doesn't pinact pin some actions?
-
-> [!TIP]
-> Since v3.10.0, the [`--branch-to-tag`](#pin-branches--branch-to-tag) option lets you opt-in to pinning specific branches to the latest stable tag of an action.
-
-In some cases pinact doesn't pin versions intentionally, which may confuse you.
-For instance, pinact doesn't pin branches like `main` and `master` by default.
-[For more details, please see here?](docs/why-pinact-not-pin.md).
 
 ## Motivation
 
@@ -419,7 +161,7 @@ If you use linters such as [ghalint](https://github.com/suzuki-shunsuke/ghalint)
 (ref. [ghalint policy to enforce actions to be pinned](https://github.com/suzuki-shunsuke/ghalint/blob/main/docs/policies/008.md))
 2. Even if you use Renovate, sometimes you would want to update actions manually
 3. pinact is useful for non Renovate users
-4. [pinact supports verifying version annotations](https://github.com/suzuki-shunsuke/pinact/blob/main/docs/codes/001.md)
+4. [pinact supports verifying version annotations](docs/codes/001.md)
 
 ## See also
 
