@@ -1,3 +1,7 @@
+---
+description: The configuration schema version 2, which only pinact v2.2.0 and older support. Use when reading or migrating a configuration file that declares schema version 2, which pinact v3 or later rejects.
+---
+
 # Schema v2
 
 > [!WARNING]

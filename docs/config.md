@@ -1,3 +1,7 @@
+---
+description: Configure pinact with .pinact.yaml and the global configuration file. Use for the schema version, `files`, `rules` and their expr conditions, `ignore_actions`, `min_age`, `separator`, the JSON Schema, or how a project and a global configuration are merged.
+---
+
 # Configuration File
 
 [JSON Schema](../json-schema/pinact.json)
@@ -10,6 +14,13 @@ You can generate a configuration file by `pinact init`.
 ```sh
 pinact init [<configuration file path>]
 ```
+
+## Configuration Priority
+
+1. Command line options
+2. Environment variables
+3. Local configuration file
+4. Global configuration file
 
 As of pinact v2.2.0, pinact configuration file has a schema version.
 
