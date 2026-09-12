@@ -26,28 +26,28 @@
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/crate-ci/typos/v1.50.0/typos-v1.50.0-aarch64-apple-darwin.tar.gz",
-      "checksum": "3C9E3CDC20FBED3812C1F2060650398E88AF0C0A251BBE069398752DD71513ED",
+      "id": "github_release/github.com/crate-ci/typos/v1.50.1/typos-v1.50.1-aarch64-apple-darwin.tar.gz",
+      "checksum": "2C940734B44B6E199E165278B662B7E17C68F068471A2A8A5E491CE635414AE6",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/crate-ci/typos/v1.50.0/typos-v1.50.0-aarch64-unknown-linux-musl.tar.gz",
-      "checksum": "A520651F52199EFC91A27AA2B82362E93D50E7D96386D3D48B28C2AD06B9AE4E",
+      "id": "github_release/github.com/crate-ci/typos/v1.50.1/typos-v1.50.1-aarch64-unknown-linux-musl.tar.gz",
+      "checksum": "A48FEB58C517977CA953E634507C72819D64DF8717C33CED3E43868D174FD39E",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/crate-ci/typos/v1.50.0/typos-v1.50.0-x86_64-apple-darwin.tar.gz",
-      "checksum": "AB88FAA54AB9CEAC55C6FC2A9841CEAB8EF883ED46522DBCBDE2EC7A110350B0",
+      "id": "github_release/github.com/crate-ci/typos/v1.50.1/typos-v1.50.1-x86_64-apple-darwin.tar.gz",
+      "checksum": "B31CCF2F21154B2BC8D2A84F395F746106EDDA0FEEC4817FBECDB12216DF53BD",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/crate-ci/typos/v1.50.0/typos-v1.50.0-x86_64-pc-windows-msvc.zip",
-      "checksum": "A48ABE229E6FD48729EE891B2C410C41BFA9DC15CA77815E723C4B66C311C53C",
+      "id": "github_release/github.com/crate-ci/typos/v1.50.1/typos-v1.50.1-x86_64-pc-windows-msvc.zip",
+      "checksum": "8740867A0D9E44A62F0803E37A669EC3C6CD17AB63CD49D00E14A96D3E03CCC3",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/crate-ci/typos/v1.50.0/typos-v1.50.0-x86_64-unknown-linux-musl.tar.gz",
-      "checksum": "A1497C9626BA0BAB731B3E37C12AC9051BBFA2A253463D4D574C28F190B5497B",
+      "id": "github_release/github.com/crate-ci/typos/v1.50.1/typos-v1.50.1-x86_64-unknown-linux-musl.tar.gz",
+      "checksum": "EDF0545109AEE6A22751D04DDECB97C45BE47D3AA0409564FB895EEEACE91B1E",
       "algorithm": "sha256"
     },
     {
@@ -81,28 +81,28 @@
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/goreleaser/goreleaser/v2.18.0/goreleaser_Darwin_all.tar.gz",
-      "checksum": "285ABB188274F3EEBFFB97FCD17A7D25F109FE33E234597C393E78E869386D5C",
+      "id": "github_release/github.com/goreleaser/goreleaser/v2.18.1/goreleaser_Darwin_all.tar.gz",
+      "checksum": "D0AF1F86C439A59AB06C54C505F66FEA1A166093DC91A7C0C8AEBE3DA1CC13B7",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/goreleaser/goreleaser/v2.18.0/goreleaser_Linux_arm64.tar.gz",
-      "checksum": "1975566C9668E6F4247E6BB57656F21DA13635C24D948EF47B1232E5C864A35B",
+      "id": "github_release/github.com/goreleaser/goreleaser/v2.18.1/goreleaser_Linux_arm64.tar.gz",
+      "checksum": "93DBA7614308E167158BD26978E8275971FD4B9147E7F3C687A64F5939D42D27",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/goreleaser/goreleaser/v2.18.0/goreleaser_Linux_x86_64.tar.gz",
-      "checksum": "41CDF49B653784B03A08013DD99E382CD5D463049E915C2D818EAED182AE6197",
+      "id": "github_release/github.com/goreleaser/goreleaser/v2.18.1/goreleaser_Linux_x86_64.tar.gz",
+      "checksum": "0C6122AF0AD8FD65638889BF7D3757148B2F80EEFF9F079682F0655DF66EC8E8",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/goreleaser/goreleaser/v2.18.0/goreleaser_Windows_arm64.zip",
-      "checksum": "43647CE4E0FBC624D39DD095E0ED5BF55A11978EA58A74A91630FB26EEA88511",
+      "id": "github_release/github.com/goreleaser/goreleaser/v2.18.1/goreleaser_Windows_arm64.zip",
+      "checksum": "E1D1D8FC468EC8EE182B9489FEC15A5E6D5C5991F1694039D4B0089ECE944C23",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/goreleaser/goreleaser/v2.18.0/goreleaser_Windows_x86_64.zip",
-      "checksum": "CBD0AEAB833806B6C07E2D156C2C9BAAFFA6E3D1FB870071BF3EFC9D9E5B4777",
+      "id": "github_release/github.com/goreleaser/goreleaser/v2.18.1/goreleaser_Windows_x86_64.zip",
+      "checksum": "DBB3112F619C4827311B726B3C98047BCE69AF1ECEE99984D55D450C04C471FC",
       "algorithm": "sha256"
     },
     {
@@ -131,28 +131,28 @@
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/mvdan/gofumpt/v0.11.0/gofumpt_v0.11.0_darwin_amd64",
-      "checksum": "B93B3D2C326196AF9FB1CE34A5436A18E7B9A73A795BF42E5B6A542EEA88D322",
+      "id": "github_release/github.com/mvdan/gofumpt/v0.12.0/gofumpt_v0.12.0_darwin_amd64",
+      "checksum": "1D3626892A321ACA96A891696EAECB8F68E69E90582C2B55672D5CA210FD5FA8",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/mvdan/gofumpt/v0.11.0/gofumpt_v0.11.0_darwin_arm64",
-      "checksum": "18936628F195369A80A129C73EE33D23E39086286DAB538781BA826EFFC7E10B",
+      "id": "github_release/github.com/mvdan/gofumpt/v0.12.0/gofumpt_v0.12.0_darwin_arm64",
+      "checksum": "1A3E325B956ED12C21031D9E13382BD51A4FABB57DE8D40428819B9583C3CFB9",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/mvdan/gofumpt/v0.11.0/gofumpt_v0.11.0_linux_amd64",
-      "checksum": "9F247EC294F5082375C7B062F3DDF48C8212A8711F65A6D75F5129F7FDA0D7DA",
+      "id": "github_release/github.com/mvdan/gofumpt/v0.12.0/gofumpt_v0.12.0_linux_amd64",
+      "checksum": "3BC4FCAD497439918F5F56D4987DE4709A99DA0A355E6BEC13A7278532B01D38",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/mvdan/gofumpt/v0.11.0/gofumpt_v0.11.0_linux_arm64",
-      "checksum": "9272C2D1738ACC1ACAE33793419E74C69653E70FE56BEC4AD9044B12B54715E5",
+      "id": "github_release/github.com/mvdan/gofumpt/v0.12.0/gofumpt_v0.12.0_linux_arm64",
+      "checksum": "4322F081241AB0618356AA5921A8C110E4C7ACFC17175CC15DC57B2F4A4B652D",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/mvdan/gofumpt/v0.11.0/gofumpt_v0.11.0_windows_amd64.exe",
-      "checksum": "E7AE4253344A600F1116E4B5C7D0D0FCC108ABBBF383C3D786A530077B4D4622",
+      "id": "github_release/github.com/mvdan/gofumpt/v0.12.0/gofumpt_v0.12.0_windows_amd64.exe",
+      "checksum": "66BD679908B64864FC85417E7EA01148774B477364B9A02AB1C194333A55C997",
       "algorithm": "sha256"
     },
     {
@@ -391,8 +391,8 @@
       "algorithm": "sha256"
     },
     {
-      "id": "registries/github_content/github.com/aquaproj/aqua-registry/v4.558.1/registry.yaml",
-      "checksum": "2A024E9CBE9BB672963ED0C68241A41C9F13B4D253390D548EC0B6D3E59A2DDC",
+      "id": "registries/github_content/github.com/aquaproj/aqua-registry/v4.560.0/registry.yaml",
+      "checksum": "4B6495DF77F391437E80574D3B270A32DBFAD4AAFC5EFABE944A1BDC0E064AF2",
       "algorithm": "sha256"
     }
   ]

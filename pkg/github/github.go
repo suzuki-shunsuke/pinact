@@ -13,7 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/google/go-github/v90/github"
+	"github.com/google/go-github/v91/github"
 	"github.com/suzuki-shunsuke/cobra-util/keyring/ghtoken"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"golang.org/x/oauth2"
