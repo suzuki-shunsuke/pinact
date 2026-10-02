@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -1379,6 +1380,65 @@ func TestController_minAgeFallback(t *testing.T) {
 			}
 			if got := ctrl.minAgeFallback(); got != tt.want {
 				t.Errorf("got %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestController_parseLine_cantPinnedReason(t *testing.T) {
+	t.Parallel()
+	data := []struct {
+		name    string
+		line    string
+		noAPI   bool
+		wantMsg string
+	}{
+		{
+			name:    "branch",
+			line:    "  - uses: actions/checkout@master",
+			wantMsg: "only semver versions",
+		},
+		{
+			name:    "non-semver tag",
+			line:    "  - uses: actions/checkout@latest",
+			wantMsg: "only semver versions",
+		},
+		{
+			name:    "hex string that isn't a full commit SHA",
+			line:    "  - uses: actions/checkout@d41d8cd98f00b204e9800998ecf8427e",
+			wantMsg: "full-length (40 characters) commit SHA",
+		},
+		{
+			name:    "short semver version comment on a tag",
+			line:    "  - uses: actions/checkout@v3 # v3",
+			wantMsg: "version comment",
+		},
+		{
+			name:    "semver version comment on a branch without --update",
+			line:    "  - uses: actions/checkout@main # v3.5.2",
+			wantMsg: "--update",
+		},
+		{
+			name:    "no api",
+			line:    "  - uses: actions/checkout@v3",
+			noAPI:   true,
+			wantMsg: "--no-api",
+		},
+	}
+	logger := slog.New(slog.DiscardHandler)
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			ctrl := New(nil, nil, fs, &config.Config{
+				Separator: " # ",
+			}, &ParamRun{NoAPI: d.noAPI})
+			_, err := ctrl.parseLine(t.Context(), logger, d.line)
+			if !errors.Is(err, ErrCantPinned) {
+				t.Fatalf("wanted error %v, got %v", ErrCantPinned, err)
+			}
+			if !strings.Contains(err.Error(), d.wantMsg) {
+				t.Fatalf("error message %q should contain %q", err.Error(), d.wantMsg)
 			}
 		})
 	}
