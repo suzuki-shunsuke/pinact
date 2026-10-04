@@ -228,10 +228,10 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 					},
 				},
 				Commits: map[string]*github.GetCommitSHA1Result{
-					"actions/checkout/v3": {
+					"actions/checkout/tags/v3": {
 						SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
 					},
-					"actions/checkout/v2": {
+					"actions/checkout/tags/v2": {
 						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
 					},
 				},
@@ -321,7 +321,7 @@ func TestController_parseLine_addMissingComment(t *testing.T) { //nolint:funlen
 				},
 			},
 			commits: map[string]*github.GetCommitSHA1Result{
-				"actions/checkout/v2": {SHA: sha},
+				"actions/checkout/tags/v2": {SHA: sha},
 			},
 			line: "  - uses: actions/checkout@v2",
 			exp:  "  - uses: actions/checkout@" + sha + " # v2.11.5",
@@ -343,7 +343,7 @@ func TestController_parseLine_addMissingComment(t *testing.T) { //nolint:funlen
 				},
 			},
 			commits: map[string]*github.GetCommitSHA1Result{
-				"actions/checkout/v2": {SHA: sha},
+				"actions/checkout/tags/v2": {SHA: sha},
 			},
 			line: "  - uses: actions/checkout@v2",
 			exp:  "  - uses: actions/checkout@" + sha + " # 2.11.5",
@@ -1043,9 +1043,9 @@ func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
 	}
 
 	commits := map[string]*github.GetCommitSHA1Result{
-		"actions/checkout/v3.5.2":       {SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab"},
-		"actions/no-stable/v1.0.0-beta": {SHA: "bebebebebebebebebebebebebebebebebebebebe"},
-		"actions/min-age/v1.0.0":        {SHA: "1111111111111111111111111111111111111111"},
+		"actions/checkout/tags/v3.5.2":       {SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab"},
+		"actions/no-stable/tags/v1.0.0-beta": {SHA: "bebebebebebebebebebebebebebebebebebebebe"},
+		"actions/min-age/tags/v1.0.0":        {SHA: "1111111111111111111111111111111111111111"},
 	}
 
 	data := []struct {
@@ -1163,7 +1163,7 @@ func TestController_parseLine_update_ruleMinAge(t *testing.T) {
 		Response: &github.Response{},
 	}
 	commits := map[string]*github.GetCommitSHA1Result{
-		"aquaproj/example/v2.0.0": {SHA: "2222222222222222222222222222222222222222"},
+		"aquaproj/example/tags/v2.0.0": {SHA: "2222222222222222222222222222222222222222"},
 	}
 
 	three := 3
@@ -1379,6 +1379,78 @@ func TestController_minAgeFallback(t *testing.T) {
 			}
 			if got := ctrl.minAgeFallback(); got != tt.want {
 				t.Errorf("got %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestController_parseLine_tagAndBranchWithSameName covers #1477: GitHub's commits API
+// prefers a branch over a tag with the same name, but the Actions runner uses the tag.
+func TestController_parseLine_tagAndBranchWithSameName(t *testing.T) {
+	t.Parallel()
+	const (
+		branchSHA = "0683e68ce8b375f2dc24214e065a3ae1ef93040e"
+		tagSHA    = "9bdcd7914ec1b75590b790b844aa3b8eee7c683a"
+	)
+	data := []struct {
+		name  string
+		line  string
+		exp   string
+		isErr bool
+	}{
+		{
+			name: "short semver resolves to the tag, not the branch",
+			line: "  - uses: peter-evans/slash-command-dispatch@v5",
+			exp:  "  - uses: peter-evans/slash-command-dispatch@" + tagSHA + " # v5.0.2",
+		},
+		{
+			name: "semver resolves to the tag, not the branch",
+			line: "  - uses: peter-evans/slash-command-dispatch@v5.0.2",
+			exp:  "  - uses: peter-evans/slash-command-dispatch@" + tagSHA + " # v5.0.2",
+		},
+		{
+			name:  "semver-like ref that exists only as a branch is not pinned",
+			line:  "  - uses: peter-evans/slash-command-dispatch@v4",
+			isErr: true,
+		},
+	}
+	logger := slog.New(slog.DiscardHandler)
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			repoService := newTestRepoService(&mockRepoService{})
+			repoService.Tags["peter-evans/slash-command-dispatch/0"] = &github.ListTagsResult{
+				Tags: []*github.RepositoryTag{
+					{Name: new("v5"), Commit: &github.Commit{SHA: new(tagSHA)}},
+					{Name: new("v5.0.2"), Commit: &github.Commit{SHA: new(tagSHA)}},
+				},
+				Response: &github.Response{},
+			}
+			repoService.Releases["peter-evans/slash-command-dispatch/0"] = &github.ListReleasesResult{
+				Releases: []*github.RepositoryRelease{},
+				Response: &github.Response{},
+			}
+			for ref, sha := range map[string]string{
+				"v5":          branchSHA, // branch-first answer of /commits/v5
+				"tags/v5":     tagSHA,
+				"tags/v5.0.2": tagSHA,
+				"v4":          branchSHA, // v4 exists only as a branch
+			} {
+				repoService.Commits["peter-evans/slash-command-dispatch/"+ref] = &github.GetCommitSHA1Result{SHA: sha}
+			}
+			ctrl := New(repoService, nil, afero.NewMemMapFs(), &config.Config{Separator: " # "}, &ParamRun{})
+			line, err := ctrl.parseLine(t.Context(), logger, d.line)
+			if d.isErr {
+				if err == nil {
+					t.Fatalf("expected an error, got %q", line)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if line != d.exp {
+				t.Fatalf("wanted %s, got %s", d.exp, line)
 			}
 		})
 	}
