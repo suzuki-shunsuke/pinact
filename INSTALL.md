@@ -68,7 +68,6 @@ Please unarchive it and install a pre built binary into `$PATH`.
 You can verify downloaded assets using some tools.
 
 1. [GitHub CLI](https://cli.github.com/)
-1. [slsa-verifier](https://github.com/slsa-framework/slsa-verifier)
 1. [Cosign](https://github.com/sigstore/cosign)
 
 ### 1. GitHub CLI
@@ -88,25 +87,7 @@ gh attestation verify "$asset" \
   --signer-workflow suzuki-shunsuke/go-release-workflow/.github/workflows/release.yaml
 ```
 
-### 2. slsa-verifier
-
-You can install slsa-verifier by aqua.
-
-```sh
-aqua g -i slsa-framework/slsa-verifier
-```
-
-```sh
-version=v1.0.0
-asset=pinact_darwin_arm64.tar.gz
-gh release download -R suzuki-shunsuke/pinact "$version" -p "$asset" -p multiple.intoto.jsonl
-slsa-verifier verify-artifact "$asset" \
-  --provenance-path multiple.intoto.jsonl \
-  --source-uri github.com/suzuki-shunsuke/pinact \
-  --source-tag "$version"
-```
-
-### 3. Cosign
+### 2. Cosign
 
 You can install Cosign by aqua.
 
@@ -132,3 +113,29 @@ cosign verify-blob \
   "$checksum_file"
 cat "$checksum_file" | sha256sum -c --ignore-missing
 ```
+
+### slsa-verifier (v5.0.0 or older)
+
+<details>
+<summary>slsa-verifier</summary>
+
+Releases newer than v5.0.0 don't include `multiple.intoto.jsonl`, so slsa-verifier can verify only v5.0.0 or older.
+Please use GitHub CLI or Cosign for newer versions.
+
+You can install slsa-verifier by aqua.
+
+```sh
+aqua g -i slsa-framework/slsa-verifier
+```
+
+```sh
+version=v1.0.0
+asset=pinact_darwin_arm64.tar.gz
+gh release download -R suzuki-shunsuke/pinact "$version" -p "$asset" -p multiple.intoto.jsonl
+slsa-verifier verify-artifact "$asset" \
+  --provenance-path multiple.intoto.jsonl \
+  --source-uri github.com/suzuki-shunsuke/pinact \
+  --source-tag "$version"
+```
+
+</details>
