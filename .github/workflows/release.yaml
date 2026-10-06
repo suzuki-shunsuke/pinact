@@ -9,7 +9,7 @@ jobs:
     uses: suzuki-shunsuke/go-release-workflow/.github/workflows/release.yaml@cf03c29d97518871efb36bbb80bcc01a19645b49 # v9.0.2
     with:
       go-version-file: go.mod
-      aqua_version: v2.63.0
+      aqua_version: v2.64.0
     secrets:
       TAKUMI_GUARD_BOT_ID: ${{secrets.TAKUMI_GUARD_BOT_ID}}
     permissions:
