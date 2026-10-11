@@ -27,7 +27,7 @@ jobs:
 
   test:
     needs: [gomodule]
-    uses: suzuki-shunsuke/go-test-full-workflow/.github/workflows/test.yaml@37818dfd05bcefb354f76fe9a1277b633363b22b # feat/gomodule-artifact-name
+    uses: suzuki-shunsuke/go-test-full-workflow/.github/workflows/test.yaml@c3c1e81c5186c06522e9da887b52cf7c4d8b0a5b # feat/gomodule-artifact-name
     with:
       aqua_version: v2.64.0
       golangci-lint-timeout: 120s
