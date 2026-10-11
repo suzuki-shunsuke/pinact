@@ -9,7 +9,7 @@ permissions: {}
 jobs:
   # Download Go modules once and share them with integration-test and test
   gomodule:
-    uses: suzuki-shunsuke/download-go-module-action/.github/workflows/download.yaml@63db944fc861c4f6a4def7af7b0303f221e8bb5e # v0.0.3
+    uses: suzuki-shunsuke/download-go-module-action/.github/workflows/download.yaml@9b315459d80513111c52b004d15ad89e7b3e46b7 # v0.0.4
     permissions:
       contents: read
       id-token: write
