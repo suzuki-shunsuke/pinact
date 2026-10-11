@@ -7,10 +7,18 @@ on:
         required: true
 
 jobs:
+  gomodule:
+    uses: suzuki-shunsuke/download-go-module-action/.github/workflows/download.yaml@63db944fc861c4f6a4def7af7b0303f221e8bb5e # v0.0.3
+    permissions:
+      contents: read
+      id-token: write
+    secrets:
+      TAKUMI_GUARD_BOT_ID: ${{secrets.TAKUMI_GUARD_BOT_ID}}
+
   integration-test:
     runs-on: ubuntu-26.04
+    needs: [gomodule]
     permissions:
-      id-token: write
       contents: read
     timeout-minutes: 20
     steps:
@@ -22,9 +30,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - uses: flatt-security/setup-takumi-guard-golang@2e3c7c40b538cd68b2ac483def12982ebc8bc02e # v1
-        with:
-          bot-id: ${{secrets.TAKUMI_GUARD_BOT_ID}}
+      - name: Restore Go modules
+        uses: suzuki-shunsuke/download-go-module-action/restore@63db944fc861c4f6a4def7af7b0303f221e8bb5e # v0.0.3
 
       - uses: aquaproj/aqua-installer@82d0e83878a8657c4a6f2ff1755d3bfbfc67f329 # v4.1.0
         with:
@@ -32,10 +39,7 @@ jobs:
         env:
           AQUA_GITHUB_TOKEN: ${{github.token}}
       - run: rm "$(aqua root-dir)/bin/pinact"
-      - run: |
-          go install \
-            -ldflags "-X main.version=v1.0.0 -X main.commit=$GITHUB_SHA -X main.date=$(date +"%Y-%m-%dT%H:%M:%SZ%:z" | tr -d '+')" \
-            ./cmd/pinact
+      - run: go install ./cmd/pinact
       - run: pinact -v
       - run: |
           if pinact run --check testdata/foo.yaml; then
