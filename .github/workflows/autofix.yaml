@@ -4,6 +4,16 @@ on: pull_request
 permissions: {}
 jobs:
   autofix:
+    runs-on: ubuntu-26.04
+    if: always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
+    timeout-minutes: 10
+    permissions: {}
+    needs:
+      - fix
+    steps:
+      - run: exit 1
+
+  fix:
     uses: suzuki-shunsuke/go-autofix-action/.github/workflows/autofix-ci.yaml@2c7f494d0149fe60c0adc9feb09b6b995bae00ec # v0.2.0
     permissions:
       contents: read
