@@ -99,7 +99,7 @@ func TestController_verify(t *testing.T) { //nolint:funlen
 
 			mockService := &github.RepositoriesServiceImpl{
 				Commits: map[string]*github.GetCommitSHA1Result{
-					tt.action.RepoOwner + "/" + tt.action.RepoName + "/" + tt.action.VersionComment: {
+					tt.action.RepoOwner + "/" + tt.action.RepoName + "/tags/" + tt.action.VersionComment: {
 						SHA: tt.expectedSHA,
 					},
 				},
@@ -236,7 +236,7 @@ func TestController_verifyIfNeeded(t *testing.T) { //nolint:funlen
 			if tt.isVerify {
 				mockService = &github.RepositoriesServiceImpl{
 					Commits: map[string]*github.GetCommitSHA1Result{
-						tt.action.RepoOwner + "/" + tt.action.RepoName + "/" + tt.action.VersionComment: {
+						tt.action.RepoOwner + "/" + tt.action.RepoName + "/tags/" + tt.action.VersionComment: {
 							SHA: tt.expectedSHA,
 						},
 					},
@@ -291,10 +291,10 @@ func TestController_verifyIfNeeded(t *testing.T) { //nolint:funlen
 func newVerifyMockService() *github.RepositoriesServiceImpl {
 	return &github.RepositoriesServiceImpl{
 		Commits: map[string]*github.GetCommitSHA1Result{
-			"actions/checkout/v3.5.1": {
+			"actions/checkout/tags/v3.5.1": {
 				SHA: "83b7061638ee4956cf7545a6f7efe594e5ad0247",
 			},
-			"actions/checkout/v2.7.0": {
+			"actions/checkout/tags/v2.7.0": {
 				SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
 			},
 		},
