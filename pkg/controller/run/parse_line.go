@@ -19,6 +19,7 @@ var (
 	fullCommitSHAPattern = regexp.MustCompile(`\b[0-9a-f]{40}\b`)
 	semverPattern        = regexp.MustCompile(`^v?\d+\.\d+\.\d+[^ ]*$`)
 	shortTagPattern      = regexp.MustCompile(`^v?\d+(\.\d+)?$`)
+	hexPattern           = regexp.MustCompile(`^[0-9a-f]+$`)
 )
 
 type Action struct {
@@ -85,6 +86,24 @@ var (
 	ErrCantPinned            = errors.New("action can't be pinned")
 	ErrMissingVersionComment = errors.New("SHA-pinned action requires a version comment for verifiability")
 )
+
+const whyNotPinDoc = "https://github.com/suzuki-shunsuke/pinact/blob/main/docs/why_pinact_not_pin.md"
+
+// errCantPinned wraps ErrCantPinned with the reason why the action can't be
+// pinned, so that users can tell what to fix from the error message.
+// errors.Is(err, ErrCantPinned) still holds for the returned error.
+func errCantPinned(reason string) error {
+	return fmt.Errorf("%w: %s", ErrCantPinned, reason)
+}
+
+// errNonSemverVersion returns the error for a version that is neither semver
+// nor a full commit SHA, such as a branch name or a non-semver tag.
+func errNonSemverVersion(v string) error {
+	if len(v) >= 7 && hexPattern.MatchString(v) {
+		return errCantPinned(fmt.Sprintf("the version %q looks like a commit hash but isn't a full-length (40 characters) commit SHA", v))
+	}
+	return errCantPinned(fmt.Sprintf("the version %q isn't semver: only semver versions (e.g. v1.2.3) and full-length commit SHAs are supported by design. To pin branches, use --branch-to-tag. See %s", v, whyNotPinDoc))
+}
 
 // ignoreAction checks if an action should be ignored based on configuration.
 // It evaluates the action against all ignore rules in the configuration.
@@ -305,7 +324,7 @@ func (c *Controller) processAction(ctx context.Context, logger *slog.Logger, act
 			}
 			return "", nil
 		}
-		return "", ErrCantPinned
+		return "", errCantPinned("the version can't be resolved to a commit SHA without the GitHub API (--no-api)")
 	}
 	switch getVersionType(action.Version) {
 	case FullCommitSHA:
@@ -406,7 +425,7 @@ func (c *Controller) processTaggedVersion(ctx context.Context, logger *slog.Logg
 		return c.patchToLatestVersion(ctx, logger, action, lv)
 	default:
 		// Shortsemver or Other comment on an unpinned tag: invalid combination.
-		return "", ErrCantPinned
+		return "", errCantPinned(fmt.Sprintf("the version comment %q isn't a full semver (e.g. v1.2.3)", action.VersionComment))
 	}
 }
 
@@ -418,17 +437,17 @@ func (c *Controller) processUnpinnedVersion(ctx context.Context, logger *slog.Lo
 		if c.matchBranchToTag(action.Version) {
 			return c.convertBranchToLatestTag(ctx, logger, action, resolved)
 		}
-		return "", ErrCantPinned
+		return "", errNonSemverVersion(action.Version)
 	case Semver:
 		if !c.param.Update {
-			return "", ErrCantPinned
+			return "", errCantPinned(fmt.Sprintf("the version %q isn't semver. To update it to the latest version, run with --update", action.Version))
 		}
 		lv, err := c.getLatestVersion(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment, resolved)
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
 		if action.VersionComment == lv {
-			return "", ErrCantPinned
+			return "", errCantPinned(fmt.Sprintf("the version %q isn't semver and the version comment %q is already the latest version", action.Version, action.VersionComment))
 		}
 		if !compareVersion(action.VersionComment, lv) {
 			warnSkipOlderVersion(logger, action.VersionComment, lv)
@@ -436,7 +455,7 @@ func (c *Controller) processUnpinnedVersion(ctx context.Context, logger *slog.Lo
 		}
 		return c.patchToLatestVersion(ctx, logger, action, lv)
 	default:
-		return "", ErrCantPinned
+		return "", errCantPinned(fmt.Sprintf("neither the version %q nor the version comment %q is semver", action.Version, action.VersionComment))
 	}
 }
 
@@ -483,7 +502,7 @@ func (c *Controller) convertBranchToLatestTag(ctx context.Context, logger *slog.
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
 		if lv == "" {
-			return "", ErrCantPinned
+			return "", errCantPinned(fmt.Sprintf("no semver tag is found in %s/%s to convert the branch %q to", action.RepoOwner, action.RepoName, action.Version))
 		}
 	}
 	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
