@@ -440,10 +440,19 @@ func (c *Controller) processUnpinnedVersion(ctx context.Context, logger *slog.Lo
 	}
 }
 
+// tagRef qualifies a tag name for GetCommitSHA1. When a branch and a tag share
+// a name (e.g. v5), GitHub's commits API resolves the branch but the Actions
+// runner uses the tag, so the tag must be requested explicitly. A semver-like
+// ref that exists only as a branch then fails instead of being pinned.
+// https://github.com/suzuki-shunsuke/pinact/issues/1477
+func tagRef(tag string) string {
+	return "tags/" + tag
+}
+
 // patchToLatestVersion fetches the commit SHA of the latest version and
 // rewrites the action line to pin against it.
 func (c *Controller) patchToLatestVersion(ctx context.Context, logger *slog.Logger, action *Action, lv string) (string, error) {
-	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
+	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, tagRef(lv), "")
 	if err != nil {
 		return "", fmt.Errorf("get the latest version: %w", err)
 	}
@@ -486,7 +495,7 @@ func (c *Controller) convertBranchToLatestTag(ctx context.Context, logger *slog.
 			return "", ErrCantPinned
 		}
 	}
-	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
+	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, tagRef(lv), "")
 	if err != nil {
 		return "", fmt.Errorf("get a reference: %w", err)
 	}
@@ -517,7 +526,7 @@ func (c *Controller) updateToLatestVersion(ctx context.Context, logger *slog.Log
 	if err != nil {
 		return "", fmt.Errorf("get the latest version: %w", err)
 	}
-	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
+	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, tagRef(lv), "")
 	if err != nil {
 		return "", fmt.Errorf("get a reference: %w", err)
 	}
@@ -528,7 +537,7 @@ func (c *Controller) updateToLatestVersion(ctx context.Context, logger *slog.Log
 func (c *Controller) pinCurrentVersion(ctx context.Context, logger *slog.Logger, action *Action, typ VersionType) (string, error) {
 	// Get commit hash from tag
 	// https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#get-a-reference
-	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, action.Version, "")
+	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, tagRef(action.Version), "")
 	if err != nil {
 		return "", fmt.Errorf("get a reference: %w", err)
 	}
@@ -660,7 +669,7 @@ func (c *Controller) parseActionName(action *Action) bool {
 // patched line with the version comment rewritten. With --fix=false (--check /
 // --diff) the mismatch is reported as an error instead, so CI can flag it.
 func (c *Controller) verify(ctx context.Context, logger *slog.Logger, action *Action) (string, error) {
-	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, action.VersionComment, "")
+	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, tagRef(action.VersionComment), "")
 	if err != nil {
 		return "", fmt.Errorf("get a commit hash: %w", err)
 	}
