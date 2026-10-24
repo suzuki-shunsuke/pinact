@@ -10,6 +10,10 @@ jobs:
     permissions:
       contents: read
     timeout-minutes: 20
+    env:
+      # Use only the modules downloaded in the gomodule job.
+      # Fail instead of silently downloading modules without Takumi Guard.
+      GOPROXY: "off"
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
