@@ -21,7 +21,7 @@ jobs:
           cache: false
 
       - name: Restore Go modules
-        uses: suzuki-shunsuke/download-go-module-action/restore@59ba5863b931de21763c13df6ad926cf98158517 # v0.0.8
+        uses: suzuki-shunsuke/download-go-module-action/restore@5d7ee96c505de1e3265c2d5ad67d2c66076844f1 # v0.0.9
 
       - uses: aquaproj/aqua-installer@611554c6f0137ba41c8dd15aca8bee82504ea461 # v4.1.1
         with:
