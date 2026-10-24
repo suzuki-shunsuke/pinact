@@ -14,7 +14,7 @@ jobs:
       - run: exit 1
 
   fix:
-    uses: suzuki-shunsuke/go-autofix-action/.github/workflows/autofix-ci.yaml@9c2010030113b391598ad8edf1a42daf984f097e # v0.2.1
+    uses: suzuki-shunsuke/go-autofix-action/.github/workflows/autofix-ci.yaml@ad61a60b1ab7061f3adca50247830727f0aa4df2 # v0.2.2
     permissions:
       contents: read
       id-token: write
