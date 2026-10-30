@@ -1,5 +1,5 @@
 ---
-description: Why pinact leaves some actions unpinned. Use when an action referencing a branch such as `main` isn't pinned, when a version isn't changed although a newer tag exists, or when deciding whether to use `--branch-to-tag`.
+description: Why pinact leaves some actions unpinned. Use when an action referencing a branch such as `main` isn't pinned, when an action locked by a workflow lockfile isn't pinned, when a version isn't changed although a newer tag exists, or when deciding whether to use `--branch-to-tag`.
 ---
 
 # Why doesn't pinact pin some actions?
@@ -46,3 +46,8 @@ pinact doesn't check if a version is a tag or a branch because we would like to 
 If a version isn't semver, pinact judges it may be a branch so pinact doesn't pin it.
 
 Please see also [#926](https://github.com/suzuki-shunsuke/pinact/issues/926).
+
+## Actions locked by a workflow lockfile
+
+If `.github/workflows/actions.lock` exists, pinact doesn't pin actions that the lockfile locks, because pinning them by commit SHA would require regenerating the lockfile.
+See [Workflow lockfiles](workflow_lockfile.md).

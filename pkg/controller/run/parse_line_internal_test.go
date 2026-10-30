@@ -238,7 +238,7 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			}, nil, fs, &config.Config{
 				Separator: " # ",
 			}, &ParamRun{})
-			line, err := ctrl.parseLine(t.Context(), logger, d.line)
+			line, err := ctrl.parseLine(t.Context(), logger, "", d.line)
 			if err != nil {
 				if d.isErr {
 					return
@@ -407,7 +407,7 @@ func TestController_parseLine_addMissingComment(t *testing.T) { //nolint:funlen
 			}, nil, fs, &config.Config{
 				Separator: " # ",
 			}, &ParamRun{})
-			line, err := ctrl.parseLine(t.Context(), logger, d.line)
+			line, err := ctrl.parseLine(t.Context(), logger, "", d.line)
 			if d.wantErr != nil {
 				if !errors.Is(err, d.wantErr) {
 					t.Fatalf("wanted error %v, got %v", d.wantErr, err)
@@ -455,7 +455,7 @@ func TestController_parseLine_noAPI(t *testing.T) {
 			ctrl := New(nil, nil, fs, &config.Config{
 				Separator: " # ",
 			}, &ParamRun{NoAPI: true})
-			_, err := ctrl.parseLine(t.Context(), logger, d.line)
+			_, err := ctrl.parseLine(t.Context(), logger, "", d.line)
 			if d.wantErr != nil {
 				if !errors.Is(err, d.wantErr) {
 					t.Fatalf("wanted error %v, got %v", d.wantErr, err)
@@ -1124,7 +1124,7 @@ func TestController_parseLine_branchToTag(t *testing.T) { //nolint:funlen
 				MinAge:       d.minAge,
 				Now:          now,
 			})
-			line, err := ctrl.parseLine(t.Context(), logger, d.line)
+			line, err := ctrl.parseLine(t.Context(), logger, "", d.line)
 			if err != nil {
 				if d.isErr {
 					return
@@ -1198,7 +1198,7 @@ func TestController_parseLine_update_ruleMinAge(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler)
 
 	line := "  - uses: aquaproj/example@1111111111111111111111111111111111111111 # v1.0.0"
-	got, err := ctrl.parseLine(t.Context(), logger, line)
+	got, err := ctrl.parseLine(t.Context(), logger, "", line)
 	if err != nil {
 		t.Fatal(err)
 	}

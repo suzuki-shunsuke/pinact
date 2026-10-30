@@ -20,6 +20,9 @@ type Controller struct {
 	cfg                 *config.Config
 	param               *ParamRun
 	logger              *Logger
+	// lockfiles maps a target file path to the lockfile concerning it. It's set by Run.
+	// A file without an entry isn't a workflow file or has no lockfile.
+	lockfiles map[string]*lockfileTarget
 }
 
 // New creates a new Controller for running pinact operations.

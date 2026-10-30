@@ -34,10 +34,11 @@ ref. [workflow dependency lockfiles](https://docs.github.com/en/enterprise-cloud
 
 > It doesn't pin calls to reusable workflows (`jobs.<job_id>.uses`). To pin a reusable workflow, reference it by its full commit SHA.
 
-So you can lock actions with a lockfile and pin only reusable workflows with pinact.
-pinact also updates them with `--update` and checks them with `--check`.
+So you can lock actions with a lockfile and pin reusable workflows with pinact.
+If `.github/workflows/actions.lock` exists, pinact leaves actions locked by the lockfile to the lockfile, and pins the rest, including reusable workflows, as usual.
+pinact also reports actions that the lockfile is missing.
 
-See [Pin only reusable workflows alongside workflow lockfiles](docs/workflow_lockfile.md).
+See [Workflow lockfiles](docs/workflow_lockfile.md).
 
 ## Features
 
@@ -54,7 +55,7 @@ See [Pin only reusable workflows alongside workflow lockfiles](docs/workflow_loc
 1. [Read GitHub access token via keyrings or ghtkn](docs/github_token.md)
 1. [Pin only changed lines](docs/diff_file.md)
 1. [Support GitHub Enterprise Server](docs/ghes.md)
-1. [Pin only reusable workflows alongside workflow lockfiles](docs/workflow_lockfile.md)
+1. [Work with GitHub Actions workflow lockfiles](docs/workflow_lockfile.md)
 1. [GitHub Action](https://github.com/suzuki-shunsuke/pinact-action)
 
 ## Getting Started
@@ -123,7 +124,7 @@ pinact docs show codes/005 # A document in a subdirectory is named by its path
 - [GitHub access token](docs/github_token.md) - `PINACT_GITHUB_TOKEN`, the ghtkn integration, and the OS keyring.
 - [Configuration File](docs/config.md) - the configuration file, the global configuration file, and every field of the schema.
 - [GitHub Enterprise Server](docs/ghes.md) - pinning actions hosted on GHES.
-- [Workflow lockfiles](docs/workflow_lockfile.md) - pinning only reusable workflows while a lockfile locks the actions.
+- [Workflow lockfiles](docs/workflow_lockfile.md) - how pinact leaves locked actions to `.github/workflows/actions.lock` and pins reusable workflows.
 - [Exit codes](docs/exit_codes.md) - what 0, 1, 2, and 3 mean.
 - [Why doesn't pinact pin some actions?](docs/why_pinact_not_pin.md) - why a branch reference isn't pinned by default.
 - [Verify version comments](docs/codes/001.md) - why a version comment isn't necessarily true, and how `--verify-comment` checks it.

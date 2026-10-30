@@ -131,7 +131,7 @@ func (c *Controller) excludeByIncludes(actionName string) bool {
 // SHA. The check is skipped when --min-age is not set or no git service is
 // available. On violation it returns the patched line together with ErrMinAge
 // so the caller can apply the fix and bump the exit code to ExitCodeUnfixable.
-func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line string) (s string, e error) {
+func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, workflowFilePath, line string) (s string, e error) {
 	attrs := slogerr.NewAttrs(2) //nolint:mnd
 	defer func() {
 		e = attrs.With(e)
@@ -167,6 +167,11 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, line st
 	if resolved.Ignore {
 		logger.Debug("ignore the action by a rule")
 		return "", nil
+	}
+
+	if handled, err := c.checkLockfile(workflowFilePath, action); handled {
+		logger.Debug("the lockfile manages the action")
+		return "", err
 	}
 
 	newLine, err := c.processAction(ctx, logger, action, attrs, resolved)
