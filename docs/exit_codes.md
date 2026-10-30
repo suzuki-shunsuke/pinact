@@ -8,7 +8,7 @@ description: What pinact's exit codes mean. Use when a run exits 1, 2, or 3 and 
 | --- | --- |
 | 0 | Everything is pinned, or pinact fixed it |
 | 1 | `--fix=false` was set and something needs pinning |
-| 2 | An action cannot be auto-fixed (branch reference, [missing version comment on a SHA pin](codes/005.md), `--verify-comment` mismatch, or `--min-age` violation) |
+| 2 | An action cannot be auto-fixed (branch reference, [missing version comment on a SHA pin](codes/005.md), `--verify-comment` mismatch, `--min-age` violation, or [an action the workflow lockfile is missing or whose lock state pinact can't tell](workflow_lockfile.md)) |
 | 3 | GitHub API error, invalid CLI flag combination, or other unexpected error |
 
 The exit code 1 is the one CI is meant to fail on: it says the files aren't pinned, and running pinact without `--fix=false` fixes them.

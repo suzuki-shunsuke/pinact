@@ -204,7 +204,7 @@ rules:
           ActionRepoFullName == "actions/checkout"
 ```
 
-To pin only reusable workflows, for example while a workflow lockfile locks the actions, see [Pin only reusable workflows alongside workflow lockfiles](workflow_lockfile.md).
+Actions locked by a workflow lockfile are left to the lockfile without any rule. See [Workflow lockfiles](workflow_lockfile.md).
 
 #### `rules[].ignore`
 

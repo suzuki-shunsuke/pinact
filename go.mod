@@ -5,6 +5,7 @@ go 1.27.3
 require (
 	github.com/expr-lang/expr v1.17.8
 	github.com/fatih/color v1.19.0
+	github.com/github/actions-lockfile/go v0.0.6
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v93 v93.0.0

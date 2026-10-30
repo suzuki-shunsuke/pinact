@@ -78,6 +78,7 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("search target files: %w", err)
 	}
+	c.readLockfile(logger, workflowFilePaths)
 
 	exitCode := ExitCodeOK
 	for _, workflowFilePath := range workflowFilePaths {
@@ -112,6 +113,22 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 		return ecerror.Wrap(cobrautil.ErrSilent, exitCode)
 	}
 	return nil
+}
+
+// readLockfile reads the lockfile for the workflow files among the target files.
+// If the lockfile can't be read, it outputs a warning, and checkLockfile reports
+// actions whose lock state pinact can't tell.
+func (c *Controller) readLockfile(logger *slog.Logger, filePaths []string) {
+	keys := make([]string, 0, len(filePaths))
+	for _, p := range filePaths {
+		if key := workflowKey(c.param.CWD, p); key != "" {
+			keys = append(keys, key)
+		}
+	}
+	c.lockfile = readLockfile(c.fs, keys)
+	if c.lockfile != nil && c.lockfile.err != nil {
+		slogerr.WithError(logger, c.lockfile.err).Warn("pinact doesn't change actions in workflow steps whose lock state it can't tell")
+	}
 }
 
 type Line struct {
@@ -225,7 +242,7 @@ func (c *Controller) processLine(ctx context.Context, logger *slog.Logger, workf
 		"line_number", lineNumber,
 		"line", lineS,
 	)
-	l, err := c.parseLine(ctx, lineLogger, lineS)
+	l, err := c.parseLine(ctx, lineLogger, workflowFilePath, lineS)
 	if err != nil {
 		return c.handleLineError(ctx, lineLogger, line, lineS, l, err)
 	}

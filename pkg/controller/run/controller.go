@@ -20,6 +20,8 @@ type Controller struct {
 	cfg                 *config.Config
 	param               *ParamRun
 	logger              *Logger
+	// lockfile is set by Run. nil means the lockfile doesn't exist.
+	lockfile *lockfileState
 }
 
 // New creates a new Controller for running pinact operations.
