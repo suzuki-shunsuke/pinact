@@ -24,6 +24,7 @@ pinact reads the lockfile and handles actions in workflow steps of `.github/work
 | Not locked, in a workflow onboarded to the lockfile | Doesn't change it and fails with exit code 2 |
 | In a workflow not onboarded to the lockfile | Pins it as usual |
 
+pinact reads the lockfile next to each workflow file, so it works the same wherever you run pinact, for instance `cd .github/workflows && pinact run ci.yml`.
 A workflow is onboarded if the lockfile's `workflows` lists it.
 An action is locked if the lockfile lists it for the workflow.
 The lockfile records actions as `owner/repo@ref`, where owner and repo are lowercased and a sub-action path is dropped.

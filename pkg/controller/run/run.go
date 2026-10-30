@@ -78,7 +78,7 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("search target files: %w", err)
 	}
-	c.readLockfile(logger, workflowFilePaths)
+	c.readLockfiles(logger, workflowFilePaths)
 
 	exitCode := ExitCodeOK
 	for _, workflowFilePath := range workflowFilePaths {
@@ -115,19 +115,21 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	return nil
 }
 
-// readLockfile reads the lockfile for the workflow files among the target files.
-// If the lockfile can't be read, it outputs a warning, and checkLockfile reports
+// readLockfiles reads the lockfiles for the workflow files among the target files.
+// If a lockfile can't be read, it outputs a warning, and checkLockfile reports
 // actions whose lock state pinact can't tell.
-func (c *Controller) readLockfile(logger *slog.Logger, filePaths []string) {
-	keys := make([]string, 0, len(filePaths))
-	for _, p := range filePaths {
-		if key := workflowKey(c.param.CWD, p); key != "" {
-			keys = append(keys, key)
+func (c *Controller) readLockfiles(logger *slog.Logger, filePaths []string) {
+	c.lockfiles = readLockfiles(c.fs, filePaths)
+	warned := map[*lockfileState]struct{}{}
+	for p, t := range c.lockfiles {
+		if t.state.err == nil {
+			continue
 		}
-	}
-	c.lockfile = readLockfile(c.fs, keys)
-	if c.lockfile != nil && c.lockfile.err != nil {
-		slogerr.WithError(logger, c.lockfile.err).Warn("pinact doesn't change actions in workflow steps whose lock state it can't tell")
+		if _, ok := warned[t.state]; ok {
+			continue
+		}
+		warned[t.state] = struct{}{}
+		slogerr.WithError(logger, t.state.err).Warn("pinact doesn't change actions in workflow steps whose lock state it can't tell", "workflow_file", p)
 	}
 }
 

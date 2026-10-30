@@ -23,17 +23,23 @@ type lockfileState struct {
 	err error
 }
 
-// readLockfile reads the lockfile for the given workflow keys.
+// lockfileTarget is the lockfile that concerns a target file and the file's workflow key in it.
+type lockfileTarget struct {
+	state *lockfileState
+	key   string
+}
+
+// readLockfile reads the lockfile lockfilePath for the given workflow keys.
 // Required fields are validated only for entries those workflows reference,
 // so a broken entry that no workflow uses doesn't make the whole lockfile unreadable.
 // It returns nil if the lockfile doesn't exist or no workflow key is given.
 // If the lockfile exists but can't be read, the returned state has the error.
-func readLockfile(afs afero.Fs, workflowKeys []string) *lockfileState {
+func readLockfile(afs afero.Fs, lockfilePath string, workflowKeys []string) *lockfileState {
 	if len(workflowKeys) == 0 {
 		// The parser validates all entries if no workflow file path is given.
 		return nil
 	}
-	b, err := afero.ReadFile(afs, parserlock.Path)
+	b, err := afero.ReadFile(afs, lockfilePath)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil
@@ -47,26 +53,65 @@ func readLockfile(afs afero.Fs, workflowKeys []string) *lockfileState {
 	return &lockfileState{file: f}
 }
 
-// workflowKey returns the path of a workflow file relative to the repository root,
+// workflowDirAndKey returns the directory of a workflow file and its path relative to the repository root,
 // which is how the lockfile refers to workflows.
-// It returns an empty string if the file isn't a workflow file .github/workflows/*.y(a)ml.
-// cwd is the repository root.
-func workflowKey(cwd, filePath string) string {
-	if filepath.IsAbs(filePath) {
-		rel, err := filepath.Rel(cwd, filePath)
-		if err != nil {
-			return ""
+// The repository root is derived from the file path, so it doesn't depend on the working directory.
+// For instance, /repo/.github/workflows/ci.yml returns /repo/.github/workflows and .github/workflows/ci.yml.
+// It returns empty strings if the file isn't a workflow file .github/workflows/*.y(a)ml.
+func workflowDirAndKey(filePath string) (string, string) {
+	ext := filepath.Ext(filePath)
+	if ext != ".yml" && ext != ".yaml" {
+		return "", ""
+	}
+	abs, err := filepath.Abs(filePath)
+	if err != nil {
+		return "", ""
+	}
+	dir := filepath.Dir(abs)
+	if filepath.Base(dir) != "workflows" || filepath.Base(filepath.Dir(dir)) != ".github" {
+		return "", ""
+	}
+	return dir, ".github/workflows/" + filepath.Base(abs)
+}
+
+// readLockfiles reads the lockfile .github/workflows/actions.lock next to each workflow file among filePaths,
+// and returns the lockfile and the workflow key of each workflow file.
+// Each lockfile is read once with the keys of the workflows next to it.
+func readLockfiles(afs afero.Fs, filePaths []string) map[string]*lockfileTarget {
+	keys := map[string][]string{}
+	dirs := make(map[string]string, len(filePaths))
+	targetKeys := make(map[string]string, len(filePaths))
+	for _, p := range filePaths {
+		dir, key := workflowDirAndKey(p)
+		if key == "" {
+			continue
 		}
-		filePath = rel
+		dirs[p] = dir
+		targetKeys[p] = key
+		keys[dir] = append(keys[dir], key)
 	}
-	key := path.Clean(filepath.ToSlash(filePath))
-	if path.Dir(key) != ".github/workflows" {
-		return ""
+	states := make(map[string]*lockfileState, len(keys))
+	for dir, k := range keys {
+		states[dir] = readLockfile(afs, filepath.Join(dir, path.Base(parserlock.Path)), k)
 	}
-	if ext := path.Ext(key); ext != ".yml" && ext != ".yaml" {
-		return ""
+	targets := make(map[string]*lockfileTarget, len(dirs))
+	for p, dir := range dirs {
+		if states[dir] == nil {
+			continue
+		}
+		targets[p] = &lockfileTarget{state: states[dir], key: targetKeys[p]}
 	}
-	return key
+	return targets
+}
+
+// checkLockfile checks the action in the target file with the lockfile concerning the file.
+// See lockfileState.checkLockfile.
+func (c *Controller) checkLockfile(filePath string, action *Action) (bool, error) {
+	t := c.lockfiles[filePath]
+	if t == nil {
+		return false, nil
+	}
+	return t.state.checkLockfile(t.key, action)
 }
 
 // checkLockfile decides how pinact handles an action in a workflow file using the lockfile.

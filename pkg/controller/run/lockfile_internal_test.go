@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -36,28 +37,73 @@ func newTestLockfileState(t *testing.T, content string) *lockfileState {
 	if err := afero.WriteFile(afs, ".github/workflows/actions.lock", []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	return readLockfile(afs, []string{".github/workflows/ci.yml"})
+	return readLockfile(afs, ".github/workflows/actions.lock", []string{".github/workflows/ci.yml"})
 }
 
-func TestWorkflowKey(t *testing.T) {
+func TestWorkflowDirAndKey(t *testing.T) {
 	t.Parallel()
-	cwd := filepath.FromSlash("/repo")
-	data := map[string]string{
-		".github/workflows/ci.yml":                           ".github/workflows/ci.yml",
-		"./.github/workflows/ci.yaml":                        ".github/workflows/ci.yaml",
-		filepath.Join(cwd, ".github", "workflows", "ci.yml"): ".github/workflows/ci.yml",
-		"action.yaml":                    "",
-		".github/workflows/sub/ci.yml":   "",
-		".github/workflows/actions.lock": "",
-		"foo/.github/workflows/ci.yml":   "",
+	root := t.TempDir()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
 	}
-	for filePath, exp := range data {
-		t.Run(filePath, func(t *testing.T) {
+	data := []struct {
+		filePath string
+		dir      string
+		key      string
+	}{
+		{filePath: ".github/workflows/ci.yml", dir: filepath.Join(cwd, ".github", "workflows"), key: ".github/workflows/ci.yml"},
+		{filePath: "./.github/workflows/ci.yaml", dir: filepath.Join(cwd, ".github", "workflows"), key: ".github/workflows/ci.yaml"},
+		{filePath: filepath.Join(root, ".github", "workflows", "ci.yml"), dir: filepath.Join(root, ".github", "workflows"), key: ".github/workflows/ci.yml"},
+		// The repository root is derived from the file path, not from the working directory.
+		{filePath: filepath.Join("foo", ".github", "workflows", "ci.yml"), dir: filepath.Join(cwd, "foo", ".github", "workflows"), key: ".github/workflows/ci.yml"},
+		{filePath: "action.yaml"},
+		{filePath: ".github/workflows/sub/ci.yml"},
+		{filePath: ".github/workflows/actions.lock"},
+		{filePath: ".github/ci.yml"},
+	}
+	for _, d := range data {
+		t.Run(d.filePath, func(t *testing.T) {
 			t.Parallel()
-			if got := workflowKey(cwd, filePath); got != exp {
-				t.Fatalf("got %q, wanted %q", got, exp)
+			dir, key := workflowDirAndKey(d.filePath)
+			if dir != d.dir || key != d.key {
+				t.Fatalf("got (%q, %q), wanted (%q, %q)", dir, key, d.dir, d.key)
 			}
 		})
+	}
+}
+
+func TestReadLockfiles(t *testing.T) {
+	t.Parallel()
+	root := filepath.Join(t.TempDir(), "repo")
+	other := filepath.Join(t.TempDir(), "other")
+	afs := afero.NewMemMapFs()
+	if err := afero.WriteFile(afs, filepath.Join(root, ".github", "workflows", "actions.lock"), []byte(testLockfile), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ci := filepath.Join(root, ".github", "workflows", "ci.yml")
+	test := filepath.Join(root, ".github", "workflows", "test.yml")
+	targets := readLockfiles(afs, []string{
+		ci,
+		test,
+		filepath.Join(root, "action.yaml"),
+		// No lockfile exists next to it.
+		filepath.Join(other, ".github", "workflows", "ci.yml"),
+	})
+	if len(targets) != 2 {
+		t.Fatalf("only workflows next to the lockfile should have targets: %v", targets)
+	}
+	if targets[ci] == nil || targets[ci].key != ".github/workflows/ci.yml" {
+		t.Fatalf("the target of ci.yml is wrong: %v", targets[ci])
+	}
+	if targets[test] == nil || targets[test].key != ".github/workflows/test.yml" {
+		t.Fatalf("the target of test.yml is wrong: %v", targets[test])
+	}
+	if targets[ci].state != targets[test].state {
+		t.Fatal("the lockfile should be read once")
+	}
+	if targets[ci].state.err != nil {
+		t.Fatal(targets[ci].state.err)
 	}
 }
 
@@ -117,7 +163,7 @@ func TestReadLockfile(t *testing.T) { //nolint:funlen
 					t.Fatal(err)
 				}
 			}
-			s := readLockfile(afs, d.keys)
+			s := readLockfile(afs, ".github/workflows/actions.lock", d.keys)
 			if d.isNil {
 				if s != nil {
 					t.Fatal("state should be nil")
@@ -263,7 +309,9 @@ func TestController_processLines_lockfile(t *testing.T) {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			ctrl := New(&github.RepositoriesServiceImpl{}, nil, afero.NewMemMapFs(), &config.Config{}, &ParamRun{Stderr: &bytes.Buffer{}, Fix: true})
-			ctrl.lockfile = newTestLockfileState(t, testLockfile)
+			ctrl.lockfiles = map[string]*lockfileTarget{
+				".github/workflows/ci.yml": {state: newTestLockfileState(t, testLockfile), key: ".github/workflows/ci.yml"},
+			}
 			lines := []string{d.line}
 			changed, exitCode := ctrl.processLines(t.Context(), slog.New(slog.DiscardHandler), ".github/workflows/ci.yml", lines)
 			if changed {
