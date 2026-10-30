@@ -204,6 +204,8 @@ rules:
           ActionRepoFullName == "actions/checkout"
 ```
 
+To pin only reusable workflows, for example while a workflow lockfile locks the actions, see [Pin only reusable workflows alongside workflow lockfiles](workflow_lockfile.md).
+
 #### `rules[].ignore`
 
 This is optional. If `true`, pinact skips pin/update/error reporting for the matched action.

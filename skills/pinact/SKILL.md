@@ -4,7 +4,7 @@ description: |
   Read pinact's documentation with `pinact docs list` and `pinact docs show <name>` before answering.
   pinact is a CLI that pins GitHub Actions and reusable workflows to full commit SHAs, updates them, and verifies their version comments.
   Use for any question about pinact, `PINACT_*` environment variables, `pinact run` / `init` / `migrate` / `token`, the configuration file `.pinact.yaml`, pinact's exit codes, or errors from pinact.
-  Use it too when a workflow fails a pinact check in CI, or when an action isn't pinned and it isn't clear why.
+  Use it too when a workflow fails a pinact check in CI, when an action isn't pinned and it isn't clear why, or when asked how pinact relates to GitHub Actions workflow lockfiles.
 ---
 
 Don't answer from your training knowledge about pinact itself - its commands, flags,

@@ -6,10 +6,6 @@
 pinact is a CLI to pin GitHub Actions and Reusable Workflows.
 pinact can also [update their versions](docs/update.md) and [verify version comments](docs/codes/001.md).
 
-> [!NOTE]
-> If you are a coding agent and pinact is installed, run `pinact docs list` to list the documentation and `pinact docs show <name>` to read it before answering questions about pinact or troubleshooting its errors.
-> The embedded documentation matches the installed version. If pinact isn't installed, read the documents listed in [Documentation](#documentation).
-
 ```diff
 $ pinact run
 .github/workflows/test.yaml:8
@@ -26,6 +22,23 @@ $ pinact run
 +     uses: suzuki-shunsuke/actionlint-workflow/.github/workflows/actionlint.yaml@b6a5f966d4504893b2aeb60cf2b0de8946e48504 # v0.5.0
 ```
 
+> [!NOTE]
+> If you are a coding agent and pinact is installed, run `pinact docs list` to list the documentation and `pinact docs show <name>` to read it before answering questions about pinact or troubleshooting its errors.
+> The embedded documentation matches the installed version. If pinact isn't installed, read the documents listed in [Documentation](#documentation).
+
+## GitHub Actions workflow lockfiles are generally available
+
+[GitHub Actions workflow lockfiles are generally available](https://github.blog/changelog/2026-10-28-github-actions-workflow-lockfiles-are-generally-available/), but they don't support reusable workflows yet.
+
+ref. [workflow dependency lockfiles](https://docs.github.com/en/enterprise-cloud@latest/actions/concepts/security/workflow-dependency-lockfiles)
+
+> It doesn't pin calls to reusable workflows (`jobs.<job_id>.uses`). To pin a reusable workflow, reference it by its full commit SHA.
+
+So you can lock actions with a lockfile and pin only reusable workflows with pinact.
+pinact also updates them with `--update` and checks them with `--check`.
+
+See [Pin only reusable workflows alongside workflow lockfiles](docs/workflow_lockfile.md).
+
 ## Features
 
 1. Pin GitHub Actions and Reusable Workflows
@@ -41,6 +54,7 @@ $ pinact run
 1. [Read GitHub access token via keyrings or ghtkn](docs/github_token.md)
 1. [Pin only changed lines](docs/diff_file.md)
 1. [Support GitHub Enterprise Server](docs/ghes.md)
+1. [Pin only reusable workflows alongside workflow lockfiles](docs/workflow_lockfile.md)
 1. [GitHub Action](https://github.com/suzuki-shunsuke/pinact-action)
 
 ## Getting Started
@@ -109,6 +123,7 @@ pinact docs show codes/005 # A document in a subdirectory is named by its path
 - [GitHub access token](docs/github_token.md) - `PINACT_GITHUB_TOKEN`, the ghtkn integration, and the OS keyring.
 - [Configuration File](docs/config.md) - the configuration file, the global configuration file, and every field of the schema.
 - [GitHub Enterprise Server](docs/ghes.md) - pinning actions hosted on GHES.
+- [Workflow lockfiles](docs/workflow_lockfile.md) - pinning only reusable workflows while a lockfile locks the actions.
 - [Exit codes](docs/exit_codes.md) - what 0, 1, 2, and 3 mean.
 - [Why doesn't pinact pin some actions?](docs/why_pinact_not_pin.md) - why a branch reference isn't pinned by default.
 - [Verify version comments](docs/codes/001.md) - why a version comment isn't necessarily true, and how `--verify-comment` checks it.
