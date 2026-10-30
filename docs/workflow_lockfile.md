@@ -1,5 +1,5 @@
 ---
-description: How pinact works with GitHub Actions workflow lockfiles .github/workflows/actions.lock. Use when asked whether pinact is still needed now that lockfiles are generally available, why pinact doesn't pin an action in a workflow, why pinact reports "the lockfile is missing" or "the lockfile couldn't be read", or how reusable workflows are pinned alongside a lockfile.
+description: How pinact works with GitHub Actions workflow lockfiles .github/workflows/actions.lock. Use when asked whether pinact is still needed now that lockfiles are generally available, why pinact doesn't pin an action in a workflow, why pinact reports "the lockfile is missing" or "the lockfile couldn't be read", how reusable workflows are pinned alongside a lockfile, or how actions in self repository actions `$/…` are handled.
 ---
 
 # Workflow lockfiles
@@ -37,7 +37,7 @@ Run `gh actions-lock` to update locked actions.
 The following are pinned as usual even if the lockfile exists:
 
 - Reusable workflows (`jobs.<job_id>.uses`). The lockfile doesn't pin them
-- Actions in action files such as `action.yaml`. Callers of the action files don't necessarily use the lockfile
+- Actions in action files such as `action.yaml`, except [self repository actions](#self-repository-actions). Callers of the action files don't necessarily use the lockfile
 
 ```diff
  jobs:
@@ -50,13 +50,33 @@ The following are pinned as usual even if the lockfile exists:
        - uses: actions/checkout@v6 # Locked by the lockfile
 ```
 
+## Self repository actions
+
+A workflow can use an action in its own repository as a self repository action `$/<path>`.
+`gh actions-lock` rewrites local actions `./<path>` to this form with `--migrate-local-actions`, because the lockfile doesn't follow local actions.
+
+```yaml
+# .github/workflows/ci.yml
+steps:
+  - uses: $/.github/actions/setup
+```
+
+The lockfile locks the actions that `.github/actions/setup/action.yaml` uses as dependencies of `ci.yml`.
+So pinact handles actions in the action file like actions in `ci.yml`: it doesn't change locked ones, and fails with exit code 2 for ones the lockfile is missing.
+pinact follows `$/<path>` in the action files recursively.
+An action file used by several onboarded workflows must be locked for all of them.
+
+pinact finds the lockfile in the nearest ancestor directory of the action file, and scans the workflows next to the lockfile for `$/<path>`.
+An action file that no onboarded workflow uses as a self repository action, such as one published for other repositories, is pinned as usual.
+Local actions `./<path>` are pinned as usual too, because the lockfile doesn't lock them.
+
 ## The lockfile is missing an action
 
 GitHub Actions rejects an onboarded workflow that uses an action the lockfile doesn't lock.
 pinact reports it in advance:
 
 ```
-action cannot be auto-fixed: the lockfile is missing actions/setup-go@v6. Regenerate it by running gh actions-lock
+action cannot be auto-fixed: the lockfile is missing actions/setup-go@v6 for .github/workflows/ci.yml. Regenerate it by running gh actions-lock
 ```
 
 Pinning the action by commit SHA doesn't help, because the lockfile doesn't lock the SHA either.
