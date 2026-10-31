@@ -1,5 +1,5 @@
 ---
-description: How pinact works with GitHub Actions workflow lockfiles .github/workflows/actions.lock. Use when asked whether pinact is still needed now that lockfiles are generally available, why pinact doesn't pin an action in a workflow or an action file, why pinact warns "the workflow isn't in the lockfile" or "the lockfile doesn't record", why pinact fails to read the lockfile, how reusable workflows are pinned alongside a lockfile, or how self repository actions `$/…` are handled.
+description: How pinact works with GitHub Actions workflow lockfiles .github/workflows/actions.lock. Use when asked whether pinact is still needed now that lockfiles are generally available, why pinact doesn't pin an action in a workflow or an action file, why pinact warns "the workflow isn't in the lockfile" or fails with "the lockfile doesn't record", why pinact fails to read the lockfile, how reusable workflows are pinned alongside a lockfile, or how self repository actions `$/…` are handled.
 ---
 
 # Workflow lockfiles
@@ -22,7 +22,7 @@ A workflow is onboarded if the lockfile's `workflows` lists it.
 
 | Target | pinact |
 | --- | --- |
-| Steps of an onboarded workflow | Doesn't change them |
+| Steps of an onboarded workflow | Doesn't change them. Fails with exit code 2 for actions the lockfile doesn't record |
 | Steps of a workflow that isn't onboarded | Pins them as usual and outputs a warning |
 | Steps of an action file used as a [self repository action](#self-repository-actions) `$/<path>` by an onboarded workflow | Doesn't change them |
 | Steps of other action files | Pins them as usual |
@@ -45,23 +45,27 @@ Run `gh actions-lock` to update them.
 
 pinact reads the lockfile next to each workflow file, so it works the same wherever you run pinact, for instance `cd .github/workflows && pinact run ci.yml`.
 
-## Warnings
+## A workflow isn't onboarded
 
-Usually all workflows should be onboarded, and the lockfile should record all actions of onboarded workflows.
-pinact outputs a warning in the following cases, because it's likely that `gh actions-lock` wasn't run.
-They are warnings, not errors.
-
-A workflow isn't onboarded:
+Usually all workflows should be onboarded, so it's likely that `gh actions-lock` wasn't run.
+pinact pins the workflow as usual and outputs a warning:
 
 ```
 the workflow isn't in the lockfile. Run gh actions-lock to add it workflow=.github/workflows/release.yml
 ```
 
-The lockfile doesn't record an action of an onboarded workflow, so GitHub Actions rejects the workflow:
+## The lockfile doesn't record an action
+
+If the lockfile doesn't record an action of an onboarded workflow, GitHub Actions rejects the workflow anyway.
+pinact fails with exit code 2 for each such action:
 
 ```
-the lockfile doesn't record actions/setup-go@v6 for .github/workflows/ci.yml, so GitHub Actions rejects the workflow. Run gh actions-lock to regenerate the lockfile
+action cannot be auto-fixed: the lockfile doesn't record actions/setup-go@v6 for .github/workflows/ci.yml, so GitHub Actions rejects the workflow. Run gh actions-lock to regenerate the lockfile
 ```
+
+pinact doesn't change the action, because pinning it by commit SHA doesn't help: the lockfile doesn't record the SHA either.
+Run `gh actions-lock` to regenerate the lockfile.
+Other actions and files are processed as usual.
 
 An action is recorded for a workflow if the lockfile lists it in both `workflows.<workflow path>` and `dependencies`.
 The lockfile records actions as `owner/repo@ref`, where owner and repo are lowercased and a sub-action path is dropped.
@@ -79,7 +83,8 @@ steps:
 ```
 
 The lockfile locks the actions that `.github/actions/setup/action.yaml` uses as dependencies of `ci.yml`.
-So pinact handles actions in the action file like actions in `ci.yml`: it doesn't change them, and outputs a warning for ones the lockfile doesn't record.
+So pinact handles actions in the action file like actions in `ci.yml`: it doesn't change them, and fails with exit code 2 for ones the lockfile doesn't record.
+If several onboarded workflows use the action file, the error lists all the workflows the lockfile doesn't record the action for.
 pinact follows `$/<path>` in the action files recursively.
 `$/<path>` at the job level (a reusable workflow) isn't followed.
 

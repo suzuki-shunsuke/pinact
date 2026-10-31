@@ -2,6 +2,7 @@ package run
 
 import (
 	"bytes"
+	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -241,7 +242,7 @@ func TestLockfileState_checkLockfile(t *testing.T) { //nolint:funlen
 		keys      []string
 		action    *Action
 		isHandled bool
-		warning   string // a substring of the warning. Empty means no warning
+		errMsg    string // a substring of the error message. Empty means no error
 	}{
 		{
 			name:   "lockfile doesn't exist",
@@ -279,7 +280,7 @@ func TestLockfileState_checkLockfile(t *testing.T) { //nolint:funlen
 			keys:      []string{".github/workflows/ci.yml"},
 			action:    &Action{Name: "actions/setup-go", Version: "v6"},
 			isHandled: true,
-			warning:   "the lockfile doesn't record actions/setup-go@v6 for .github/workflows/ci.yml",
+			errMsg:    "the lockfile doesn't record actions/setup-go@v6 for .github/workflows/ci.yml",
 		},
 		{
 			name:      "pinned by SHA but not recorded",
@@ -287,7 +288,7 @@ func TestLockfileState_checkLockfile(t *testing.T) { //nolint:funlen
 			keys:      []string{".github/workflows/ci.yml"},
 			action:    &Action{Name: "actions/checkout", Version: sha},
 			isHandled: true,
-			warning:   "actions/checkout@" + sha,
+			errMsg:    "actions/checkout@" + sha,
 		},
 		{
 			name:      "not recorded for one of the workflows",
@@ -295,7 +296,7 @@ func TestLockfileState_checkLockfile(t *testing.T) { //nolint:funlen
 			keys:      []string{".github/workflows/ci.yml", ".github/workflows/go.yml"},
 			action:    &Action{Name: "actions/checkout", Version: "v6"},
 			isHandled: true,
-			warning:   "for .github/workflows/go.yml,",
+			errMsg:    "for .github/workflows/go.yml,",
 		},
 		{
 			name:      "not recorded for all of the workflows",
@@ -303,37 +304,44 @@ func TestLockfileState_checkLockfile(t *testing.T) { //nolint:funlen
 			keys:      []string{".github/workflows/ci.yml", ".github/workflows/go.yml"},
 			action:    &Action{Name: "actions/setup-node", Version: "v6"},
 			isHandled: true,
-			warning:   "for .github/workflows/ci.yml, .github/workflows/go.yml,",
+			errMsg:    "for .github/workflows/ci.yml, .github/workflows/go.yml,",
 		},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			handled, warning := d.state.checkLockfile(d.keys, d.action)
+			handled, err := d.state.checkLockfile(d.keys, d.action)
 			if handled != d.isHandled {
 				t.Fatalf("handled is %v, wanted %v", handled, d.isHandled)
 			}
-			if d.warning == "" {
-				if warning != "" {
-					t.Fatalf("no warning is expected: %s", warning)
+			if d.errMsg == "" {
+				if err != nil {
+					t.Fatalf("no error is expected: %v", err)
 				}
 				return
 			}
-			if !strings.Contains(warning, d.warning) {
-				t.Fatalf("the warning %q should contain %q", warning, d.warning)
+			if err == nil {
+				t.Fatal("an error is expected")
+			}
+			if !errors.Is(err, ErrUnfixable) {
+				t.Fatalf("the error should be ErrUnfixable: %v", err)
+			}
+			if !strings.Contains(err.Error(), d.errMsg) {
+				t.Fatalf("the error %q should contain %q", err, d.errMsg)
 			}
 		})
 	}
 }
 
 // TestController_processLines_lockfile tests that actions in an onboarded workflow aren't changed
-// whether the lockfile records them or not, and pinact doesn't fail.
+// whether the lockfile records them or not, and an action the lockfile doesn't record makes pinact
+// exit with ExitCodeUnfixable.
 // The GitHub API isn't called because no tag is registered in the fake service.
 func TestController_processLines_lockfile(t *testing.T) {
 	t.Parallel()
-	for _, line := range []string{
-		"      - uses: actions/checkout@v6",
-		"      - uses: actions/setup-go@v6",
+	for line, wantExitCode := range map[string]int{
+		"      - uses: actions/checkout@v6": ExitCodeOK,
+		"      - uses: actions/setup-go@v6": ExitCodeUnfixable,
 	} {
 		t.Run(line, func(t *testing.T) {
 			t.Parallel()
@@ -346,8 +354,8 @@ func TestController_processLines_lockfile(t *testing.T) {
 			if changed {
 				t.Fatalf("the line shouldn't be changed: %s", lines[0])
 			}
-			if exitCode != ExitCodeOK {
-				t.Fatalf("exit code is %d, wanted %d", exitCode, ExitCodeOK)
+			if exitCode != wantExitCode {
+				t.Fatalf("exit code is %d, wanted %d", exitCode, wantExitCode)
 			}
 		})
 	}

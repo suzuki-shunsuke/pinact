@@ -319,45 +319,34 @@ func selfRepositoryActionFile(afs afero.Fs, root, rel string) string {
 	return ""
 }
 
-// leaveToLockfile reports whether pinact leaves the action in the target file to the lockfile,
-// and outputs a warning if the lockfile doesn't record the action.
-func (c *Controller) leaveToLockfile(logger *slog.Logger, filePath string, action *Action) bool {
-	handled, warning := c.checkLockfile(filePath, action)
-	if !handled {
-		return false
-	}
-	if warning != "" {
-		logger.Warn(warning)
-	}
-	logger.Debug("leave the action to the lockfile")
-	return true
-}
-
-// checkLockfile reports whether pinact leaves the action in the target file to the lockfile.
-// If it does, it also returns a warning message if the lockfile doesn't record the action.
-// See lockfileState.checkLockfile.
-func (c *Controller) checkLockfile(filePath string, action *Action) (bool, string) {
+// leaveToLockfile reports whether pinact leaves the action in the target file to the lockfile.
+// If it does, it also returns an error if the lockfile doesn't record the action.
+func (c *Controller) leaveToLockfile(logger *slog.Logger, filePath string, action *Action) (bool, error) {
 	t := c.lockfiles[filePath]
 	if t == nil {
-		return false, ""
+		return false, nil
 	}
-	return t.state.checkLockfile(t.keys, action)
+	handled, err := t.state.checkLockfile(t.keys, action)
+	if handled {
+		logger.Debug("leave the action to the lockfile")
+	}
+	return handled, err
 }
 
 // checkLockfile reports whether pinact leaves the action to the lockfile.
 // keys are the onboarded workflows concerning the file having the action.
 // It returns false for reusable workflows, which the lockfile doesn't lock, so pinact pins them as usual.
-// Otherwise it returns true, and a warning message if the lockfile doesn't record the action for some of the workflows.
-// It's a warning, not an error, because GitHub Actions rejects such workflows and
-// it's likely that `gh actions-lock` wasn't run.
-func (s *lockfileState) checkLockfile(keys []string, action *Action) (bool, string) {
+// Otherwise it returns true, and an error if the lockfile doesn't record the action for some of the workflows,
+// because GitHub Actions rejects such workflows anyway.
+// pinact doesn't pin the action even then, because the lockfile doesn't record its SHA either.
+func (s *lockfileState) checkLockfile(keys []string, action *Action) (bool, error) {
 	if s == nil || len(keys) == 0 {
-		return false, ""
+		return false, nil
 	}
 	ref := parserlock.ParseActionRef(action.Name + "@" + action.Version)
 	if ref == nil {
 		// Reusable workflows aren't locked by the lockfile.
-		return false, ""
+		return false, nil
 	}
 	pin := parserlock.IndexKey(ref.Owner, ref.Repo, ref.Ref)
 	var missing []string
@@ -368,9 +357,9 @@ func (s *lockfileState) checkLockfile(keys []string, action *Action) (bool, stri
 		}
 	}
 	if len(missing) == 0 {
-		return true, ""
+		return true, nil
 	}
-	return true, fmt.Sprintf("the lockfile doesn't record %s for %s, so GitHub Actions rejects the workflow. Run gh actions-lock to regenerate the lockfile", pin, strings.Join(missing, ", "))
+	return true, fmt.Errorf("%w: the lockfile doesn't record %s for %s, so GitHub Actions rejects the workflow. Run gh actions-lock to regenerate the lockfile", ErrUnfixable, pin, strings.Join(missing, ", "))
 }
 
 // locked reports whether pin is in the pins of a workflow and in the dependencies.

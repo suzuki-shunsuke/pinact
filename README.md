@@ -36,7 +36,7 @@ ref. [workflow dependency lockfiles](https://docs.github.com/en/enterprise-cloud
 
 So you can lock actions with a lockfile and pin reusable workflows with pinact.
 If `.github/workflows/actions.lock` exists, pinact leaves the actions of workflows onboarded to the lockfile to the lockfile, and pins the rest, including reusable workflows, as usual.
-pinact also warns about workflows and actions that the lockfile doesn't record, because it's likely that `gh actions-lock` wasn't run.
+pinact also reports workflows and actions that the lockfile doesn't record, because it's likely that `gh actions-lock` wasn't run.
 
 See [Workflow lockfiles](docs/workflow_lockfile.md).
 
