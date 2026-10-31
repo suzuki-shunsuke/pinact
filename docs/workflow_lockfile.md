@@ -45,6 +45,11 @@ Run `gh actions-lock` to update them.
 
 pinact reads the lockfile next to each workflow file, so it works the same wherever you run pinact, for instance `cd .github/workflows && pinact run ci.yml`.
 
+> [!WARNING]
+> pinact reads the lockfile from the disk.
+> [`--diff-file`](diff_file.md) works without checking out the workflow files, but then pinact can't see the lockfile and pins the actions of onboarded workflows, which breaks the lockfile.
+> If you use the lockfile, check out `.github/workflows` before running `pinact run --diff-file`.
+
 ## A workflow isn't onboarded
 
 Usually all workflows should be onboarded, so it's likely that `gh actions-lock` wasn't run.

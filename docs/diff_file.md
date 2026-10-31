@@ -46,3 +46,8 @@ You can generate a diff file via GitHub Actions using [pr-unified-diff-action](h
   env:
     DIFF_FILE: ${{ steps.diff.outputs.diff_path }}
 ```
+
+## Workflow lockfiles
+
+If the repository uses a [workflow lockfile](workflow_lockfile.md) `.github/workflows/actions.lock`, check out `.github/workflows` before running `pinact run --diff-file`.
+Otherwise pinact can't see the lockfile and pins the actions of onboarded workflows, which breaks the lockfile.
