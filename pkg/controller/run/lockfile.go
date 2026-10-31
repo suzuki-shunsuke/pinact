@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -11,24 +12,24 @@ import (
 
 	parserlock "github.com/github/actions-lockfile/go/pkg/lockfile"
 	"github.com/spf13/afero"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
 // lockfileState holds the GitHub Actions workflow dependency lockfile
 // .github/workflows/actions.lock.
 // https://docs.github.com/en/enterprise-cloud@latest/actions/concepts/security/workflow-dependency-lockfiles
 //
-// A nil *lockfileState means the lockfile doesn't exist, so pinact pins actions as usual.
+// See https://github.com/suzuki-shunsuke/pinact/issues/1828 for the spec.
 type lockfileState struct {
 	file parserlock.File
-	// err is the error pinact got when reading the lockfile.
-	err error
 }
 
 // lockfileTarget is the lockfile that concerns a target file.
+// pinact doesn't change actions in workflow steps of the file.
 type lockfileTarget struct {
 	state *lockfileState
-	// keys are the workflow keys whose lock state concerns the file:
-	// the workflow itself for a workflow file, and the workflows using an action file
+	// keys are the keys of the onboarded workflows concerning the file:
+	// the workflow itself for a workflow file, and the onboarded workflows using an action file
 	// as a self repository action `$/…` for the action file.
 	keys []string
 }
@@ -36,25 +37,24 @@ type lockfileTarget struct {
 // readLockfile reads the lockfile lockfilePath for the given workflow keys.
 // Required fields are validated only for entries those workflows reference,
 // so a broken entry that no workflow uses doesn't make the whole lockfile unreadable.
-// It returns nil if the lockfile doesn't exist or no workflow key is given.
-// If the lockfile exists but can't be read, the returned state has the error.
-func readLockfile(afs afero.Fs, lockfilePath string, workflowKeys []string) *lockfileState {
+// It returns nil without an error if the lockfile doesn't exist or no workflow key is given.
+func readLockfile(afs afero.Fs, lockfilePath string, workflowKeys []string) (*lockfileState, error) {
 	if len(workflowKeys) == 0 {
 		// The parser validates all entries if no workflow file path is given.
-		return nil
+		return nil, nil //nolint:nilnil
 	}
 	b, err := afero.ReadFile(afs, lockfilePath)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return nil
+			return nil, nil //nolint:nilnil
 		}
-		return &lockfileState{err: fmt.Errorf("read the lockfile: %w", err)}
+		return nil, fmt.Errorf("read the lockfile: %w", err)
 	}
 	f, err := parserlock.Parse(b, workflowKeys...)
 	if err != nil {
-		return &lockfileState{err: fmt.Errorf("parse the lockfile: %w", err)}
+		return nil, fmt.Errorf("parse the lockfile: %w", err)
 	}
-	return &lockfileState{file: f}
+	return &lockfileState{file: f}, nil
 }
 
 // workflowDirAndKey returns the directory of a workflow file and its path relative to the repository root,
@@ -87,19 +87,24 @@ type lockfileRoot struct {
 }
 
 // readLockfiles reads the lockfile .github/workflows/actions.lock of the repository of each target file,
-// and returns the lockfile and the workflow keys concerning each target file.
+// and returns the target files whose actions in workflow steps pinact doesn't change, with their lockfiles.
 //
-// For a workflow file, the repository root is derived from its path.
+// For a workflow file, the repository root is derived from its path, and the file is a target if it's onboarded.
 // For an action file, the nearest ancestor directory having the lockfile is the repository root,
-// and the action file concerns the workflows using it as a self repository action `$/…`,
-// because the lockfile locks the actions the action file uses as dependencies of those workflows.
+// and the file is a target if an onboarded workflow uses it as a self repository action `$/…`,
+// because the lockfile locks the actions the action file uses as dependencies of the workflow.
+// It outputs a warning for each workflow concerning a target file that isn't onboarded,
+// because usually all workflows should be onboarded and `gh actions-lock` may not have been run.
 // Each lockfile is read once with the keys of the workflows concerning the target files.
-func readLockfiles(afs afero.Fs, filePaths []string) map[string]*lockfileTarget {
+// It returns an error if a lockfile can't be read, because pinact can't tell which workflows are onboarded.
+func readLockfiles(afs afero.Fs, logger *slog.Logger, filePaths []string) (map[string]*lockfileTarget, error) {
 	targets := map[string]*lockfileTarget{}
 	for root, r := range lockfileRoots(afs, filePaths) {
-		r.readTargets(afs, root, targets)
+		if err := r.readTargets(afs, logger, root, targets); err != nil {
+			return nil, slogerr.With(err, "lockfile", filepath.Join(root, filepath.FromSlash(parserlock.Path))) //nolint:wrapcheck
+		}
 	}
-	return targets
+	return targets, nil
 }
 
 // lockfileRoots groups the target files by the root of the repository having the lockfile.
@@ -133,15 +138,58 @@ func lockfileRoots(afs afero.Fs, filePaths []string) map[string]*lockfileRoot {
 }
 
 // readTargets reads the lockfile of the repository root and adds the target files concerning it to targets.
-func (r *lockfileRoot) readTargets(afs afero.Fs, root string, targets map[string]*lockfileTarget) {
-	if len(r.actionFiles) > 0 {
-		selfRefs := scanSelfRepositoryActions(afs, root)
-		for p, abs := range r.actionFiles {
-			if keys := selfRefs[abs]; len(keys) > 0 {
-				r.targets[p] = keys
-			}
+func (r *lockfileRoot) readTargets(afs afero.Fs, logger *slog.Logger, root string, targets map[string]*lockfileTarget) error {
+	r.addSelfRepositoryActions(afs, root)
+	lockfilePath := filepath.Join(root, filepath.FromSlash(parserlock.Path))
+	state, err := readLockfile(afs, lockfilePath, r.keys())
+	if err != nil {
+		return err
+	}
+	if state == nil {
+		return nil
+	}
+	warned := map[string]struct{}{}
+	for p, ks := range r.targets {
+		onboarded := state.onboarded(ks)
+		warnNotOnboarded(logger, lockfilePath, ks, onboarded, warned)
+		if len(onboarded) > 0 {
+			targets[p] = &lockfileTarget{state: state, keys: onboarded}
 		}
 	}
+	return nil
+}
+
+// addSelfRepositoryActions adds the target action files used as self repository actions `$/…`
+// by workflows in the repository root to the targets, with the keys of those workflows.
+func (r *lockfileRoot) addSelfRepositoryActions(afs afero.Fs, root string) {
+	if len(r.actionFiles) == 0 {
+		return
+	}
+	selfRefs := scanSelfRepositoryActions(afs, root)
+	for p, abs := range r.actionFiles {
+		if keys := selfRefs[abs]; len(keys) > 0 {
+			r.targets[p] = keys
+		}
+	}
+}
+
+// warnNotOnboarded outputs a warning for each workflow of keys that isn't onboarded, once per workflow.
+// Usually all workflows should be onboarded, so it's likely that `gh actions-lock` wasn't run.
+func warnNotOnboarded(logger *slog.Logger, lockfilePath string, keys, onboarded []string, warned map[string]struct{}) {
+	for _, k := range keys {
+		if slices.Contains(onboarded, k) {
+			continue
+		}
+		if _, ok := warned[k]; ok {
+			continue
+		}
+		warned[k] = struct{}{}
+		logger.Warn("the workflow isn't in the lockfile. Run gh actions-lock to add it", "workflow", k, "lockfile", lockfilePath)
+	}
+}
+
+// keys returns the keys of the workflows concerning the target files without duplicates.
+func (r *lockfileRoot) keys() []string {
 	var keys []string
 	for _, ks := range r.targets {
 		for _, k := range ks {
@@ -150,13 +198,18 @@ func (r *lockfileRoot) readTargets(afs afero.Fs, root string, targets map[string
 			}
 		}
 	}
-	state := readLockfile(afs, filepath.Join(root, filepath.FromSlash(parserlock.Path)), keys)
-	if state == nil {
-		return
+	return keys
+}
+
+// onboarded returns the keys of the workflows onboarded to the lockfile among keys.
+func (s *lockfileState) onboarded(keys []string) []string {
+	var onboarded []string
+	for _, k := range keys {
+		if _, ok := s.file.LookupWorkflow(k); ok {
+			onboarded = append(onboarded, k)
+		}
 	}
-	for p, ks := range r.targets {
-		targets[p] = &lockfileTarget{state: state, keys: ks}
-	}
+	return onboarded
 }
 
 // actionFileNames are the file names of action files.
@@ -266,55 +319,58 @@ func selfRepositoryActionFile(afs afero.Fs, root, rel string) string {
 	return ""
 }
 
-// checkLockfile checks the action in the target file with the lockfile concerning the file.
+// leaveToLockfile reports whether pinact leaves the action in the target file to the lockfile,
+// and outputs a warning if the lockfile doesn't record the action.
+func (c *Controller) leaveToLockfile(logger *slog.Logger, filePath string, action *Action) bool {
+	handled, warning := c.checkLockfile(filePath, action)
+	if !handled {
+		return false
+	}
+	if warning != "" {
+		logger.Warn(warning)
+	}
+	logger.Debug("leave the action to the lockfile")
+	return true
+}
+
+// checkLockfile reports whether pinact leaves the action in the target file to the lockfile.
+// If it does, it also returns a warning message if the lockfile doesn't record the action.
 // See lockfileState.checkLockfile.
-func (c *Controller) checkLockfile(filePath string, action *Action) (bool, error) {
+func (c *Controller) checkLockfile(filePath string, action *Action) (bool, string) {
 	t := c.lockfiles[filePath]
 	if t == nil {
-		return false, nil
+		return false, ""
 	}
 	return t.state.checkLockfile(t.keys, action)
 }
 
-// checkLockfile decides how pinact handles an action in a target file using the lockfile.
-// keys are the workflow keys concerning the file.
-// It returns false if the lockfile doesn't concern the action, so pinact processes it as usual:
-// the action is a reusable workflow, the lockfile doesn't exist, or no workflow of keys is onboarded to the lockfile.
-// Otherwise it returns true and pinact doesn't change the action:
-//   - The action is locked for all onboarded workflows of keys: no error.
-//   - The action isn't locked for an onboarded workflow: GitHub Actions rejects the workflow,
-//     so it returns an error asking to regenerate the lockfile.
-//   - The lockfile can't be read: pinact can't tell whether the action is locked.
-//     An action pinned by full commit SHA is left as is, and otherwise it returns an error.
-func (s *lockfileState) checkLockfile(keys []string, action *Action) (bool, error) {
+// checkLockfile reports whether pinact leaves the action to the lockfile.
+// keys are the onboarded workflows concerning the file having the action.
+// It returns false for reusable workflows, which the lockfile doesn't lock, so pinact pins them as usual.
+// Otherwise it returns true, and a warning message if the lockfile doesn't record the action for some of the workflows.
+// It's a warning, not an error, because GitHub Actions rejects such workflows and
+// it's likely that `gh actions-lock` wasn't run.
+func (s *lockfileState) checkLockfile(keys []string, action *Action) (bool, string) {
 	if s == nil || len(keys) == 0 {
-		return false, nil
+		return false, ""
 	}
-	uses := action.Name + "@" + action.Version
-	ref := parserlock.ParseActionRef(uses)
+	ref := parserlock.ParseActionRef(action.Name + "@" + action.Version)
 	if ref == nil {
 		// Reusable workflows aren't locked by the lockfile.
-		return false, nil
-	}
-	if s.err != nil {
-		if getVersionType(action.Version) == FullCommitSHA {
-			return true, nil
-		}
-		return true, fmt.Errorf("%w: the lockfile couldn't be read, so pinact can't tell whether %s is locked. Fix the lockfile, or update pinact if the lockfile's schema version is newer", ErrUnfixable, uses)
+		return false, ""
 	}
 	pin := parserlock.IndexKey(ref.Owner, ref.Repo, ref.Ref)
-	handled := false
+	var missing []string
 	for _, key := range keys {
-		pins, ok := s.file.LookupWorkflow(key)
-		if !ok {
-			continue
-		}
-		handled = true
+		pins, _ := s.file.LookupWorkflow(key)
 		if !s.locked(pins, pin) {
-			return true, fmt.Errorf("%w: the lockfile is missing %s for %s. Regenerate it by running gh actions-lock", ErrUnfixable, pin, key)
+			missing = append(missing, key)
 		}
 	}
-	return handled, nil
+	if len(missing) == 0 {
+		return true, ""
+	}
+	return true, fmt.Sprintf("the lockfile doesn't record %s for %s, so GitHub Actions rejects the workflow. Run gh actions-lock to regenerate the lockfile", pin, strings.Join(missing, ", "))
 }
 
 // locked reports whether pin is in the pins of a workflow and in the dependencies.

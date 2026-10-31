@@ -2,11 +2,11 @@ package run
 
 import (
 	"bytes"
-	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -38,7 +38,21 @@ func newTestLockfileState(t *testing.T, content string) *lockfileState {
 	if err := afero.WriteFile(afs, ".github/workflows/actions.lock", []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	return readLockfile(afs, ".github/workflows/actions.lock", []string{".github/workflows/ci.yml"})
+	s, err := readLockfile(afs, ".github/workflows/actions.lock", []string{".github/workflows/ci.yml"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
+}
+
+// writeFiles writes files whose paths are relative to root and slash-separated.
+func writeFiles(t *testing.T, afs afero.Fs, root string, files map[string]string) {
+	t.Helper()
+	for name, content := range files {
+		if err := afero.WriteFile(afs, filepath.Join(root, filepath.FromSlash(name)), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 func TestWorkflowDirAndKey(t *testing.T) {
@@ -79,36 +93,47 @@ func TestReadLockfiles(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "repo")
 	other := filepath.Join(t.TempDir(), "other")
 	afs := afero.NewMemMapFs()
-	if err := afero.WriteFile(afs, filepath.Join(root, ".github", "workflows", "actions.lock"), []byte(testLockfile), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	writeFiles(t, afs, root, map[string]string{".github/workflows/actions.lock": testLockfile})
 	ci := filepath.Join(root, ".github", "workflows", "ci.yml")
-	test := filepath.Join(root, ".github", "workflows", "test.yml")
-	targets := readLockfiles(afs, []string{
+	buf := &bytes.Buffer{}
+	targets, err := readLockfiles(afs, slog.New(slog.NewTextHandler(buf, nil)), []string{
 		ci,
-		test,
+		// It isn't onboarded, so it's pinned as usual with a warning.
+		filepath.Join(root, ".github", "workflows", "test.yml"),
+		// It isn't used as a self repository action.
 		filepath.Join(root, "action.yaml"),
 		// No lockfile exists next to it.
 		filepath.Join(other, ".github", "workflows", "ci.yml"),
 	})
-	if len(targets) != 2 {
-		t.Fatalf("only workflows next to the lockfile should have targets: %v", targets)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(targets) != 1 {
+		t.Fatalf("only the onboarded workflow should be a target: %v", targets)
 	}
 	if targets[ci] == nil || !slices.Equal(targets[ci].keys, []string{".github/workflows/ci.yml"}) {
 		t.Fatalf("the target of ci.yml is wrong: %v", targets[ci])
 	}
-	if targets[test] == nil || !slices.Equal(targets[test].keys, []string{".github/workflows/test.yml"}) {
-		t.Fatalf("the target of test.yml is wrong: %v", targets[test])
-	}
-	if targets[ci].state != targets[test].state {
-		t.Fatal("the lockfile should be read once")
-	}
-	if targets[ci].state.err != nil {
-		t.Fatal(targets[ci].state.err)
+	if out := buf.String(); !strings.Contains(out, "the workflow isn't in the lockfile") || !strings.Contains(out, ".github/workflows/test.yml") {
+		t.Fatalf("a warning for test.yml should be output: %s", out)
 	}
 }
 
-func TestReadLockfile(t *testing.T) { //nolint:funlen
+func TestReadLockfiles_invalid(t *testing.T) {
+	t.Parallel()
+	root := filepath.Join(t.TempDir(), "repo")
+	afs := afero.NewMemMapFs()
+	writeFiles(t, afs, root, map[string]string{".github/workflows/actions.lock": "version: 'v0.0.3'\nfoo: bar\n"})
+	if _, err := readLockfiles(afs, slog.New(slog.DiscardHandler), []string{filepath.Join(root, ".github", "workflows", "ci.yml")}); err == nil {
+		t.Fatal("an error should be returned if the lockfile can't be read")
+	}
+	// The lockfile isn't read if no target file concerns it.
+	if _, err := readLockfiles(afs, slog.New(slog.DiscardHandler), []string{filepath.Join(root, "action.yaml")}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReadLockfile(t *testing.T) {
 	t.Parallel()
 	data := []struct {
 		name    string
@@ -117,33 +142,11 @@ func TestReadLockfile(t *testing.T) { //nolint:funlen
 		isNil   bool
 		isErr   bool
 	}{
-		{
-			name:  "lockfile doesn't exist",
-			keys:  []string{".github/workflows/ci.yml"},
-			isNil: true,
-		},
-		{
-			name:    "no workflow",
-			content: "version: 'v0.0.3'\nfoo: bar\n",
-			isNil:   true,
-		},
-		{
-			name:    "valid",
-			content: testLockfile,
-			keys:    []string{".github/workflows/ci.yml"},
-		},
-		{
-			name:    "invalid",
-			content: "version: 'v0.0.3'\nfoo: bar\n",
-			keys:    []string{".github/workflows/ci.yml"},
-			isErr:   true,
-		},
-		{
-			name:    "future schema version",
-			content: "version: 'v99.0.0'\nworkflows: {}\ndependencies: {}\n",
-			keys:    []string{".github/workflows/ci.yml"},
-			isErr:   true,
-		},
+		{name: "lockfile doesn't exist", keys: []string{".github/workflows/ci.yml"}, isNil: true},
+		{name: "no workflow", content: "version: 'v0.0.3'\nfoo: bar\n", isNil: true},
+		{name: "valid", content: testLockfile, keys: []string{".github/workflows/ci.yml"}},
+		{name: "invalid", content: "version: 'v0.0.3'\nfoo: bar\n", keys: []string{".github/workflows/ci.yml"}, isErr: true},
+		{name: "future schema version", content: "version: 'v99.0.0'\nworkflows: {}\ndependencies: {}\n", keys: []string{".github/workflows/ci.yml"}, isErr: true},
 		{
 			// actions/setup-go@v6 lacks commit, but ci.yml doesn't use it.
 			name: "broken entry that no workflow uses",
@@ -160,22 +163,17 @@ func TestReadLockfile(t *testing.T) { //nolint:funlen
 			t.Parallel()
 			afs := afero.NewMemMapFs()
 			if d.content != "" {
-				if err := afero.WriteFile(afs, ".github/workflows/actions.lock", []byte(d.content), 0o644); err != nil {
-					t.Fatal(err)
-				}
+				writeFiles(t, afs, "", map[string]string{".github/workflows/actions.lock": d.content})
 			}
-			s := readLockfile(afs, ".github/workflows/actions.lock", d.keys)
-			if d.isNil {
-				if s != nil {
-					t.Fatal("state should be nil")
-				}
+			s, err := readLockfile(afs, ".github/workflows/actions.lock", d.keys)
+			if (err != nil) != d.isErr {
+				t.Fatalf("isErr is %v but the error is %v", d.isErr, err)
+			}
+			if err != nil {
 				return
 			}
-			if s == nil {
-				t.Fatal("state should not be nil")
-			}
-			if (s.err != nil) != d.isErr {
-				t.Fatalf("isErr is %v but the error is %v", d.isErr, s.err)
+			if (s == nil) != d.isNil {
+				t.Fatalf("isNil is %v but the state is %v", d.isNil, s)
 			}
 		})
 	}
@@ -185,7 +183,7 @@ func TestReadLockfiles_selfRepository(t *testing.T) {
 	t.Parallel()
 	root := filepath.Join(t.TempDir(), "repo")
 	afs := afero.NewMemMapFs()
-	files := map[string]string{
+	writeFiles(t, afs, root, map[string]string{
 		".github/workflows/actions.lock": testLockfile,
 		".github/workflows/ci.yml": `jobs:
   call:
@@ -194,36 +192,40 @@ func TestReadLockfiles_selfRepository(t *testing.T) {
     steps:
       - uses: $/.github/actions/setup
 `,
+		// It isn't onboarded but uses the same action file.
+		".github/workflows/release.yml":      "jobs:\n  build:\n    steps:\n      - uses: $/.github/actions/setup\n",
 		".github/workflows/reusable.yml":     "on: workflow_call\n",
 		".github/actions/setup/action.yaml":  "runs:\n  steps:\n    - uses: actions/cache@v4.2.0\n    - uses: \"$/.github/actions/nested\"\n",
 		".github/actions/nested/action.yml":  "runs:\n  steps:\n    - uses: actions/checkout@v6\n",
 		".github/actions/unused/action.yaml": "runs:\n  steps:\n    - uses: actions/checkout@v6\n",
 		"action.yaml":                        "runs:\n  steps:\n    - uses: actions/checkout@v6\n",
-	}
-	for name, content := range files {
-		if err := afero.WriteFile(afs, filepath.Join(root, filepath.FromSlash(name)), []byte(content), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
+	})
 	setup := filepath.Join(root, ".github", "actions", "setup", "action.yaml")
 	nested := filepath.Join(root, ".github", "actions", "nested", "action.yml")
-	targets := readLockfiles(afs, []string{
+	buf := &bytes.Buffer{}
+	targets, err := readLockfiles(afs, slog.New(slog.NewTextHandler(buf, nil)), []string{
 		setup,
 		nested,
 		filepath.Join(root, ".github", "actions", "unused", "action.yaml"),
 		filepath.Join(root, "action.yaml"),
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(targets) != 2 {
-		t.Fatalf("only action files used as self repository actions should have targets: %v", targets)
+		t.Fatalf("only action files used as self repository actions by onboarded workflows should be targets: %v", targets)
 	}
 	for _, f := range []string{setup, nested} {
 		if targets[f] == nil || !slices.Equal(targets[f].keys, []string{".github/workflows/ci.yml"}) {
 			t.Fatalf("the target of %s is wrong: %v", f, targets[f])
 		}
 	}
+	if out := buf.String(); strings.Count(out, "the workflow isn't in the lockfile") != 1 || !strings.Contains(out, ".github/workflows/release.yml") {
+		t.Fatalf("a warning for release.yml should be output once: %s", out)
+	}
 }
 
-func TestLockfileState_checkLockfile_keys(t *testing.T) {
+func TestLockfileState_checkLockfile(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	s := newTestLockfileState(t, testLockfile+`  'actions/setup-go@v6':
     ref: 'v6'
@@ -232,185 +234,120 @@ func TestLockfileState_checkLockfile_keys(t *testing.T) {
     repo_id: 192624594
 `)
 	s.file.Workflows[".github/workflows/go.yml"] = []string{"actions/setup-go@v6"}
-	data := []struct {
-		name      string
-		keys      []string
-		isHandled bool
-		isErr     bool
-	}{
-		{
-			name:      "locked for the onboarded workflow, and the other workflow isn't onboarded",
-			keys:      []string{".github/workflows/ci.yml", ".github/workflows/test.yml"},
-			isHandled: true,
-		},
-		{
-			name: "no workflow is onboarded",
-			keys: []string{".github/workflows/test.yml"},
-		},
-		{
-			name:      "not locked for one of the onboarded workflows",
-			keys:      []string{".github/workflows/ci.yml", ".github/workflows/go.yml"},
-			isHandled: true,
-			isErr:     true,
-		},
-	}
-	for _, d := range data {
-		t.Run(d.name, func(t *testing.T) {
-			t.Parallel()
-			handled, err := s.checkLockfile(d.keys, &Action{Name: "actions/checkout", Version: "v6"})
-			if handled != d.isHandled {
-				t.Fatalf("handled is %v, wanted %v", handled, d.isHandled)
-			}
-			if (err != nil) != d.isErr {
-				t.Fatalf("isErr is %v but the error is %v", d.isErr, err)
-			}
-		})
-	}
-}
-
-func TestLockfileState_checkLockfile(t *testing.T) { //nolint:funlen
-	t.Parallel()
-	valid := newTestLockfileState(t, testLockfile)
-	invalid := newTestLockfileState(t, "version: 'v0.0.3'\nfoo: bar\n")
 	const sha = "3d3c42e5aac5ba805825da76410c181273ba90b1"
 	data := []struct {
 		name      string
 		state     *lockfileState
-		key       string
+		keys      []string
 		action    *Action
 		isHandled bool
-		isErr     bool
+		warning   string // a substring of the warning. Empty means no warning
 	}{
 		{
 			name:   "lockfile doesn't exist",
-			key:    ".github/workflows/ci.yml",
+			keys:   []string{".github/workflows/ci.yml"},
 			action: &Action{Name: "actions/checkout", Version: "v6"},
 		},
 		{
-			name:   "not a workflow file",
-			state:  valid,
+			name:   "no onboarded workflow",
+			state:  s,
 			action: &Action{Name: "actions/checkout", Version: "v6"},
 		},
 		{
 			name:   "reusable workflow",
-			state:  valid,
-			key:    ".github/workflows/ci.yml",
+			state:  s,
+			keys:   []string{".github/workflows/ci.yml"},
 			action: &Action{Name: "suzuki-shunsuke/go-release-workflow/.github/workflows/release.yaml", Version: "v10.2.0"},
 		},
 		{
-			name:   "workflow isn't onboarded",
-			state:  valid,
-			key:    ".github/workflows/test.yml",
-			action: &Action{Name: "actions/setup-go", Version: "v6"},
-		},
-		{
-			name:      "locked",
-			state:     valid,
-			key:       ".github/workflows/ci.yml",
+			name:      "recorded",
+			state:     s,
+			keys:      []string{".github/workflows/ci.yml"},
 			action:    &Action{Name: "actions/checkout", Version: "v6"},
 			isHandled: true,
 		},
 		{
 			name:      "sub-action path and casing",
-			state:     valid,
-			key:       ".github/workflows/ci.yml",
+			state:     s,
+			keys:      []string{".github/workflows/ci.yml"},
 			action:    &Action{Name: "Actions/Cache/save", Version: "v4.2.0"},
 			isHandled: true,
 		},
 		{
-			name:      "not locked in an onboarded workflow",
-			state:     valid,
-			key:       ".github/workflows/ci.yml",
+			name:      "not recorded",
+			state:     s,
+			keys:      []string{".github/workflows/ci.yml"},
 			action:    &Action{Name: "actions/setup-go", Version: "v6"},
 			isHandled: true,
-			isErr:     true,
+			warning:   "the lockfile doesn't record actions/setup-go@v6 for .github/workflows/ci.yml",
 		},
 		{
-			name:      "pinned by SHA but not locked in an onboarded workflow",
-			state:     valid,
-			key:       ".github/workflows/ci.yml",
+			name:      "pinned by SHA but not recorded",
+			state:     s,
+			keys:      []string{".github/workflows/ci.yml"},
 			action:    &Action{Name: "actions/checkout", Version: sha},
 			isHandled: true,
-			isErr:     true,
+			warning:   "actions/checkout@" + sha,
 		},
 		{
-			name:      "unreadable lockfile and pinned by SHA",
-			state:     invalid,
-			key:       ".github/workflows/ci.yml",
-			action:    &Action{Name: "actions/checkout", Version: sha},
-			isHandled: true,
-		},
-		{
-			name:      "unreadable lockfile and not pinned",
-			state:     invalid,
-			key:       ".github/workflows/ci.yml",
+			name:      "not recorded for one of the workflows",
+			state:     s,
+			keys:      []string{".github/workflows/ci.yml", ".github/workflows/go.yml"},
 			action:    &Action{Name: "actions/checkout", Version: "v6"},
 			isHandled: true,
-			isErr:     true,
+			warning:   "for .github/workflows/go.yml,",
 		},
 		{
-			name:   "unreadable lockfile and reusable workflow",
-			state:  invalid,
-			key:    ".github/workflows/ci.yml",
-			action: &Action{Name: "suzuki-shunsuke/go-release-workflow/.github/workflows/release.yaml", Version: "v10.2.0"},
+			name:      "not recorded for all of the workflows",
+			state:     s,
+			keys:      []string{".github/workflows/ci.yml", ".github/workflows/go.yml"},
+			action:    &Action{Name: "actions/setup-node", Version: "v6"},
+			isHandled: true,
+			warning:   "for .github/workflows/ci.yml, .github/workflows/go.yml,",
 		},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			var keys []string
-			if d.key != "" {
-				keys = []string{d.key}
-			}
-			handled, err := d.state.checkLockfile(keys, d.action)
+			handled, warning := d.state.checkLockfile(d.keys, d.action)
 			if handled != d.isHandled {
 				t.Fatalf("handled is %v, wanted %v", handled, d.isHandled)
 			}
-			if (err != nil) != d.isErr {
-				t.Fatalf("isErr is %v but the error is %v", d.isErr, err)
+			if d.warning == "" {
+				if warning != "" {
+					t.Fatalf("no warning is expected: %s", warning)
+				}
+				return
 			}
-			if err != nil && !errors.Is(err, ErrUnfixable) {
-				t.Fatalf("the error should be ErrUnfixable: %v", err)
+			if !strings.Contains(warning, d.warning) {
+				t.Fatalf("the warning %q should contain %q", warning, d.warning)
 			}
 		})
 	}
 }
 
-// TestController_processLines_lockfile tests that locked actions aren't changed
-// and unlocked actions in an onboarded workflow make pinact exit with ExitCodeUnfixable.
+// TestController_processLines_lockfile tests that actions in an onboarded workflow aren't changed
+// whether the lockfile records them or not, and pinact doesn't fail.
 // The GitHub API isn't called because no tag is registered in the fake service.
 func TestController_processLines_lockfile(t *testing.T) {
 	t.Parallel()
-	data := []struct {
-		name         string
-		line         string
-		wantExitCode int
-	}{
-		{
-			name:         "locked",
-			line:         "      - uses: actions/checkout@v6",
-			wantExitCode: ExitCodeOK,
-		},
-		{
-			name:         "not locked",
-			line:         "      - uses: actions/setup-go@v6",
-			wantExitCode: ExitCodeUnfixable,
-		},
-	}
-	for _, d := range data {
-		t.Run(d.name, func(t *testing.T) {
+	for _, line := range []string{
+		"      - uses: actions/checkout@v6",
+		"      - uses: actions/setup-go@v6",
+	} {
+		t.Run(line, func(t *testing.T) {
 			t.Parallel()
 			ctrl := New(&github.RepositoriesServiceImpl{}, nil, afero.NewMemMapFs(), &config.Config{}, &ParamRun{Stderr: &bytes.Buffer{}, Fix: true})
 			ctrl.lockfiles = map[string]*lockfileTarget{
 				".github/workflows/ci.yml": {state: newTestLockfileState(t, testLockfile), keys: []string{".github/workflows/ci.yml"}},
 			}
-			lines := []string{d.line}
+			lines := []string{line}
 			changed, exitCode := ctrl.processLines(t.Context(), slog.New(slog.DiscardHandler), ".github/workflows/ci.yml", lines)
 			if changed {
 				t.Fatalf("the line shouldn't be changed: %s", lines[0])
 			}
-			if exitCode != d.wantExitCode {
-				t.Fatalf("exit code is %d, wanted %d", exitCode, d.wantExitCode)
+			if exitCode != ExitCodeOK {
+				t.Fatalf("exit code is %d, wanted %d", exitCode, ExitCodeOK)
 			}
 		})
 	}

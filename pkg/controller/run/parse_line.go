@@ -169,9 +169,8 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, workflo
 		return "", nil
 	}
 
-	if handled, err := c.checkLockfile(workflowFilePath, action); handled {
-		logger.Debug("the lockfile manages the action")
-		return "", err
+	if c.leaveToLockfile(logger, workflowFilePath, action) {
+		return "", nil
 	}
 
 	newLine, err := c.processAction(ctx, logger, action, attrs, resolved)
