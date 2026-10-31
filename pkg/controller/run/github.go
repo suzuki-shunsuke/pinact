@@ -48,10 +48,20 @@ func (c *Controller) getLatestVersionWithStable(ctx context.Context, logger *slo
 	if err != nil {
 		slogerr.WithError(logger, err).Debug("get the latest version from releases")
 	}
+	tv, err := c.getLatestVersionFromTags(ctx, logger, owner, repo, isStable, cutoff, versions)
+	if err != nil {
+		slogerr.WithError(logger, err).Debug("get the latest version from tags")
+	}
+	// A repository may have a tag without a corresponding release (issue
+	// #1441). Tags are the source of truth Dependabot and semver tooling
+	// follow, so a tag-only version newer than the latest release wins.
+	if tv != "" && (lv == "" || compareVersion(lv, tv)) {
+		return tv, nil
+	}
 	if lv != "" {
 		return lv, nil
 	}
-	return c.getLatestVersionFromTags(ctx, logger, owner, repo, isStable, cutoff, versions)
+	return tv, nil
 }
 
 func isStableVersion(v string) bool {
