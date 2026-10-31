@@ -1,4 +1,4 @@
-package run
+﻿package run
 
 import (
 	"context"
@@ -13,6 +13,56 @@ import (
 	"github.com/suzuki-shunsuke/pinact/v5/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v5/pkg/github"
 )
+
+func Test_updateToLatestVersion_expandsShortsemverComment(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	// Issue #1579: `pinact run -u --min-age 30` wrote `@<sha> # v4` while a
+	// plain pin of the same tag wrote `# v4.0.0`, because the update path
+	// wrote the resolved tag as-is without expanding a short tag to the long
+	// one pointing at the same commit.
+	sha1 := "53165ef7e734c5c07cb06b3c8e7b647c5aa16db3"
+	sha2 := "de0fac2e4500dabe0009e67214ff5f5447ce83dd"
+	ctrl := New(&github.RepositoriesServiceImpl{
+		Tags: map[string]*github.ListTagsResult{
+			"extractions/setup-just/0": {
+				Tags: []*github.RepositoryTag{
+					{Name: new("v4"), Commit: &github.Commit{SHA: new(sha2)}},
+					{Name: new("v4.0.0"), Commit: &github.Commit{SHA: new(sha2)}},
+				},
+				Response: &github.Response{},
+			},
+		},
+		Releases: map[string]*github.ListReleasesResult{
+			"extractions/setup-just/0": {
+				Releases: []*github.RepositoryRelease{},
+				Response: &github.Response{},
+			},
+		},
+		Commits: map[string]*github.GetCommitSHA1Result{
+			"extractions/setup-just/v4":     {SHA: sha2},
+			"extractions/setup-just/v4.0.0": {SHA: sha2},
+		},
+	}, nil, afero.NewMemMapFs(), &config.Config{Separator: " # "}, &ParamRun{Update: true})
+
+	logger := slog.New(slog.DiscardHandler)
+	line := "        uses: extractions/setup-just@" + sha1 + " # v4"
+	action := parseAction(line)
+	if action == nil {
+		t.Fatal("failed to parse the action line")
+	}
+	if !ctrl.parseActionName(action) {
+		t.Fatal("failed to parse the action name")
+	}
+
+	newLine, err := ctrl.processPinnedSemverComment(t.Context(), logger, action, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "        uses: extractions/setup-just@" + sha2 + " # v4.0.0"
+	if newLine != want {
+		t.Errorf("got %q, want %q", newLine, want)
+	}
+}
 
 func Test_parseAction(t *testing.T) { //nolint:funlen
 	t.Parallel()

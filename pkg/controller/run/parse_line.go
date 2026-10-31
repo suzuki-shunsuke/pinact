@@ -352,7 +352,15 @@ func (c *Controller) processPinnedSemverComment(ctx context.Context, logger *slo
 	if err != nil {
 		return "", fmt.Errorf("get the latest version: %w", err)
 	}
-	if action.VersionComment == lv {
+	if action.VersionComment == lv || sameVersion(action.VersionComment, lv) {
+		if c.param.Update {
+			// The version annotation is semantically up to date, but the
+			// pinned SHA may still point at an older commit than the tag
+			// (or the tag may have a long spelling the comment lacks).
+			// Re-pin to the tag's current commit and expand the annotation
+			// so `run -u` agrees with a plain pin (issue #1579).
+			return c.patchToLatestVersion(ctx, logger, action, lv)
+		}
 		return c.verifyIfNeeded(ctx, logger, action)
 	}
 	if !compareVersion(action.VersionComment, lv) {
@@ -404,7 +412,7 @@ func (c *Controller) processTaggedVersion(ctx context.Context, logger *slog.Logg
 		if err != nil {
 			return "", fmt.Errorf("get the latest version: %w", err)
 		}
-		if action.VersionComment != lv && !compareVersion(action.VersionComment, lv) {
+		if action.VersionComment != lv && !compareVersion(action.VersionComment, lv) && !sameVersion(action.VersionComment, lv) {
 			warnSkipOlderVersion(logger, action.VersionComment, lv)
 			return "", nil
 		}
@@ -451,6 +459,21 @@ func (c *Controller) patchToLatestVersion(ctx context.Context, logger *slog.Logg
 	sha, _, err := c.repositoriesService.GetCommitSHA1(ctx, logger, action.RepoOwner, action.RepoName, lv, "")
 	if err != nil {
 		return "", fmt.Errorf("get the latest version: %w", err)
+	}
+	// Expand a short tag (e.g. v4) to the long tag pointing at the same
+	// commit (e.g. v4.0.0) so that `run -u` annotates the line the same way
+	// a plain pin does (issue #1579).
+	longVersion, err := c.getLongVersionFromSHA(ctx, logger, &Action{
+		RepoOwner:      action.RepoOwner,
+		RepoName:       action.RepoName,
+		Version:        sha,
+		VersionComment: lv,
+	}, sha)
+	if err != nil {
+		return "", err
+	}
+	if longVersion != "" {
+		lv = longVersion
 	}
 	return c.patchLine(action, sha, lv), nil
 }
@@ -563,6 +586,21 @@ func compareVersion(currentVersion, newVersion string) bool {
 		return newVersion > currentVersion
 	}
 	return nv.GreaterThan(cv)
+}
+
+// sameVersion reports whether two version strings denote the same semantic
+// version (e.g. v4 and v4.0.0), so that an update to a differently-spelled
+// but equal version is not mistaken for an older one (issue #1579).
+func sameVersion(a, b string) bool {
+	av, err := version.NewVersion(a)
+	if err != nil {
+		return a == b
+	}
+	bv, err := version.NewVersion(b)
+	if err != nil {
+		return a == b
+	}
+	return av.Equal(bv)
 }
 
 // verifyIfNeeded verifies the commit hash if verification is enabled.
