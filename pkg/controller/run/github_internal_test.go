@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
+	"github.com/suzuki-shunsuke/pinact/v5/pkg/config"
 	"github.com/suzuki-shunsuke/pinact/v5/pkg/github"
 )
 
@@ -348,6 +349,88 @@ func TestController_getLatestVersionFromReleases(t *testing.T) { //nolint:funlen
 
 			if gotVersion != tt.wantVersion {
 				t.Errorf("getLatestVersionFromReleases() = %v, want %v", gotVersion, tt.wantVersion)
+			}
+		})
+	}
+}
+
+func TestController_getLatestVersionWithStable_prefersNewerTagOverRelease(t *testing.T) { //nolint:funlen
+	t.Parallel()
+	// Issue #1441: a repository may have a tag (v4.0.1) without a
+	// corresponding GitHub release. The latest release is v4.0.0, but the
+	// tag-only v4.0.1 is what Dependabot and users see. The latest version
+	// resolution must consider tags newer than the newest release instead of
+	// short-circuiting on the release list.
+	tests := []struct {
+		name        string
+		releases    []string
+		tags        []string
+		isStable    bool
+		wantVersion string
+	}{
+		{
+			name:        "tag newer than latest release wins",
+			releases:    []string{"v4.0.0"},
+			tags:        []string{"v4.0.1", "v4", "v4.0.0"},
+			isStable:    true,
+			wantVersion: "v4.0.1",
+		},
+		{
+			name:        "release newer than all tags wins",
+			releases:    []string{"v4.0.3"},
+			tags:        []string{"v4.0.1", "v4", "v4.0.0"},
+			isStable:    true,
+			wantVersion: "v4.0.3",
+		},
+		{
+			name:        "no releases falls back to tags as before",
+			releases:    []string{},
+			tags:        []string{"v4.0.1", "v4", "v4.0.0"},
+			isStable:    true,
+			wantVersion: "v4.0.1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			releases := make([]*github.RepositoryRelease, 0, len(tt.releases))
+			for _, tag := range tt.releases {
+				releases = append(releases, &github.RepositoryRelease{TagName: tag})
+			}
+			tags := make([]*github.RepositoryTag, 0, len(tt.tags))
+			for _, name := range tt.tags {
+				tags = append(tags, &github.RepositoryTag{
+					Name:   new(name),
+					Commit: &github.Commit{SHA: new("deadbeef")},
+				})
+			}
+			impl := &github.RepositoriesServiceImpl{
+				Tags: map[string]*github.ListTagsResult{
+					"owner/repo/0": {Tags: tags, Response: &github.Response{}},
+				},
+				Releases: map[string]*github.ListReleasesResult{
+					"owner/repo/0": {Releases: releases, Response: &github.Response{}},
+				},
+				Commits: map[string]*github.GetCommitSHA1Result{
+					"owner/repo/deadbeef": {SHA: "deadbeef"},
+				},
+			}
+			impl.SetResolver(github.NewClientResolver(nil, nil, nil, nil, false))
+
+			c := &Controller{
+				repositoriesService: impl,
+				param:               &ParamRun{Now: time.Now()},
+				cfg:                 &config.Config{},
+			}
+			logger := slog.New(slog.DiscardHandler)
+
+			got, err := c.getLatestVersionWithStable(t.Context(), logger, "owner", "repo", tt.isStable, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tt.wantVersion {
+				t.Errorf("getLatestVersionWithStable() = %v, want %v", got, tt.wantVersion)
 			}
 		})
 	}
