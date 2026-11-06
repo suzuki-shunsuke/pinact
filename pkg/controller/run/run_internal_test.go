@@ -96,6 +96,89 @@ func TestController_processLines(t *testing.T) { //nolint:funlen
 	}
 }
 
+// TestController_processLines_filePathCondition verifies that rule conditions
+// can match on the file the action is in, so a repository can exclude, for
+// example, its own action files from pinning.
+func TestController_processLines_filePathCondition(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		workflowFile string
+		wantChanged  bool
+	}{
+		{
+			name:         "action file matched by FilePath is left alone",
+			workflowFile: ".github/actions/setup/action.yaml",
+			wantChanged:  false,
+		},
+		{
+			name:         "workflow file not matched by FilePath is pinned",
+			workflowFile: ".github/workflows/ci.yml",
+			wantChanged:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			fs := afero.NewMemMapFs()
+			cfg := &config.Config{
+				Version: 3,
+				Rules: []*config.Rule{
+					{
+						Ignore: new(true),
+						Conditions: []*config.Condition{
+							{Expr: `FilePath matches "(^|/)action\\.ya?ml$"`},
+						},
+					},
+				},
+			}
+			if err := cfg.Init(); err != nil {
+				t.Fatalf("init config: %v", err)
+			}
+			ctrl := New(&github.RepositoriesServiceImpl{
+				Tags: map[string]*github.ListTagsResult{
+					"actions/checkout/0": {
+						Tags: []*github.RepositoryTag{
+							{
+								Name: new("v3.5.2"),
+								Commit: &github.Commit{
+									SHA: new("8e5e7e5ab8b370d6c329ec480221332ada57f0ab"),
+								},
+							},
+						},
+						Response: &github.Response{},
+					},
+				},
+				Releases: map[string]*github.ListReleasesResult{
+					"actions/checkout/0": {
+						Releases: []*github.RepositoryRelease{},
+						Response: &github.Response{},
+					},
+				},
+				Commits: map[string]*github.GetCommitSHA1Result{
+					"actions/checkout/v3.5.2": {
+						SHA:      "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+						Response: &github.Response{},
+					},
+				},
+			}, nil, fs, cfg, &ParamRun{Stderr: &bytes.Buffer{}, Fix: true})
+
+			lines := []string{"    - uses: actions/checkout@v3.5.2"}
+			changed, exitCode := ctrl.processLines(context.Background(), slog.New(slog.DiscardHandler), tt.workflowFile, lines)
+
+			if changed != tt.wantChanged {
+				t.Errorf("processLines() changed = %v, want %v", changed, tt.wantChanged)
+			}
+			if changed && !strings.Contains(lines[0], "8e5e7e5ab8b370d6c329ec480221332ada57f0ab") {
+				t.Errorf("processLines() line = %q, want the pinned SHA", lines[0])
+			}
+			if exitCode != ExitCodeOK {
+				t.Errorf("processLines() exitCode = %d, want %d", exitCode, ExitCodeOK)
+			}
+		})
+	}
+}
+
 // TestController_outputDiff_alwaysOn verifies that the line diff is emitted to
 // stderr regardless of the Fix value (v4 spec: detail output is always on).
 // --check / --diff are aliases for --fix=false and are translated by buildParam,
