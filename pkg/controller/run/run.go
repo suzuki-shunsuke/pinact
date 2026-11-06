@@ -78,8 +78,30 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("search target files: %w", err)
 	}
-	c.readLockfiles(logger, workflowFilePaths)
+	if err := c.readLockfiles(logger, workflowFilePaths); err != nil {
+		// pinact can't tell which workflows are onboarded, so it processes no file.
+		return ecerror.Wrap(err, ExitCodeAPIError)
+	}
 
+	exitCode := c.runWorkflows(ctx, logger, workflowFilePaths)
+	// Output SARIF if format is sarif
+	if c.param.Format == "sarif" {
+		if err := c.outputSARIF(); err != nil {
+			return fmt.Errorf("output SARIF: %w", err)
+		}
+	}
+	if exitCode > ExitCodeOK {
+		// Wrap ErrSilent so cobra-util suppresses the trailing
+		// "pinact failed" log line (per-file errors have already been logged
+		// in detail by slogerr.WithError above). ecerror.Wrap surfaces the
+		// 0/1/2/3 exit code through ecerror.GetExitCode in main.
+		return ecerror.Wrap(cobrautil.ErrSilent, exitCode)
+	}
+	return nil
+}
+
+// runWorkflows processes the target files and returns the highest exit code among them.
+func (c *Controller) runWorkflows(ctx context.Context, logger *slog.Logger, workflowFilePaths []string) int {
 	exitCode := ExitCodeOK
 	for _, workflowFilePath := range workflowFilePaths {
 		logger := logger.With("workflow_file", workflowFilePath)
@@ -99,38 +121,18 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 			}
 		}
 	}
-	// Output SARIF if format is sarif
-	if c.param.Format == "sarif" {
-		if err := c.outputSARIF(); err != nil {
-			return fmt.Errorf("output SARIF: %w", err)
-		}
-	}
-	if exitCode > ExitCodeOK {
-		// Wrap ErrSilent so cobra-util suppresses the trailing
-		// "pinact failed" log line (per-file errors have already been logged
-		// in detail by slogerr.WithError above). ecerror.Wrap surfaces the
-		// 0/1/2/3 exit code through ecerror.GetExitCode in main.
-		return ecerror.Wrap(cobrautil.ErrSilent, exitCode)
-	}
-	return nil
+	return exitCode
 }
 
-// readLockfiles reads the lockfiles for the workflow files among the target files.
-// If a lockfile can't be read, it outputs a warning, and checkLockfile reports
-// actions whose lock state pinact can't tell.
-func (c *Controller) readLockfiles(logger *slog.Logger, filePaths []string) {
-	c.lockfiles = readLockfiles(c.fs, filePaths)
-	warned := map[*lockfileState]struct{}{}
-	for p, t := range c.lockfiles {
-		if t.state.err == nil {
-			continue
-		}
-		if _, ok := warned[t.state]; ok {
-			continue
-		}
-		warned[t.state] = struct{}{}
-		slogerr.WithError(logger, t.state.err).Warn("pinact doesn't change actions in workflow steps whose lock state it can't tell", "workflow_file", p)
+// readLockfiles reads the lockfiles concerning the target files.
+// See https://github.com/suzuki-shunsuke/pinact/issues/1828 for the spec.
+func (c *Controller) readLockfiles(logger *slog.Logger, filePaths []string) error {
+	lockfiles, err := readLockfiles(c.fs, logger, filePaths)
+	if err != nil {
+		return err
 	}
+	c.lockfiles = lockfiles
+	return nil
 }
 
 type Line struct {
