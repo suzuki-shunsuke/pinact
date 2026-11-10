@@ -86,7 +86,7 @@ version its SHA actually is.
 See each subcommand's help with 'pinact help <command>'.
 See https://github.com/suzuki-shunsuke/pinact for details.
 
-If you are a coding agent, run 'pinact docs list' to list the documentation and
+Note for coding agents: run 'pinact docs list' to list the documentation and
 'pinact docs show <name>' to read it before answering questions about pinact or
 troubleshooting its errors.`,
 	}
