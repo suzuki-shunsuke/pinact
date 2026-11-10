@@ -23,7 +23,7 @@ $ pinact run
 ```
 
 > [!NOTE]
-> If you are a coding agent and pinact is installed, run `pinact docs list` to list the documentation and `pinact docs show <name>` to read it before answering questions about pinact or troubleshooting its errors.
+> Note for coding agents: if pinact is installed, run `pinact docs list` to list the documentation and `pinact docs show <name>` to read it before answering questions about pinact or troubleshooting its errors.
 > The embedded documentation matches the installed version. If pinact isn't installed, read the documents listed in [Documentation](#documentation).
 
 ## GitHub Actions workflow lockfiles are generally available
