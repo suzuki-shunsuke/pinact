@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -15,9 +16,9 @@ import (
 )
 
 var (
-	usesPattern          = regexp.MustCompile(`^( *(?:- +)?['"]?uses['"]? *: +)(['"]?)(.*?)@([^ '"]+)['"]?(?:( +# +(?:tag=)?)(v?\d+[^ ]*)(.*))?`)
+	usesPattern          = regexp.MustCompile(`^( *(?:- +)?['"]?uses['"]? *: +)(['"]?)(.*?)@([^ '"]+)['"]?(?:( +# +(?:tag=)?)((?:[^/ ]+/)*v?\d+[^ ]*)(.*))?`)
 	fullCommitSHAPattern = regexp.MustCompile(`\b[0-9a-f]{40}\b`)
-	semverPattern        = regexp.MustCompile(`^v?\d+\.\d+\.\d+[^ ]*$`)
+	semverPattern        = regexp.MustCompile(`^(?:[^/]+/)*v?\d+\.\d+\.\d+[^ ]*$`)
 	shortTagPattern      = regexp.MustCompile(`^v?\d+(\.\d+)?$`)
 )
 
@@ -46,6 +47,10 @@ const (
 // getVersionType determines the type of version string.
 // It analyzes the version format to classify it as semantic version,
 // short semantic version, full commit SHA, empty, or other.
+//
+// A semantic version may carry a path prefix, as monorepos tag one version per
+// action (e.g. A/B/C/v1.2.3); the prefix is part of the tag and of the version
+// comment pinact writes back.
 func getVersionType(v string) VersionType {
 	if v == "" {
 		return Empty
@@ -160,6 +165,7 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, workflo
 		ActionRepoFullName: action.RepoOwner + "/" + action.RepoName,
 		ActionVersion:      action.Version,
 		VersionComment:     action.VersionComment,
+		FilePath:           filepath.ToSlash(workflowFilePath),
 	})
 	if err != nil {
 		return "", fmt.Errorf("resolve rules: %w", err)
