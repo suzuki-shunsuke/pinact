@@ -234,6 +234,9 @@ The following variables are available:
 | `ActionRepoFullName` | `<owner>/<repo>` | `slsa-framework/slsa-github-generator` |
 | `ActionVersion` | The action's ref (commit SHA, tag, or branch) | `v1.10.0`, `main`, `68bad40...` |
 | `VersionComment` | Existing `# <tag>` comment on the line, if any | `v1.10.0` |
+| `FilePath` | Path of the file the action is in, with `/` as the separator | `.github/workflows/ci.yml`, `.github/actions/setup/action.yaml` |
+
+`FilePath` is the path pinact prints in its output: the value given on the command line, in `files`, or found by the default discovery, so it is relative to the working directory unless an absolute path was given. To match regardless of how pinact is run, match the end of the path, such as `FilePath matches "(^|/)action\\.ya?ml$"`.
 
 Expressions are validated and compiled at startup. Syntax errors, references to undefined variables, and non-boolean expressions are surfaced as configuration errors.
 
