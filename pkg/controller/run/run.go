@@ -387,10 +387,12 @@ func (c *Controller) outputGitHubActionsAnnotation(line *Line, newLine string) {
 		return
 	}
 	level := "notice"
+	title := "pinact"
 	if !c.param.Fix {
 		level = levelError
+		title = "pinact error"
 	}
-	fmt.Fprintf(c.param.Stderr, "::%s file=%s,line=%d,title=pinact error::%s\n", level, line.File, line.Number, newLine)
+	fmt.Fprintf(c.param.Stderr, "::%s file=%s,line=%d,title=%s::%s\n", level, line.File, line.Number, title, newLine)
 }
 
 // outputDiff outputs the diff information for the changed line.
