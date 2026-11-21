@@ -191,6 +191,10 @@ type MatchInput struct {
 	ActionRepoFullName string
 	ActionVersion      string
 	VersionComment     string
+	// FilePath is the path of the file the action is in, with `/` as the
+	// separator. It is the path pinact prints in its output, so it is relative
+	// to the working directory unless an absolute path was given.
+	FilePath string
 }
 
 // Resolved is the merged result of all rules that matched a given action.

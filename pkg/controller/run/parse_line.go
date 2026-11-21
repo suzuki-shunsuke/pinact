@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -160,6 +161,7 @@ func (c *Controller) parseLine(ctx context.Context, logger *slog.Logger, workflo
 		ActionRepoFullName: action.RepoOwner + "/" + action.RepoName,
 		ActionVersion:      action.Version,
 		VersionComment:     action.VersionComment,
+		FilePath:           filepath.ToSlash(workflowFilePath),
 	})
 	if err != nil {
 		return "", fmt.Errorf("resolve rules: %w", err)
