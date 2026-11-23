@@ -13,7 +13,7 @@ workflows:
     '.github/workflows/workflow_call_integration_test.yaml':
         - 'actions/checkout@v7.0.1'
         - 'actions/setup-go@v7.1.0'
-        - 'aquaproj/aqua-installer@611554c6f0137ba41c8dd15aca8bee82504ea461'
+        - 'aquaproj/aqua-installer@b8be739961814ee66b9e0d505f4d5de0d2eff047'
         - 'suzuki-shunsuke/download-go-module-action@v0.0.10'
     '.github/workflows/workflow_call_test.yaml': []
 dependencies:
@@ -35,6 +35,11 @@ dependencies:
     'aquaproj/aqua-installer@611554c6f0137ba41c8dd15aca8bee82504ea461':
         ref: 'v4.1.1'
         commit: 'sha1-611554c6f0137ba41c8dd15aca8bee82504ea461'
+        owner_id: 95116411
+        repo_id: 400140776
+    'aquaproj/aqua-installer@b8be739961814ee66b9e0d505f4d5de0d2eff047':
+        ref: 'v4.1.2'
+        commit: 'sha1-b8be739961814ee66b9e0d505f4d5de0d2eff047'
         owner_id: 95116411
         repo_id: 400140776
     'suzuki-shunsuke/actionlint-action@v0.2.2':
