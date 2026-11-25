@@ -3,7 +3,7 @@ module github.com/suzuki-shunsuke/pinact/v5
 go 1.27.4
 
 require (
-	github.com/expr-lang/expr v1.17.8
+	github.com/expr-lang/expr v1.18.0
 	github.com/fatih/color v1.19.0
 	github.com/github/actions-lockfile/go v0.0.6
 	github.com/goccy/go-yaml v1.19.2
