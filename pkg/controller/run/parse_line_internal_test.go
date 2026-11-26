@@ -114,6 +114,26 @@ func Test_parseAction(t *testing.T) { //nolint:funlen
 				VersionComment:          "v3",
 			},
 		},
+		{
+			name: "semver tag with a path prefix",
+			line: "  - uses: my-org/monorepo/actions/setup@tools/v1.2.3",
+			exp: &Action{
+				Uses:    "  - uses: ",
+				Name:    "my-org/monorepo/actions/setup",
+				Version: "tools/v1.2.3",
+			},
+		},
+		{
+			name: "pinned SHA with a path-prefixed version comment",
+			line: "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # tools/v3.5.2",
+			exp: &Action{
+				Uses:                    "  - uses: ",
+				Name:                    "actions/checkout",
+				Version:                 "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+				VersionCommentSeparator: " # ",
+				VersionComment:          "tools/v3.5.2",
+			},
+		},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
@@ -183,6 +203,16 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 			line: "      -   uses: actions/checkout@v3",
 			exp:  "      -   uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2",
 		},
+		{
+			name: "semver tag with a path prefix",
+			line: "  - uses: my-org/monorepo/actions/setup@tools/v1.2.3",
+			exp:  "  - uses: my-org/monorepo/actions/setup@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb # tools/v1.2.3",
+		},
+		{
+			name: "pinned SHA with a path-prefixed version comment",
+			line: "  - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # tools/v3.5.2",
+			exp:  "",
+		},
 	}
 	logger := slog.New(slog.DiscardHandler)
 	for _, d := range data {
@@ -220,10 +250,25 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 						},
 						Response: &github.Response{},
 					},
+					"my-org/monorepo/0": {
+						Tags: []*github.RepositoryTag{
+							{
+								Name: new("tools/v1.2.3"),
+								Commit: &github.Commit{
+									SHA: new("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+								},
+							},
+						},
+						Response: &github.Response{},
+					},
 				},
 				Releases: map[string]*github.ListReleasesResult{
 					"actions/checkout/0": {
 						Releases: []*github.RepositoryRelease{}, // Empty releases forces fallback to tags
+						Response: &github.Response{},
+					},
+					"my-org/monorepo/0": {
+						Releases: []*github.RepositoryRelease{},
 						Response: &github.Response{},
 					},
 				},
@@ -233,6 +278,12 @@ func TestController_parseLine(t *testing.T) { //nolint:funlen
 					},
 					"actions/checkout/v2": {
 						SHA: "ee0669bd1cc54295c223e0bb666b733df41de1c5",
+					},
+					"actions/checkout/tools/v3.5.2": {
+						SHA: "8e5e7e5ab8b370d6c329ec480221332ada57f0ab",
+					},
+					"my-org/monorepo/tools/v1.2.3": {
+						SHA: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 					},
 				},
 			}, nil, fs, &config.Config{
@@ -625,6 +676,21 @@ func Test_getVersionType(t *testing.T) { //nolint:funlen
 			name:    "short semver minor without v",
 			version: "3.1",
 			want:    Shortsemver,
+		},
+		{
+			name:    "semver with a path prefix",
+			version: "A/B/C/v1.2.3",
+			want:    Semver,
+		},
+		{
+			name:    "semver with a path prefix and prerelease",
+			version: "tools/lint/v2.0.0-rc.1",
+			want:    Semver,
+		},
+		{
+			name:    "branch with a semver-like suffix but no version",
+			version: "release/v1",
+			want:    Other,
 		},
 		{
 			name:    "branch name main",
