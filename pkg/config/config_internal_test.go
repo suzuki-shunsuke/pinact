@@ -515,6 +515,7 @@ func TestConfig_ResolveRules(t *testing.T) { //nolint:funlen
 		ActionRepoFullName: "actions/checkout",
 		ActionVersion:      "v4",
 		VersionComment:     "",
+		FilePath:           ".github/workflows/ci.yml",
 	}
 
 	tests := []struct {
@@ -605,6 +606,28 @@ func TestConfig_ResolveRules(t *testing.T) { //nolint:funlen
 			},
 			wantIgnore: false,
 			wantMinAge: new(0),
+		},
+		{
+			name: "FilePath matches the file the action is in",
+			rules: []*Rule{
+				{
+					Ignore:     new(true),
+					Conditions: []*Condition{{Expr: `FilePath == ".github/workflows/ci.yml"`}},
+				},
+			},
+			wantIgnore: true,
+			wantMinAge: nil,
+		},
+		{
+			name: "FilePath matching on the file name ignores other files",
+			rules: []*Rule{
+				{
+					Ignore:     new(true),
+					Conditions: []*Condition{{Expr: `FilePath matches "(^|/)action\\.ya?ml$"`}},
+				},
+			},
+			wantIgnore: false,
+			wantMinAge: nil,
 		},
 	}
 	for _, tt := range tests {
